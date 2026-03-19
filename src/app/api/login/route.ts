@@ -36,6 +36,7 @@ export async function POST(request: Request) {
     .eq('id', data.user.id)
     .single()
 
+  // Debug: return full info so we can see what's happening
   const role = profile?.role
   let redirectTo = '/trainee'
   if (role === 'manager') redirectTo = '/manager'

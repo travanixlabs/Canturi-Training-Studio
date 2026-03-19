@@ -29,7 +29,6 @@ export default function LoginPage() {
       return
     }
 
-    // Full page redirect with cookies now set by the API route
     window.location.href = data.redirectTo
   }
 
