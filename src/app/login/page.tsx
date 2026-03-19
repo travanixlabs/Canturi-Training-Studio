@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { login } from './actions'
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
@@ -13,13 +12,25 @@ export default function LoginPage() {
     setError(null)
 
     const formData = new FormData(e.currentTarget)
-    const result = await login(formData)
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
 
-    if (result?.error) {
-      setError(result.error)
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      setError(data.error || 'Login failed.')
       setLoading(false)
+      return
     }
-    // If no error, the server action redirects automatically
+
+    // Full page redirect with cookies now set by the API route
+    window.location.href = data.redirectTo
   }
 
   return (
