@@ -24,18 +24,8 @@ export default function LoginPage() {
     }
 
     if (data.user) {
-      const { data: profile } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', data.user.id)
-        .single()
-
-      const role = profile?.role
-      // Full browser redirect — ensures cookies are sent with the new request
-      if (role === 'trainee') window.location.href = '/trainee'
-      else if (role === 'manager') window.location.href = '/manager'
-      else if (role === 'head_office') window.location.href = '/head-office'
-      else window.location.href = '/trainee'
+      // Let the proxy handle role-based routing
+      window.location.href = '/'
     }
   }
 
