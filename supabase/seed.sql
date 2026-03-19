@@ -24,14 +24,16 @@ insert into public.categories (id, name, icon, colour_hex, sort_order) values
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Services
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type) values
+insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Ultrasonic Clean',
     'Learn to operate the ultrasonic cleaning machine safely. Understand which pieces can and cannot go in — no pearls, emeralds, treated stones, or glued settings. Demonstrate correct solution levels and cycle times.',
     '22222222-0000-0000-0000-000000000001',
     array['ultrasonic', 'clean', 'cleaning', 'jewellery care', 'services'],
     '20 min',
-    'Manager'
+    'Manager',
+    'week_1',
+    false
   ),
   (
     'Steam Clean',
@@ -39,7 +41,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000001',
     array['steam', 'clean', 'cleaning', 'finishing', 'services'],
     '15 min',
-    'Manager'
+    'Manager',
+    'week_1',
+    false
   ),
   (
     'Ring Sizing',
@@ -47,7 +51,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000001',
     array['ring sizing', 'sizing', 'alterations', 'repairs', 'services'],
     '30 min',
-    'Self/Manager'
+    'Self/Manager',
+    'week_2_4',
+    false
   ),
   (
     'Engraving Service',
@@ -55,7 +61,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000001',
     array['engraving', 'personalisation', 'services'],
     '20 min',
-    'Self/Manager'
+    'Self/Manager',
+    'week_2_4',
+    false
   ),
   (
     'Repairs & Alterations',
@@ -63,20 +71,24 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000001',
     array['repairs', 'alterations', 'services', 'JCS'],
     '45 min',
-    'Manager'
+    'Manager',
+    'week_2_4',
+    false
   );
 
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Product Knowledge
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type) values
+insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Canturi Collections Overview',
     'Deep-dive into all current Canturi collections — design philosophy, signature elements, price architecture, and target client profiles. Be able to speak fluently about each collection without referencing notes.',
     '22222222-0000-0000-0000-000000000002',
     array['collections', 'product', 'knowledge', 'ranges'],
     '60 min',
-    'Self/Manager'
+    'Self/Manager',
+    'week_1',
+    false
   ),
   (
     'Metals & Alloys',
@@ -84,7 +96,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000002',
     array['metals', 'gold', 'white gold', 'rose gold', 'product knowledge'],
     '30 min',
-    'Self'
+    'Self',
+    'week_1',
+    false
   ),
   (
     'Coloured Stones',
@@ -92,7 +106,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000002',
     array['coloured stones', 'sapphire', 'ruby', 'emerald', 'gemstones', 'product knowledge'],
     '45 min',
-    'Self/Manager'
+    'Self/Manager',
+    'week_2_4',
+    false
   ),
   (
     'Packaging & Presentation',
@@ -100,20 +116,24 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000002',
     array['packaging', 'presentation', 'gifting', 'ribbons', 'boxes'],
     '20 min',
-    'Manager'
+    'Manager',
+    'week_1',
+    false
   );
 
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Boutique
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type) values
+insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Opening Procedure',
     'Complete the full boutique opening sequence — safe access, case setup, lighting, display refresh, POS login, and morning team briefing. Be able to open independently within your first two weeks.',
     '22222222-0000-0000-0000-000000000003',
     array['opening', 'boutique', 'procedure', 'safe'],
     '30 min',
-    'Manager'
+    'Manager',
+    'week_1',
+    false
   ),
   (
     'Closing Procedure',
@@ -121,7 +141,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000003',
     array['closing', 'boutique', 'procedure', 'safe', 'alarm'],
     '30 min',
-    'Manager'
+    'Manager',
+    'week_1',
+    false
   ),
   (
     'Salon Standards',
@@ -129,20 +151,24 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000003',
     array['salon', 'standards', 'display', 'boutique', 'presentation'],
     '20 min',
-    'Self/Manager'
+    'Self/Manager',
+    'week_1',
+    true  -- revisit daily; this is a habit, not a one-time tick
   );
 
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Administration
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type) values
+insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'RECAP System',
     'Learn the RECAP CRM system — creating client profiles, logging interactions, adding purchase history, and running client lookup. Every client interaction should be recorded same day.',
     '22222222-0000-0000-0000-000000000004',
     array['RECAP', 'CRM', 'system', 'administration', 'clients'],
     '60 min',
-    'Manager'
+    'Manager',
+    'week_1',
+    false
   ),
   (
     'JCS Repairs System',
@@ -150,7 +176,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000004',
     array['JCS', 'repairs', 'system', 'administration'],
     '45 min',
-    'Manager'
+    'Manager',
+    'week_2_4',
+    false
   ),
   (
     'FOC & Complimentary Forms',
@@ -158,20 +186,24 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000004',
     array['FOC', 'complimentary', 'forms', 'administration'],
     '30 min',
-    'Manager'
+    'Manager',
+    'week_2_4',
+    false
   );
 
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Diamonds
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type) values
+insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'The 4Cs — Cut, Colour, Clarity, Carat',
     'Master the 4Cs framework and be able to explain each C to a client in plain, engaging language. Know how Canturi uses the 4Cs in sourcing decisions and how to guide a client through trade-offs.',
     '22222222-0000-0000-0000-000000000005',
     array['diamonds', '4cs', 'cut', 'colour', 'clarity', 'carat', 'knowledge'],
     '60 min',
-    'Self/Manager'
+    'Self/Manager',
+    'week_1',
+    false
   ),
   (
     'Diamond Certificates',
@@ -179,7 +211,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000005',
     array['diamonds', 'certificate', 'GIA', 'grading', 'certification'],
     '45 min',
-    'Self/Manager'
+    'Self/Manager',
+    'week_2_4',
+    false
   ),
   (
     'Engagement Consultation',
@@ -187,20 +221,24 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000005',
     array['engagement', 'consultation', 'diamonds', 'rings', 'bespoke'],
     '90 min',
-    'Manager'
+    'Manager',
+    'advanced',
+    false
   );
 
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Deliveries
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type) values
+insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Receiving Stock',
     'Full stock receiving process — signing off delivery, checking contents against the packing slip, condition assessment, photography, and entering new stock into the system accurately.',
     '22222222-0000-0000-0000-000000000006',
     array['deliveries', 'stock', 'receiving', 'inventory'],
     '30 min',
-    'Manager'
+    'Manager',
+    'week_1',
+    false
   ),
   (
     'Inter-Boutique Transfers',
@@ -208,20 +246,24 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000006',
     array['transfers', 'inter-boutique', 'stock', 'deliveries'],
     '30 min',
-    'Manager'
+    'Manager',
+    'week_2_4',
+    false
   );
 
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Client Experience
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type) values
+insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'The Canturi Welcome',
     'The first 60 seconds of a client''s visit sets the tone. Learn the Canturi welcome — eye contact, greeting, offer of water, and how to read whether a client wants to browse or be guided.',
     '22222222-0000-0000-0000-000000000007',
     array['welcome', 'client experience', 'greeting', 'service'],
     '20 min',
-    'Manager'
+    'Manager',
+    'week_1',
+    true  -- revisit regularly; this is a standard to maintain
   ),
   (
     'Gifting & Special Occasions',
@@ -229,7 +271,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000007',
     array['gifting', 'special occasions', 'packaging', 'client experience'],
     '30 min',
-    'Self/Manager'
+    'Self/Manager',
+    'week_1',
+    false
   ),
   (
     'After-Sale Care & Client Follow-Up',
@@ -237,7 +281,9 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000007',
     array['after sale', 'follow up', 'client care', 'client experience', 'retention'],
     '30 min',
-    'Self/Manager'
+    'Self/Manager',
+    'week_2_4',
+    false
   ),
   (
     'Difficult Client Conversations',
@@ -245,8 +291,44 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
     '22222222-0000-0000-0000-000000000007',
     array['difficult clients', 'complaints', 'returns', 'escalation', 'client experience'],
     '45 min',
-    'Manager'
+    'Manager',
+    'advanced',
+    false
   );
+
+-- ─────────────────────────────────────────
+-- PREREQUISITES
+-- Wire up sequencing after all items are inserted
+-- ─────────────────────────────────────────
+
+-- Diamond Certificates requires: The 4Cs
+update public.menu_items
+set prerequisites = array(
+  select id from public.menu_items where title = 'The 4Cs — Cut, Colour, Clarity, Carat'
+)
+where title = 'Diamond Certificates';
+
+-- Engagement Consultation requires: The 4Cs + Diamond Certificates
+update public.menu_items
+set prerequisites = array(
+  select id from public.menu_items
+  where title in ('The 4Cs — Cut, Colour, Clarity, Carat', 'Diamond Certificates')
+)
+where title = 'Engagement Consultation';
+
+-- Repairs & Alterations requires: JCS Repairs System
+update public.menu_items
+set prerequisites = array(
+  select id from public.menu_items where title = 'JCS Repairs System'
+)
+where title = 'Repairs & Alterations';
+
+-- Closing Procedure requires: Opening Procedure
+update public.menu_items
+set prerequisites = array(
+  select id from public.menu_items where title = 'Opening Procedure'
+)
+where title = 'Closing Procedure';
 
 -- ─────────────────────────────────────────
 -- NOTE: Test users must be created via Supabase Auth

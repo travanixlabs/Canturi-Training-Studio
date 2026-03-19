@@ -74,6 +74,11 @@ create table public.menu_items (
   trainer_type text not null default 'Self' check (trainer_type in ('Self', 'Manager', 'Self/Manager')),
   resource_link text,
   boutique_id uuid references public.boutiques(id), -- null = universal
+  -- Sequencing & progression
+  prerequisites uuid[] default '{}',             -- menu_item ids that should be done first
+  priority_level text not null default 'week_1'
+    check (priority_level in ('week_1', 'week_2_4', 'advanced')),
+  is_recurring boolean not null default false,   -- true = revisit regularly (e.g. salon standards)
   created_at timestamptz default now()
 );
 
@@ -137,10 +142,17 @@ create table public.completions (
   menu_item_id uuid not null references public.menu_items(id),
   trainee_id uuid not null references public.users(id),
   trainer_id uuid references public.users(id),
-  trainee_notes text,
+  -- Trainee fields
+  trainee_notes text,                            -- general notes / what was learned
+  observed_notes text,                           -- shadowing: "What did you observe?"
+  followup_questions text,                       -- shadowing: "What would you do differently or ask more about?"
+  trainee_rating integer check (trainee_rating between 1 and 5), -- "How confident do you feel here?"
+  -- Trainer fields (hidden from trainee)
   trainer_notes text,
-  trainee_rating integer check (trainee_rating between 1 and 5),
   trainer_rating integer check (trainer_rating between 1 and 5),
+  -- Coaching note (visible to trainee — not a rating, a message)
+  manager_note text,
+  -- Metadata
   completed_date date not null default current_date,
   is_shadowing_moment boolean not null default false,
   created_at timestamptz default now(),
@@ -173,6 +185,56 @@ create policy "Managers can update completions (trainer fields)" on public.compl
       join public.users t on t.id = completions.trainee_id
       where u.id = auth.uid() and u.role = 'manager' and u.boutique_id = t.boutique_id
     )
+  );
+
+-- ─────────────────────────────────────────
+-- WEEKLY REFLECTIONS
+-- ─────────────────────────────────────────
+create table public.weekly_reflections (
+  id uuid primary key default uuid_generate_v4(),
+  trainee_id uuid not null references public.users(id),
+  week_start date not null,                      -- Monday of the reflection week
+  went_well text,                                -- "What went well this week?"
+  still_to_explore text,                         -- "What do you want to revisit or dig deeper into?"
+  confidence_areas text,                         -- "Where do you feel most / least confident right now?"
+  sent_to_manager boolean not null default false,
+  created_at timestamptz default now(),
+  unique(trainee_id, week_start)
+);
+
+alter table public.weekly_reflections enable row level security;
+create policy "Trainees can manage own reflections" on public.weekly_reflections
+  for all using (trainee_id = auth.uid());
+create policy "Managers can view reflections in boutique" on public.weekly_reflections
+  for select using (
+    exists (
+      select 1 from public.users u
+      join public.users t on t.id = weekly_reflections.trainee_id
+      where u.id = auth.uid() and u.role = 'manager' and u.boutique_id = t.boutique_id
+    )
+  );
+create policy "Head office can view all reflections" on public.weekly_reflections
+  for select using (
+    exists (select 1 from public.users where id = auth.uid() and role = 'head_office')
+  );
+
+-- ─────────────────────────────────────────
+-- FEEDBACK FLAGS
+-- Single-tap "something's not working" from any user → straight to Tre
+-- ─────────────────────────────────────────
+create table public.feedback_flags (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.users(id),
+  context text,                                  -- optional: what were they doing when it broke?
+  created_at timestamptz default now()
+);
+
+alter table public.feedback_flags enable row level security;
+create policy "Users can insert own feedback" on public.feedback_flags
+  for insert with check (user_id = auth.uid());
+create policy "Head office can view all feedback" on public.feedback_flags
+  for select using (
+    exists (select 1 from public.users where id = auth.uid() and role = 'head_office')
   );
 
 -- ─────────────────────────────────────────
