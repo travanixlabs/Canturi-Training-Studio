@@ -2,14 +2,12 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -33,11 +31,11 @@ export default function LoginPage() {
         .single()
 
       const role = profile?.role
-      router.refresh() // flush session cookies to server before navigating
-      if (role === 'trainee') router.push('/trainee')
-      else if (role === 'manager') router.push('/manager')
-      else if (role === 'head_office') router.push('/head-office')
-      else router.push('/trainee')
+      // Full browser redirect — ensures cookies are sent with the new request
+      if (role === 'trainee') window.location.href = '/trainee'
+      else if (role === 'manager') window.location.href = '/manager'
+      else if (role === 'head_office') window.location.href = '/head-office'
+      else window.location.href = '/trainee'
     }
   }
 
