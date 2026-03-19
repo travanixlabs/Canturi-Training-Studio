@@ -26,13 +26,14 @@ export default function LoginPage() {
     }
 
     if (data.user) {
-      const { data: profile } = await createClient()
+      const { data: profile } = await supabase
         .from('users')
         .select('role')
         .eq('id', data.user.id)
         .single()
 
       const role = profile?.role
+      router.refresh() // flush session cookies to server before navigating
       if (role === 'trainee') router.push('/trainee')
       else if (role === 'manager') router.push('/manager')
       else if (role === 'head_office') router.push('/head-office')
