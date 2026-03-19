@@ -1,32 +1,25 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { login } from './actions'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const formData = new FormData(e.currentTarget)
+    const result = await login(formData)
 
-    if (error) {
-      setError('Incorrect email or password. Please try again.')
+    if (result?.error) {
+      setError(result.error)
       setLoading(false)
-      return
     }
-
-    if (data.user) {
-      // Let the proxy handle role-based routing
-      window.location.href = '/'
-    }
+    // If no error, the server action redirects automatically
   }
 
   return (
@@ -42,15 +35,14 @@ export default function LoginPage() {
       <div className="card w-full max-w-sm p-8">
         <h1 className="font-serif text-xl text-charcoal mb-6">Sign in</h1>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-charcoal/60 uppercase tracking-wider mb-1.5">
               Email
             </label>
             <input
               type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              name="email"
               className="input"
               placeholder="your@email.com"
               required
@@ -64,8 +56,7 @@ export default function LoginPage() {
             </label>
             <input
               type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
+              name="password"
               className="input"
               placeholder="••••••••"
               required
