@@ -325,8 +325,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                               {assignedCount} assigned
                               {unassignedCount > 0 && <span className="text-charcoal/25"> · {unassignedCount} unassigned</span>}
                             </p>
-                            {isEmployee && (
-                              <p className="text-xs text-charcoal/30">{visible ? 'Visible' : 'Hidden'}</p>
+                            {isEmployee && !visible && (
+                              <p className="text-xs text-charcoal/30">Hidden</p>
                             )}
                           </div>
                         </div>
