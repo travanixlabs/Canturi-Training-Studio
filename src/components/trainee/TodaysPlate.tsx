@@ -134,51 +134,59 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
         </div>
       )}
 
-      {/* Completed — grouped by category */}
-      {(completedGroups.length > 0 || shadowedByCategory.length > 0) && (
-        <div>
-          <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">Completed</h2>
-          <div className="space-y-3 opacity-60">
-            {completedGroups.map(group => (
-              <CategoryGroup
-                key={group.category?.id ?? 'none'}
-                category={group.category}
-                colour={group.colour}
-                items={group.plates.map(p => ({
-                  id: p.menu_item_id,
-                  title: p.menu_item?.title ?? '',
-                  timeNeeded: p.menu_item?.time_needed ?? '',
-                  trainerType: p.menu_item?.trainer_type ?? '',
-                  completed: true,
-                  rating: getCompletion(p.menu_item_id)?.trainee_rating ?? undefined,
-                }))}
-                totalInCategory={group.plates.length}
-                completedInCategory={group.plates.length}
-                onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
-              />
-            ))}
-            {shadowedByCategory.map(group => (
-              <CategoryGroup
-                key={`shadow-${group.category?.id ?? 'none'}`}
-                category={group.category}
-                colour={group.colour}
-                items={group.completions.map(c => ({
-                  id: c.menu_item_id,
-                  title: c.menu_item?.title ?? '',
-                  timeNeeded: c.menu_item?.time_needed ?? '',
-                  trainerType: c.menu_item?.trainer_type ?? '',
-                  completed: true,
-                  shadowed: true,
-                  rating: c.trainee_rating ?? undefined,
-                }))}
-                totalInCategory={group.completions.length}
-                completedInCategory={group.completions.length}
-                onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
-              />
-            ))}
+      {/* Completed — grouped by category (merge plates + shadowed) */}
+      {(completedGroups.length > 0 || shadowedByCategory.length > 0) && (() => {
+        // Merge plate completions and shadowed into single category groups
+        const merged: Record<string, { category: Category | null; colour: string; items: ItemInfo[] }> = {}
+
+        for (const group of completedGroups) {
+          const key = group.category?.id ?? 'none'
+          if (!merged[key]) merged[key] = { category: group.category, colour: group.colour, items: [] }
+          merged[key].items.push(...group.plates.map(p => ({
+            id: p.menu_item_id,
+            title: p.menu_item?.title ?? '',
+            timeNeeded: p.menu_item?.time_needed ?? '',
+            trainerType: p.menu_item?.trainer_type ?? '',
+            completed: true,
+            rating: getCompletion(p.menu_item_id)?.trainee_rating ?? undefined,
+          })))
+        }
+
+        for (const group of shadowedByCategory) {
+          const key = group.category?.id ?? 'none'
+          if (!merged[key]) merged[key] = { category: group.category, colour: group.colour, items: [] }
+          merged[key].items.push(...group.completions.map(c => ({
+            id: c.menu_item_id,
+            title: c.menu_item?.title ?? '',
+            timeNeeded: c.menu_item?.time_needed ?? '',
+            trainerType: c.menu_item?.trainer_type ?? '',
+            completed: true,
+            shadowed: true,
+            rating: c.trainee_rating ?? undefined,
+          })))
+        }
+
+        const mergedGroups = Object.values(merged).sort((a, b) => (a.category?.sort_order ?? 99) - (b.category?.sort_order ?? 99))
+
+        return (
+          <div>
+            <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">Completed</h2>
+            <div className="space-y-3 opacity-60">
+              {mergedGroups.map(group => (
+                <CategoryGroup
+                  key={group.category?.id ?? 'none'}
+                  category={group.category}
+                  colour={group.colour}
+                  items={group.items}
+                  totalInCategory={group.items.length}
+                  completedInCategory={group.items.length}
+                  onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
