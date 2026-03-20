@@ -19,7 +19,7 @@ export default async function HeadOfficePlatePage() {
   const today = new Date().toISOString().split('T')[0]
 
   const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: allPlates }, { data: visibleCats }, { data: completions }] = await Promise.all([
-    supabase.from('users').select('*, boutique:boutiques(*)').in('role', ['trainee', 'manager']),
+    supabase.from('users').select('*, boutique:boutiques(*)').eq('role', 'trainee'),
     supabase.from('categories').select('*').order('sort_order'),
     supabase.from('menu_items').select('*, category:categories(*)').order('title'),
     supabase.from('plates').select('*'),
