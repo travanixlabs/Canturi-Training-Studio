@@ -21,10 +21,8 @@ export default async function TraineeLayout({ children }: { children: React.Reac
   return (
     <div className="min-h-screen flex flex-col bg-ivory">
       <AppHeader user={profile as User} title="Training Studio" />
-      <main className="flex-1 pb-20">
-        {children}
-      </main>
       <TraineeNav />
+      <main className="flex-1">{children}</main>
     </div>
   )
 }

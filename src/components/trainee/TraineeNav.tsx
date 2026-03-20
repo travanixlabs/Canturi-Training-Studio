@@ -4,29 +4,30 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const tabs = [
-  { href: '/trainee', label: "Today's Plate", icon: '◈' },
-  { href: '/trainee/menu', label: 'Menu', icon: '✦' },
-  { href: '/trainee/progress', label: 'Progress', icon: '◎' },
+  { href: '/trainee', label: "Today's Plate" },
+  { href: '/trainee/menu', label: 'Menu' },
+  { href: '/trainee/progress', label: 'Progress' },
 ]
 
 export function TraineeNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-black/5 safe-area-bottom z-30">
-      <div className="flex">
+    <nav className="border-b border-black/5 bg-white sticky top-[65px] z-30">
+      <div className="flex gap-0 px-5">
         {tabs.map(tab => {
           const active = pathname === tab.href
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex-1 flex flex-col items-center py-3 gap-1 transition-colors ${
-                active ? 'text-gold' : 'text-charcoal/30 hover:text-charcoal/60'
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                active
+                  ? 'border-gold text-gold'
+                  : 'border-transparent text-charcoal/40 hover:text-charcoal/60'
               }`}
             >
-              <span className="text-lg leading-none">{tab.icon}</span>
-              <span className="text-[10px] tracking-wider uppercase font-medium">{tab.label}</span>
+              {tab.label}
             </Link>
           )
         })}

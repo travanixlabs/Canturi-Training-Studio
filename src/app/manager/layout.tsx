@@ -20,10 +20,8 @@ export default async function ManagerLayout({ children }: { children: React.Reac
   return (
     <div className="min-h-screen flex flex-col bg-ivory">
       <AppHeader user={profile as User} title="Manager" />
-      <main className="flex-1 pb-20">
-        {children}
-      </main>
       <ManagerNav />
+      <main className="flex-1">{children}</main>
     </div>
   )
 }
