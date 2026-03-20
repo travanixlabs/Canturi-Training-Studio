@@ -4,7 +4,7 @@ export type TrainerType = 'Self' | 'Manager' | 'Self/Manager'
 
 export type MenuItemStatus = 'active' | 'hidden' | 'archived'
 
-export type PriorityLevel = 'week_1' | 'week_2_4' | 'advanced'
+export type DifficultyLevel = 'introductory' | 'intermediate' | 'advanced'
 
 export interface Boutique {
   id: string
@@ -44,7 +44,7 @@ export interface MenuItem {
   boutique_id: string | null
   created_at: string
   status: MenuItemStatus
-  priority_level: PriorityLevel | null
+  difficulty_level: DifficultyLevel | null
   is_recurring: boolean
   category?: Category
 }

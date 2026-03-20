@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Archive, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Category, MenuItem, MenuItemStatus, TrainerType, PriorityLevel } from '@/types'
+import type { Category, MenuItem, MenuItemStatus, TrainerType, DifficultyLevel } from '@/types'
 
 interface Props {
   categories: Category[]
@@ -12,9 +12,9 @@ interface Props {
 }
 
 const TRAINER_TYPES: TrainerType[] = ['Self', 'Manager', 'Self/Manager']
-const PRIORITY_LEVELS: { value: PriorityLevel; label: string }[] = [
-  { value: 'week_1', label: 'Week 1' },
-  { value: 'week_2_4', label: 'Weeks 2–4' },
+const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
+  { value: 'introductory', label: 'Introductory' },
+  { value: 'intermediate', label: 'Intermediate' },
   { value: 'advanced', label: 'Advanced' },
 ]
 
@@ -31,7 +31,7 @@ interface CourseFormData {
   tags: string
   time_needed: string
   trainer_type: TrainerType
-  priority_level: PriorityLevel | ''
+  difficulty_level: DifficultyLevel | ''
   is_recurring: boolean
   resource_link: string
 }
@@ -50,7 +50,7 @@ const emptyCourseForm = (): CourseFormData => ({
   tags: '',
   time_needed: '',
   trainer_type: 'Self',
-  priority_level: '',
+  difficulty_level: '',
   is_recurring: false,
   resource_link: '',
 })
@@ -116,7 +116,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       tags: (item.tags ?? []).join(', '),
       time_needed: item.time_needed,
       trainer_type: item.trainer_type,
-      priority_level: item.priority_level ?? '',
+      difficulty_level: item.difficulty_level ?? '',
       is_recurring: item.is_recurring ?? false,
       resource_link: item.resource_link ?? '',
     })
@@ -152,7 +152,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         .filter(Boolean),
       time_needed: courseForm.time_needed.trim(),
       trainer_type: courseForm.trainer_type,
-      priority_level: courseForm.priority_level || null,
+      difficulty_level: courseForm.difficulty_level || null,
       is_recurring: courseForm.is_recurring,
       resource_link: courseForm.resource_link.trim() || null,
     }
@@ -531,24 +531,24 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                 </div>
               </div>
 
-              {/* Priority level */}
+              {/* Difficulty level */}
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Priority level
+                  Difficulty level
                 </label>
                 <div className="flex gap-2">
-                  {PRIORITY_LEVELS.map(p => (
+                  {DIFFICULTY_LEVELS.map(p => (
                     <button
                       key={p.value}
                       type="button"
                       onClick={() =>
                         setCourseForm(f => ({
                           ...f,
-                          priority_level: f.priority_level === p.value ? '' : p.value,
+                          difficulty_level: f.difficulty_level === p.value ? '' : p.value,
                         }))
                       }
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                        courseForm.priority_level === p.value
+                        courseForm.difficulty_level === p.value
                           ? 'border-gold bg-gold/10 text-gold'
                           : 'border-charcoal/15 text-charcoal/50 hover:border-charcoal/30'
                       }`}
@@ -656,7 +656,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   Icon <span className="text-red-400">*</span>
                 </label>
                 <div className="grid grid-cols-8 gap-1.5">
-                  {['✦', '◈', '⌂', '◎', '◇', '▽', '❋', '★', '♦', '⚡', '●', '■', '▲', '◆', '✧', '○', '□', '△', '◇', '✦', '⬟', '⬡', '✿', '❖'].map(icon => (
+                  {['✦', '◈', '⌂', '◎', '◇', '▽', '❋', '★', '♦', '●', '■', '▲', '◆', '✧', '○', '□', '△', '⬟', '⬡', '✿', '❖', '⊕', '⊗', '⊙'].map(icon => (
                     <button
                       key={icon}
                       type="button"
@@ -828,9 +828,9 @@ function CourseRow({
           {item.trainer_type && (
             <span className="text-xs text-charcoal/30">· {item.trainer_type}</span>
           )}
-          {item.priority_level && (
+          {item.difficulty_level && (
             <span className="text-xs text-charcoal/30">
-              · {PRIORITY_LEVELS.find(p => p.value === item.priority_level)?.label ?? item.priority_level}
+              · {DIFFICULTY_LEVELS.find(p => p.value === item.difficulty_level)?.label ?? item.difficulty_level}
             </span>
           )}
           {item.is_recurring && (

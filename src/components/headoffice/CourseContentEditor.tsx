@@ -5,12 +5,12 @@ import { ArrowLeft, Plus, Save, Trash2, ChevronUp, ChevronDown, Check, BookOpen,
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { MenuItem, Module, Category, TrainerType, PriorityLevel } from '@/types'
+import type { MenuItem, Module, Category, TrainerType, DifficultyLevel } from '@/types'
 
 const TRAINER_TYPES: TrainerType[] = ['Self', 'Manager', 'Self/Manager']
-const PRIORITY_LEVELS: { value: PriorityLevel; label: string }[] = [
-  { value: 'week_1', label: 'Week 1' },
-  { value: 'week_2_4', label: 'Weeks 2–4' },
+const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
+  { value: 'introductory', label: 'Introductory' },
+  { value: 'intermediate', label: 'Intermediate' },
   { value: 'advanced', label: 'Advanced' },
 ]
 
@@ -31,7 +31,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
   const [tags, setTags] = useState(initialItem.tags?.join(', ') ?? '')
   const [timeNeeded, setTimeNeeded] = useState(initialItem.time_needed)
   const [trainerType, setTrainerType] = useState<TrainerType>(initialItem.trainer_type)
-  const [priorityLevel, setPriorityLevel] = useState<PriorityLevel | ''>(initialItem.priority_level ?? '')
+  const [priorityLevel, setPriorityLevel] = useState<DifficultyLevel | ''>(initialItem.difficulty_level ?? '')
   const [isRecurring, setIsRecurring] = useState(initialItem.is_recurring)
 
   // Modules
@@ -54,7 +54,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
       time_needed: timeNeeded,
       trainer_type: trainerType,
-      priority_level: priorityLevel || null,
+      difficulty_level: priorityLevel || null,
       is_recurring: isRecurring,
     }).eq('id', initialItem.id)
     setSaving(false)
@@ -292,9 +292,9 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Priority level</label>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Difficulty level</label>
                 <div className="flex gap-2">
-                  {PRIORITY_LEVELS.map(p => (
+                  {DIFFICULTY_LEVELS.map(p => (
                     <button
                       key={p.value}
                       onClick={() => setPriorityLevel(priorityLevel === p.value ? '' : p.value)}
