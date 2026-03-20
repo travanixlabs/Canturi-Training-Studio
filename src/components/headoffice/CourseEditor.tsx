@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Archive, EyeOff } from 'lucide-react'
+import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Category, MenuItem, MenuItemStatus, TrainerType, DifficultyLevel } from '@/types'
@@ -21,7 +21,6 @@ const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
 const STATUS_CONFIG: Record<MenuItemStatus, { label: string; dot: string; text: string }> = {
   active: { label: 'Active', dot: 'bg-green-500', text: 'text-green-700' },
   hidden: { label: 'Hidden', dot: 'bg-charcoal/30', text: 'text-charcoal/40' },
-  archived: { label: 'Archived', dot: 'bg-amber-400', text: 'text-amber-700' },
 }
 
 interface CourseFormData {
@@ -358,7 +357,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
           return (
             <div
               key={category.id}
-              className={`card overflow-hidden transition-all ${draggedCategoryId === category.id ? 'opacity-50 scale-[0.98]' : ''} ${category.status === 'hidden' || category.status === 'archived' ? 'opacity-50' : ''}`}
+              className={`card overflow-hidden transition-all ${draggedCategoryId === category.id ? 'opacity-50 scale-[0.98]' : ''} ${category.status === 'hidden' ? 'opacity-50' : ''}`}
               draggable
               onDragStart={() => setDraggedCategoryId(category.id)}
               onDragEnd={() => setDraggedCategoryId(null)}
@@ -407,14 +406,6 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   title={category.status === 'hidden' ? 'Show category' : 'Hide category'}
                 >
                   <EyeOff size={14} />
-                </button>
-
-                <button
-                  onClick={() => changeCategoryStatus(category, category.status === 'archived' ? 'active' : 'archived')}
-                  className="p-2 text-charcoal/25 hover:text-amber-500 transition-colors"
-                  title={category.status === 'archived' ? 'Unarchive category' : 'Archive category'}
-                >
-                  <Archive size={14} />
                 </button>
 
                 <button
@@ -843,7 +834,7 @@ function CourseRow({
   const statusCfg = STATUS_CONFIG[item.status ?? 'active']
 
   return (
-    <div className={`px-5 py-3.5 flex items-start gap-3 ${item.status === 'archived' ? 'opacity-50' : ''}`}>
+    <div className={`px-5 py-3.5 flex items-start gap-3 ${''}`}>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-[14px] font-medium text-charcoal leading-snug">{item.title}</p>
@@ -925,15 +916,6 @@ function CourseRow({
             title="Hide course"
           >
             <EyeOff size={14} />
-          </button>
-        )}
-        {(item.status ?? 'active') !== 'archived' && (
-          <button
-            onClick={() => onChangeStatus('archived')}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-amber-500 hover:bg-amber-50 transition-all"
-            title="Archive course"
-          >
-            <Archive size={14} />
           </button>
         )}
         <button

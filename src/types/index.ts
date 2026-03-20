@@ -2,7 +2,7 @@ export type UserRole = 'trainee' | 'manager' | 'head_office'
 
 export type TrainerType = 'Self' | 'Manager' | 'Self/Manager'
 
-export type MenuItemStatus = 'active' | 'hidden' | 'archived'
+export type MenuItemStatus = 'active' | 'hidden'
 
 export type DifficultyLevel = 'introductory' | 'intermediate' | 'advanced'
 
