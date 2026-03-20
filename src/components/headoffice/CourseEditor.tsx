@@ -643,21 +643,6 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                 </div>
               </div>
 
-              {/* Sort order */}
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Sort order <span className="text-charcoal/30 normal-case font-normal">(optional, lower = first)</span>
-                </label>
-                <input
-                  type="number"
-                  className="input"
-                  value={categoryForm.sort_order}
-                  onChange={e => setCategoryForm(f => ({ ...f, sort_order: e.target.value }))}
-                  placeholder={String(categories.length + 1)}
-                  min="1"
-                />
-              </div>
-
               {categoryError && (
                 <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{categoryError}</p>
               )}
