@@ -2,6 +2,10 @@ export type UserRole = 'trainee' | 'manager' | 'head_office'
 
 export type TrainerType = 'Self' | 'Manager' | 'Self/Manager'
 
+export type MenuItemStatus = 'active' | 'hidden' | 'archived'
+
+export type PriorityLevel = 'week_1' | 'week_2_4' | 'advanced'
+
 export interface Boutique {
   id: string
   name: string
@@ -39,6 +43,9 @@ export interface MenuItem {
   resource_link: string | null
   boutique_id: string | null
   created_at: string
+  status: MenuItemStatus
+  priority_level: PriorityLevel | null
+  is_recurring: boolean
   category?: Category
 }
 
