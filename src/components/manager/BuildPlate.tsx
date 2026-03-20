@@ -477,19 +477,34 @@ function MenuItemRow({
         )}
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <p className="text-xs text-charcoal/35">{item.time_needed} · {item.trainer_type}</p>
+          <p className="text-xs text-charcoal/35">
+            {item.time_needed} · {item.trainer_type}
+            {assignedDate && !completed && (
+              <span className="text-charcoal/25"> — {new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
+            )}
+          </p>
           {completed && shadowedEarly && (
             <span className="text-xs text-blue-600 font-medium">
-              Shadowed early on {new Date(completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+              Shadowed early on {new Date(completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
             </span>
           )}
           {completed && !shadowedEarly && (
             <span className="text-xs text-green-600 font-medium">
-              Completed {completedDate ? new Date(completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : ''}
+              Completed {completedDate ? new Date(completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' }) : ''}
             </span>
           )}
         </div>
       </div>
+      {/* Edit date button for assigned items */}
+      {onPlate && !completed && (
+        <button
+          onClick={onAssign}
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-charcoal/25 hover:text-gold transition-colors"
+          title="Change date"
+        >
+          <Calendar size={14} />
+        </button>
+      )}
       {completed ? (
         <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white ${shadowedEarly ? 'bg-blue-500' : 'bg-green-500'}`}>
           <Check size={16} />
@@ -498,8 +513,9 @@ function MenuItemRow({
         <button
           onClick={onRemove}
           className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-gold text-white shadow-sm hover:bg-gold/80 transition-all"
+          title="Remove from plate"
         >
-          <Check size={16} />
+          <X size={16} />
         </button>
       ) : (
         <button
