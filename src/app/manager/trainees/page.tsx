@@ -14,13 +14,17 @@ export default async function TraineesPage() {
     await supabase.from('users').select('id').eq('boutique_id', manager.boutique_id).eq('role', 'trainee')
   ).data?.map(u => u.id) ?? []
 
-  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: completions }] = await Promise.all([
+  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: completions }, { data: plates }, { data: visibleCats }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
     supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('menu_items').select('*'),
+    supabase.from('menu_items').select('*').eq('status', 'active'),
     traineeIds.length > 0
       ? supabase.from('completions').select('*').in('trainee_id', traineeIds)
       : Promise.resolve({ data: [] }),
+    traineeIds.length > 0
+      ? supabase.from('plates').select('*').in('trainee_id', traineeIds)
+      : Promise.resolve({ data: [] }),
+    supabase.from('visible_categories').select('*'),
   ])
 
   return (
@@ -29,6 +33,8 @@ export default async function TraineesPage() {
       categories={categories ?? []}
       menuItems={menuItems ?? []}
       completions={completions ?? []}
+      plates={plates ?? []}
+      visibleCategories={visibleCats ?? []}
     />
   )
 }
