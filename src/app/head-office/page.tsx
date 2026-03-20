@@ -7,7 +7,7 @@ export default async function HeadOfficePage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: boutiques }, { data: allUsers }, { data: menuItems }, { data: completions }] = await Promise.all([
+  const [{ data: boutiques }, { data: allUsers }, { data: menuItems }, { data: completions }, { data: plates }, { data: visibleCats }] = await Promise.all([
     supabase.from('boutiques').select('*').order('city'),
     supabase.from('users').select('*'),
     supabase.from('menu_items').select('*'),
@@ -16,6 +16,8 @@ export default async function HeadOfficePage() {
       .select('*, menu_item:menu_items(title, category:categories(name)), trainee:users!completions_trainee_id_fkey(name, boutique_id)')
       .order('created_at', { ascending: false })
       .limit(50),
+    supabase.from('plates').select('*'),
+    supabase.from('visible_categories').select('*'),
   ])
 
   return (
@@ -24,6 +26,8 @@ export default async function HeadOfficePage() {
       allUsers={allUsers ?? []}
       menuItems={menuItems ?? []}
       completions={completions ?? []}
+      plates={plates ?? []}
+      visibleCategories={visibleCats ?? []}
     />
   )
 }

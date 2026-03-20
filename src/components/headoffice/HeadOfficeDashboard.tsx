@@ -1,17 +1,17 @@
 'use client'
 
-import type { Boutique, User, MenuItem, Completion } from '@/types'
+import type { Boutique, User, MenuItem, Completion, Plate, VisibleCategory } from '@/types'
 
 interface Props {
   boutiques: Boutique[]
   allUsers: User[]
   menuItems: MenuItem[]
   completions: Completion[]
+  plates?: Plate[]
+  visibleCategories?: VisibleCategory[]
 }
 
-export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completions }: Props) {
-  const totalItems = menuItems.length
-
+export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completions, plates = [], visibleCategories = [] }: Props) {
   const getUsersForBoutique = (boutique: Boutique) =>
     allUsers.filter(u => u.boutique_id === boutique.id)
 
@@ -21,19 +21,25 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
   const getEmployees = (boutique: Boutique) =>
     getUsersForBoutique(boutique).filter(u => u.role === 'trainee')
 
-  const boutiquePct = (boutique: Boutique) => {
-    const employees = getEmployees(boutique)
-    if (employees.length === 0 || totalItems === 0) return 0
-    const total = employees.reduce((sum, e) => {
-      const done = completions.filter(c => c.trainee_id === e.id).length
-      return sum + (done / totalItems) * 100
-    }, 0)
-    return Math.round(total / employees.length)
+  // Get assigned items for an employee (via plates or visible categories)
+  const getAssignedItems = (userId: string) => {
+    const plateItemIds = new Set(plates.filter(p => p.trainee_id === userId).map(p => p.menu_item_id))
+    const visibleCatIds = new Set(visibleCategories.filter(v => v.user_id === userId).map(v => v.category_id))
+    return menuItems.filter(m => plateItemIds.has(m.id) || visibleCatIds.has(m.category_id))
   }
 
   const personPct = (userId: string) => {
-    if (totalItems === 0) return 0
-    return Math.round((completions.filter(c => c.trainee_id === userId).length / totalItems) * 100)
+    const assigned = getAssignedItems(userId)
+    if (assigned.length === 0) return 0
+    const done = assigned.filter(m => completions.some(c => c.trainee_id === userId && c.menu_item_id === m.id)).length
+    return Math.round((done / assigned.length) * 100)
+  }
+
+  const boutiquePct = (boutique: Boutique) => {
+    const employees = getEmployees(boutique)
+    if (employees.length === 0) return 0
+    const total = employees.reduce((sum, e) => sum + personPct(e.id), 0)
+    return Math.round(total / employees.length)
   }
 
   const recentActivity = completions.slice(0, 20)
@@ -54,7 +60,6 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
         <p className="text-sm text-charcoal/40 mt-1">Across all boutiques</p>
       </div>
 
-      {/* Boutique cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {boutiques.map(boutique => {
           const managers = getManagers(boutique)
@@ -68,39 +73,39 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
                 <p className="font-serif text-2xl text-gold">{pct}%</p>
               </div>
 
-              {/* Managers listed */}
               <p className="text-xs text-charcoal/40 mb-3">
                 {managers.length > 0
                   ? managers.map(m => m.name.split(' ')[0]).join(', ')
                   : 'No manager'}
               </p>
 
-              {/* Progress bar */}
               <div className="h-1.5 bg-charcoal/8 rounded-full overflow-hidden mb-3">
                 <div className="h-full bg-gold rounded-full" style={{ width: `${pct}%` }} />
               </div>
 
-              {/* Employees with progress */}
               {employees.length === 0 ? (
                 <p className="text-xs text-charcoal/30">No active employees</p>
               ) : (
                 <div className="space-y-2">
-                  {employees.map(emp => (
-                    <div key={emp.id} className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs flex-shrink-0">
-                        {emp.avatar_initials}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between text-xs mb-0.5">
-                          <span className="text-charcoal/70">{emp.name}</span>
-                          <span className="text-charcoal/40">{personPct(emp.id)}%</span>
+                  {employees.map(emp => {
+                    const empPct = personPct(emp.id)
+                    return (
+                      <div key={emp.id} className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs flex-shrink-0">
+                          {emp.avatar_initials}
                         </div>
-                        <div className="h-1 bg-charcoal/8 rounded-full overflow-hidden">
-                          <div className="h-full bg-gold/60 rounded-full" style={{ width: `${personPct(emp.id)}%` }} />
+                        <div className="flex-1">
+                          <div className="flex justify-between text-xs mb-0.5">
+                            <span className="text-charcoal/70">{emp.name}</span>
+                            <span className="text-charcoal/40">{empPct}%</span>
+                          </div>
+                          <div className="h-1 bg-charcoal/8 rounded-full overflow-hidden">
+                            <div className="h-full bg-gold/60 rounded-full" style={{ width: `${empPct}%` }} />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -108,7 +113,6 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
         })}
       </div>
 
-      {/* Activity feed */}
       <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">Recent completions</h2>
 
       {recentActivity.length === 0 ? (
