@@ -5,7 +5,7 @@ import { Search, X, ChevronDown, ChevronUp, Plus, Check, Calendar } from 'lucide
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { User, Category, MenuItem, Plate, VisibleCategory } from '@/types'
+import type { User, Category, MenuItem, Plate, VisibleCategory, Completion } from '@/types'
 
 interface Props {
   manager: User
@@ -14,6 +14,7 @@ interface Props {
   menuItems: MenuItem[]
   todayPlates: Plate[]
   visibleCategories?: VisibleCategory[]
+  completions?: Completion[]
   showBoutique?: boolean
 }
 
@@ -33,7 +34,7 @@ function getUpcomingDates() {
   return dates
 }
 
-export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, visibleCategories: initialVisible = [], showBoutique }: Props) {
+export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, visibleCategories: initialVisible = [], completions: allCompletions = [], showBoutique }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
@@ -62,6 +63,15 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     return plates.some(p => p.menu_item_id === menuItemId && p.trainee_id === tid)
   }
 
+  const isCompleted = (menuItemId: string, traineeId?: string) => {
+    const tid = traineeId ?? selectedTrainee?.id
+    return allCompletions.some(c => c.menu_item_id === menuItemId && c.trainee_id === tid)
+  }
+
+  const getCompletion = (menuItemId: string) => {
+    return allCompletions.find(c => c.menu_item_id === menuItemId && c.trainee_id === selectedTrainee?.id)
+  }
+
   const traineeOnPlateCount = (traineeId: string) =>
     plates.filter(p => p.trainee_id === traineeId).length
 
@@ -76,11 +86,14 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
     const newPlates: Plate[] = []
     for (const item of datePicker.items) {
-      // Skip if already on plate for this date
-      const alreadyAssigned = plates.some(
-        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.date_assigned === date
+      // Remove existing plate for this item+trainee (allows re-assignment to new date)
+      const existing = plates.find(
+        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id
       )
-      if (alreadyAssigned) continue
+      if (existing) {
+        setPlates(prev => prev.filter(p => p.id !== existing.id))
+        await supabase.from('plates').delete().eq('id', existing.id)
+      }
 
       const { data, error } = await supabase.from('plates').insert({
         trainee_id: selectedTrainee.id,
@@ -311,6 +324,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   key={item.id}
                   item={item}
                   onPlate={isOnPlate(item.id)}
+                  completed={isCompleted(item.id)}
+                  completedDate={getCompletion(item.id)?.completed_date}
                   onAssign={() => requestAssign([item], item.id)}
                   onRemove={() => removeFromPlate(item)}
                 />
@@ -400,6 +415,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                             key={item.id}
                             item={item}
                             onPlate={isOnPlate(item.id)}
+                            completed={isCompleted(item.id)}
+                            completedDate={getCompletion(item.id)?.completed_date}
                             onAssign={() => requestAssign([item], item.id)}
                             onRemove={() => removeFromPlate(item)}
                             compact
@@ -469,26 +486,41 @@ function PersonButton({
 function MenuItemRow({
   item,
   onPlate,
+  completed = false,
+  completedDate,
   onAssign,
   onRemove,
   compact = false,
 }: {
   item: MenuItem
   onPlate: boolean
+  completed?: boolean
+  completedDate?: string
   onAssign: () => void
   onRemove: () => void
   compact?: boolean
 }) {
   return (
-    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'}`}>
+    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${completed ? 'bg-green-50/50' : ''}`}>
       <div className="flex-1">
         {!compact && item.category && (
           <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
         )}
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
-        <p className="text-xs text-charcoal/35 mt-0.5">{item.time_needed} · {item.trainer_type}</p>
+        <div className="flex items-center gap-2 mt-0.5">
+          <p className="text-xs text-charcoal/35">{item.time_needed} · {item.trainer_type}</p>
+          {completed && (
+            <span className="text-xs text-green-600 font-medium">
+              Completed {completedDate ? new Date(completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : ''}
+            </span>
+          )}
+        </div>
       </div>
-      {onPlate ? (
+      {completed ? (
+        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-green-500 text-white">
+          <Check size={16} />
+        </div>
+      ) : onPlate ? (
         <button
           onClick={onRemove}
           className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-gold text-white shadow-sm hover:bg-gold/80 transition-all"
