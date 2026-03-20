@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AppHeader } from '@/components/ui/AppHeader'
+import { HeadOfficeNav } from '@/components/headoffice/HeadOfficeNav'
 import type { User } from '@/types'
 
 export default async function HeadOfficeLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +20,7 @@ export default async function HeadOfficeLayout({ children }: { children: React.R
   return (
     <div className="min-h-screen flex flex-col bg-ivory">
       <AppHeader user={profile as User} title="Head Office" />
+      <HeadOfficeNav />
       <main className="flex-1">{children}</main>
     </div>
   )

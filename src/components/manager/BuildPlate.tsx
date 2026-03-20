@@ -13,9 +13,10 @@ interface Props {
   categories: Category[]
   menuItems: MenuItem[]
   todayPlates: Plate[]
+  showBoutique?: boolean
 }
 
-export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates }: Props) {
+export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, showBoutique }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
@@ -116,7 +117,12 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                 <span className="w-7 h-7 rounded-full bg-charcoal/8 flex items-center justify-center text-xs font-medium">
                   {trainee.avatar_initials}
                 </span>
-                <span>{trainee.name}</span>
+                <span>
+                  {trainee.name}
+                  {showBoutique && trainee.boutique && (
+                    <span className="text-xs text-charcoal/30 ml-1">({(trainee.boutique as { city: string }).city})</span>
+                  )}
+                </span>
                 {traineeOnPlateCount(trainee.id) > 0 && (
                   <span className="text-xs bg-gold/20 text-gold px-1.5 py-0.5 rounded-full">
                     {traineeOnPlateCount(trainee.id)}
