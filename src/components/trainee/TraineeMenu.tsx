@@ -16,7 +16,7 @@ interface Props {
 
 export function TraineeMenu({ categories, menuItems, completions, currentUser }: Props) {
   const [search, setSearch] = useState('')
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(categories.map(c => c.id)))
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const router = useRouter()
 
   const isCompleted = (itemId: string) => completions.some(c => c.menu_item_id === itemId)
