@@ -207,7 +207,6 @@ function ShadowedCard({ completion }: { completion: Completion }) {
             )}
             <p className="font-medium text-charcoal mt-1.5 text-[15px] leading-snug">
               {item.title}
-              <span className="text-gold font-normal ml-2 text-xs">Shadowed</span>
             </p>
           </div>
           {completion.trainee_rating && (
