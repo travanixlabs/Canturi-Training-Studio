@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useTransition } from 'react'
-import { Search, X, ChevronDown, ChevronUp, Plus, Check } from 'lucide-react'
+import { Search, X, ChevronDown, ChevronUp, Plus, Check, Calendar } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -17,6 +17,22 @@ interface Props {
   showBoutique?: boolean
 }
 
+// Generate next 14 days for date picker
+function getUpcomingDates() {
+  const dates: { value: string; label: string; isToday: boolean }[] = []
+  const now = new Date()
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(now)
+    d.setDate(d.getDate() + i)
+    dates.push({
+      value: d.toISOString().split('T')[0],
+      label: d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }),
+      isToday: i === 0,
+    })
+  }
+  return dates
+}
+
 export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, visibleCategories: initialVisible = [], showBoutique }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
@@ -26,18 +42,19 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   const [plates, setPlates] = useState<Plate[]>(todayPlates)
   const [visibleCats, setVisibleCats] = useState<VisibleCategory[]>(initialVisible)
   const [isPending, startTransition] = useTransition()
+  const [datePicker, setDatePicker] = useState<{ items: MenuItem[]; anchorId: string } | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   const isEmployee = selectedTrainee?.role === 'trainee'
+  const upcomingDates = useMemo(() => getUpcomingDates(), [])
 
   const today = new Date().toLocaleDateString('en-AU', {
     weekday: 'long', day: 'numeric', month: 'long'
   })
 
-  const isCategoryVisible = (categoryId: string, userId?: string) => {
-    const uid = userId ?? selectedTrainee?.id
-    return visibleCats.some(v => v.category_id === categoryId && v.user_id === uid)
+  const isCategoryVisible = (categoryId: string) => {
+    return visibleCats.some(v => v.category_id === categoryId && v.user_id === selectedTrainee?.id)
   }
 
   const isOnPlate = (menuItemId: string, traineeId?: string) => {
@@ -48,31 +65,53 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   const traineeOnPlateCount = (traineeId: string) =>
     plates.filter(p => p.trainee_id === traineeId).length
 
-  async function togglePlate(item: MenuItem) {
+  // Show date picker for a single item or multiple items (category)
+  function requestAssign(items: MenuItem[], anchorId: string) {
     if (!selectedTrainee) return
+    setDatePicker({ items, anchorId })
+  }
 
-    const existing = plates.find(
-      p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id
-    )
+  async function assignToDate(date: string) {
+    if (!selectedTrainee || !datePicker) return
 
-    if (existing) {
-      setPlates(prev => prev.filter(p => p.id !== existing.id))
-      await supabase.from('plates').delete().eq('id', existing.id)
-    } else {
+    const newPlates: Plate[] = []
+    for (const item of datePicker.items) {
+      // Skip if already on plate for this date
+      const alreadyAssigned = plates.some(
+        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.date_assigned === date
+      )
+      if (alreadyAssigned) continue
+
       const { data, error } = await supabase.from('plates').insert({
         trainee_id: selectedTrainee.id,
         menu_item_id: item.id,
         assigned_by: manager.id,
-        date_assigned: new Date().toISOString().split('T')[0],
-        boutique_id: manager.boutique_id,
+        date_assigned: date,
+        boutique_id: selectedTrainee.boutique_id || manager.boutique_id,
       }).select().single()
 
       if (!error && data) {
-        setPlates(prev => [...prev, data as Plate])
+        newPlates.push(data as Plate)
       }
     }
 
+    if (newPlates.length > 0) {
+      setPlates(prev => [...prev, ...newPlates])
+    }
+    setDatePicker(null)
     startTransition(() => router.refresh())
+  }
+
+  async function removeFromPlate(item: MenuItem) {
+    if (!selectedTrainee) return
+    const existing = plates.find(
+      p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id
+    )
+    if (existing) {
+      setPlates(prev => prev.filter(p => p.id !== existing.id))
+      await supabase.from('plates').delete().eq('id', existing.id)
+      startTransition(() => router.refresh())
+    }
   }
 
   async function toggleCategoryVisibility(categoryId: string) {
@@ -83,11 +122,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     )
 
     if (existing) {
-      // Hide category
       setVisibleCats(prev => prev.filter(v => v.id !== existing.id))
       await supabase.from('visible_categories').delete().eq('id', existing.id)
     } else {
-      // Show category
       const { data, error } = await supabase.from('visible_categories').insert({
         user_id: selectedTrainee.id,
         category_id: categoryId,
@@ -126,6 +163,42 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
         <h1 className="font-serif text-2xl text-charcoal">Build Today&apos;s Plate</h1>
         <p className="text-sm text-charcoal/40 mt-1">{today}</p>
       </div>
+
+      {/* Date picker modal */}
+      {datePicker && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setDatePicker(null)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-serif text-lg text-charcoal">Assign to date</h3>
+                <p className="text-xs text-charcoal/40 mt-0.5">
+                  {datePicker.items.length === 1 ? datePicker.items[0].title : `${datePicker.items.length} courses`}
+                  {' → '}{selectedTrainee?.name.split(' ')[0]}
+                </p>
+              </div>
+              <button onClick={() => setDatePicker(null)} className="text-charcoal/30 hover:text-charcoal">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
+              {upcomingDates.map(date => (
+                <button
+                  key={date.value}
+                  onClick={() => assignToDate(date.value)}
+                  className={`px-3 py-3 rounded-xl text-sm font-medium text-left transition-all border ${
+                    date.isToday
+                      ? 'border-gold bg-gold/5 text-gold hover:bg-gold/10'
+                      : 'border-charcoal/10 text-charcoal/70 hover:border-gold hover:text-gold'
+                  }`}
+                >
+                  {date.label}
+                  {date.isToday && <span className="block text-xs text-gold/60 mt-0.5">Today</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* People selector */}
       {trainees.length === 0 ? (
@@ -178,31 +251,37 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
           {traineeOnPlateCount(selectedTrainee.id) === 0 ? (
             <div className="card p-4 mb-5 border border-dashed border-charcoal/15 bg-transparent">
               <p className="text-sm text-charcoal/40 text-center">
-                {selectedTrainee.name.split(' ')[0]}&apos;s plate is empty — browse the menu below and tap + to add items.
+                {selectedTrainee.name.split(' ')[0]}&apos;s plate is empty — browse the menu below and tap + to assign.
               </p>
             </div>
           ) : (
             <div className="card p-4 mb-5 bg-charcoal/3 border-0">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs font-medium text-charcoal/50 uppercase tracking-wider">
-                  {selectedTrainee.name.split(' ')[0]}&apos;s plate today
+                  {selectedTrainee.name.split(' ')[0]}&apos;s assigned items
                 </p>
                 <span className="text-xs text-gold font-medium">{traineeOnPlateCount(selectedTrainee.id)} items</span>
               </div>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {menuItems
                   .filter(item => isOnPlate(item.id, selectedTrainee.id))
-                  .map(item => (
-                    <span key={item.id} className="text-xs bg-white border border-black/8 text-charcoal px-2 py-1 rounded-lg flex items-center gap-1.5">
-                      {item.title}
-                      <button
-                        onClick={() => togglePlate(item)}
-                        className="text-charcoal/30 hover:text-red-500 transition-colors"
-                      >
-                        <X size={10} />
-                      </button>
-                    </span>
-                  ))}
+                  .map(item => {
+                    const plate = plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id)
+                    return (
+                      <span key={item.id} className="text-xs bg-white border border-black/8 text-charcoal px-2 py-1 rounded-lg flex items-center gap-1.5">
+                        {item.title}
+                        {plate && plate.date_assigned !== new Date().toISOString().split('T')[0] && (
+                          <span className="text-charcoal/30">{new Date(plate.date_assigned + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
+                        )}
+                        <button
+                          onClick={() => removeFromPlate(item)}
+                          className="text-charcoal/30 hover:text-red-500 transition-colors"
+                        >
+                          <X size={10} />
+                        </button>
+                      </span>
+                    )
+                  })}
               </div>
             </div>
           )}
@@ -232,7 +311,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   key={item.id}
                   item={item}
                   onPlate={isOnPlate(item.id)}
-                  onToggle={() => togglePlate(item)}
+                  onAssign={() => requestAssign([item], item.id)}
+                  onRemove={() => removeFromPlate(item)}
                 />
               ))}
             </div>
@@ -274,6 +354,17 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                         {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
                       </button>
 
+                      {/* Assign all courses in category */}
+                      {(!isEmployee || visible) && (
+                        <button
+                          onClick={() => requestAssign(items, `cat-${category.id}`)}
+                          className="mr-2 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border-2 border-charcoal/10 text-charcoal/30 hover:border-gold hover:text-gold transition-all"
+                          title={`Assign all ${category.name} courses`}
+                        >
+                          <Plus size={18} />
+                        </button>
+                      )}
+
                       {/* Category visibility toggle — only for employees */}
                       {isEmployee && (
                         <button
@@ -302,21 +393,22 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                       )}
                     </div>
 
-                    {expanded && visible && (
+                    {expanded && (!isEmployee || visible) && (
                       <div className="border-t border-black/5 divide-y divide-black/5">
                         {items.map(item => (
                           <MenuItemRow
                             key={item.id}
                             item={item}
                             onPlate={isOnPlate(item.id)}
-                            onToggle={() => togglePlate(item)}
+                            onAssign={() => requestAssign([item], item.id)}
+                            onRemove={() => removeFromPlate(item)}
                             compact
                           />
                         ))}
                       </div>
                     )}
 
-                    {expanded && !visible && isEmployee && (
+                    {expanded && isEmployee && !visible && (
                       <div className="border-t border-black/5 px-5 py-4">
                         <p className="text-sm text-charcoal/30 text-center">
                           {items.length} courses — hidden from {selectedTrainee.name.split(' ')[0]}
@@ -377,12 +469,14 @@ function PersonButton({
 function MenuItemRow({
   item,
   onPlate,
-  onToggle,
+  onAssign,
+  onRemove,
   compact = false,
 }: {
   item: MenuItem
   onPlate: boolean
-  onToggle: () => void
+  onAssign: () => void
+  onRemove: () => void
   compact?: boolean
 }) {
   return (
@@ -394,16 +488,21 @@ function MenuItemRow({
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
         <p className="text-xs text-charcoal/35 mt-0.5">{item.time_needed} · {item.trainer_type}</p>
       </div>
-      <button
-        onClick={onToggle}
-        className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-          onPlate
-            ? 'bg-gold text-white shadow-sm'
-            : 'border-2 border-charcoal/15 text-charcoal/30 hover:border-gold hover:text-gold'
-        }`}
-      >
-        {onPlate ? <Check size={16} /> : <Plus size={16} />}
-      </button>
+      {onPlate ? (
+        <button
+          onClick={onRemove}
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-gold text-white shadow-sm hover:bg-gold/80 transition-all"
+        >
+          <Check size={16} />
+        </button>
+      ) : (
+        <button
+          onClick={onAssign}
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border-2 border-charcoal/15 text-charcoal/30 hover:border-gold hover:text-gold transition-all"
+        >
+          <Plus size={16} />
+        </button>
+      )}
     </div>
   )
 }
