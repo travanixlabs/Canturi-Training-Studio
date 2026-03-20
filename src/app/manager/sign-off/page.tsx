@@ -16,18 +16,17 @@ export default async function SignOffPage() {
 
   if (!manager) redirect('/login')
 
-  const [{ data: trainees }, { data: completions }, { data: menuItems }] = await Promise.all([
+  const traineeIds = (await supabase.from('users').select('id').eq('boutique_id', manager.boutique_id).eq('role', 'trainee')).data?.map(u => u.id) ?? []
+
+  const [{ data: trainees }, { data: completions }, { data: menuItems }, { data: plates }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
     supabase
       .from('completions')
       .select('*, menu_item:menu_items(*, category:categories(*)), trainee:users!completions_trainee_id_fkey(*)')
-      .in(
-        'trainee_id',
-        // get all trainee IDs in this boutique — subquery workaround
-        (await supabase.from('users').select('id').eq('boutique_id', manager.boutique_id).eq('role', 'trainee')).data?.map(u => u.id) ?? []
-      )
+      .in('trainee_id', traineeIds)
       .order('created_at', { ascending: false }),
     supabase.from('menu_items').select('*, category:categories(*)'),
+    supabase.from('plates').select('*').in('trainee_id', traineeIds),
   ])
 
   return (
@@ -36,6 +35,7 @@ export default async function SignOffPage() {
       trainees={trainees ?? []}
       completions={completions ?? []}
       menuItems={menuItems ?? []}
+      plates={plates ?? []}
     />
   )
 }

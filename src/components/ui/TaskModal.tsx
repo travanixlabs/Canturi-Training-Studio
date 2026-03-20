@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Clock, Users } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { X, Clock, Users, RotateCcw } from 'lucide-react'
 import { CategoryBadge } from './CategoryBadge'
 import { StarRating } from './StarRating'
 import { CelebrationScreen } from './CelebrationScreen'
@@ -16,9 +16,10 @@ interface Props {
   mode: 'trainee' | 'manager'
   onClose: () => void
   onComplete?: () => void
+  onReassign?: () => void
 }
 
-export function TaskModal({ item, plate, existingCompletion, currentUser, mode, onClose, onComplete }: Props) {
+export function TaskModal({ item, plate, existingCompletion, currentUser, mode, onClose, onComplete, onReassign }: Props) {
   const [traineeNotes, setTraineeNotes] = useState(existingCompletion?.trainee_notes ?? '')
   const [trainerNotes, setTrainerNotes] = useState(existingCompletion?.trainer_notes ?? '')
   const [traineeRating, setTraineeRating] = useState(existingCompletion?.trainee_rating ?? 0)
@@ -26,11 +27,48 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
   const [submitting, setSubmitting] = useState(false)
   const [celebrating, setCelebrating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showReassignDates, setShowReassignDates] = useState(false)
+  const [reassigning, setReassigning] = useState(false)
 
   const isCompleted = !!existingCompletion
   const isShadowing = !plate
 
   const supabase = createClient()
+
+  const upcomingDates = useMemo(() => {
+    const dates: { value: string; label: string; isToday: boolean }[] = []
+    const now = new Date()
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(now)
+      d.setDate(d.getDate() + i)
+      dates.push({
+        value: d.toISOString().split('T')[0],
+        label: d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }),
+        isToday: i === 0,
+      })
+    }
+    return dates
+  }, [])
+
+  async function handleReassign(date: string) {
+    if (!existingCompletion) return
+    setReassigning(true)
+
+    // Delete the completion
+    await supabase.from('completions').delete().eq('id', existingCompletion.id)
+
+    // Create a new plate assignment for this date
+    await supabase.from('plates').insert({
+      trainee_id: existingCompletion.trainee_id,
+      menu_item_id: existingCompletion.menu_item_id,
+      assigned_by: currentUser.id,
+      date_assigned: date,
+      boutique_id: currentUser.boutique_id,
+    })
+
+    setReassigning(false)
+    onReassign?.()
+  }
 
   async function handleTraineeComplete() {
     if (traineeRating === 0) {
@@ -270,6 +308,44 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
                   >
                     {submitting ? 'Saving…' : 'Save assessment'}
                   </button>
+
+                  {/* Reassign option */}
+                  {onReassign && (
+                    <div className="pt-2 border-t border-black/5">
+                      {!showReassignDates ? (
+                        <button
+                          onClick={() => setShowReassignDates(true)}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm text-charcoal/50 hover:text-charcoal border border-charcoal/10 rounded-xl transition-colors"
+                        >
+                          <RotateCcw size={14} />
+                          Reassign to employee
+                        </button>
+                      ) : (
+                        <div>
+                          <p className="text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
+                            Reassign to date (removes completion)
+                          </p>
+                          <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto">
+                            {upcomingDates.map(date => (
+                              <button
+                                key={date.value}
+                                onClick={() => handleReassign(date.value)}
+                                disabled={reassigning}
+                                className={`px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all border ${
+                                  date.isToday
+                                    ? 'border-gold bg-gold/5 text-gold hover:bg-gold/10'
+                                    : 'border-charcoal/10 text-charcoal/70 hover:border-gold hover:text-gold'
+                                }`}
+                              >
+                                {date.label}
+                                {date.isToday && <span className="block text-xs text-gold/60 mt-0.5">Today</span>}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
 

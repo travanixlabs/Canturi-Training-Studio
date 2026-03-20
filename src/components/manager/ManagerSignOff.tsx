@@ -1,24 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { TaskModal } from '@/components/ui/TaskModal'
 import { StarRating } from '@/components/ui/StarRating'
 import { useRouter } from 'next/navigation'
-import type { User, Completion, MenuItem } from '@/types'
+import type { User, Completion, MenuItem, Plate } from '@/types'
 
 interface Props {
   manager: User
   trainees: User[]
   completions: Completion[]
   menuItems: MenuItem[]
+  plates?: Plate[]
 }
 
-export function ManagerSignOff({ manager, trainees, completions, menuItems }: Props) {
+export function ManagerSignOff({ manager, trainees, completions: initialCompletions, menuItems, plates = [] }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
   const [selectedCompletion, setSelectedCompletion] = useState<Completion | null>(null)
+  const [completions, setCompletions] = useState(initialCompletions)
   const router = useRouter()
 
   const traineeCompletions = completions.filter(
@@ -28,6 +30,19 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
   const pendingSignOff = traineeCompletions.filter(c => !c.trainer_rating)
   const signedOff = traineeCompletions.filter(c => !!c.trainer_rating)
 
+  // Find the plate for a completion (to show if shadowed early)
+  const getPlateForCompletion = (completion: Completion) => {
+    return plates.find(
+      p => p.menu_item_id === completion.menu_item_id && p.trainee_id === completion.trainee_id
+    )
+  }
+
+  function handleReassigned(completionId: string) {
+    setCompletions(prev => prev.filter(c => c.id !== completionId))
+    setSelectedCompletion(null)
+    router.refresh()
+  }
+
   return (
     <>
       <div className="px-5 py-6">
@@ -36,7 +51,6 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
           <p className="text-sm text-charcoal/40 mt-1">Review and assess completed items</p>
         </div>
 
-        {/* Trainee selector */}
         {trainees.length > 1 && (
           <div className="mb-5">
             <p className="text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Employee</p>
@@ -66,7 +80,6 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
 
         {selectedTrainee && (
           <>
-            {/* Pending sign-off */}
             {pendingSignOff.length > 0 && (
               <div className="mb-5">
                 <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">
@@ -77,6 +90,7 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
                     <CompletionCard
                       key={completion.id}
                       completion={completion}
+                      plate={getPlateForCompletion(completion)}
                       onOpen={() => setSelectedCompletion(completion)}
                       mode="pending"
                     />
@@ -92,7 +106,6 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
               </div>
             )}
 
-            {/* Already signed off */}
             {signedOff.length > 0 && (
               <div>
                 <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">
@@ -103,6 +116,7 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
                     <CompletionCard
                       key={completion.id}
                       completion={completion}
+                      plate={getPlateForCompletion(completion)}
                       onOpen={() => setSelectedCompletion(completion)}
                       mode="done"
                     />
@@ -114,7 +128,6 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
         )}
       </div>
 
-      {/* Task modal (manager mode) */}
       {selectedCompletion?.menu_item && (
         <TaskModal
           item={selectedCompletion.menu_item}
@@ -124,6 +137,7 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
           mode="manager"
           onClose={() => setSelectedCompletion(null)}
           onComplete={() => router.refresh()}
+          onReassign={() => handleReassigned(selectedCompletion.id)}
         />
       )}
     </>
@@ -132,15 +146,21 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
 
 function CompletionCard({
   completion,
+  plate,
   onOpen,
   mode,
 }: {
   completion: Completion
+  plate?: Plate
   onOpen: () => void
   mode: 'pending' | 'done'
 }) {
   const item = completion.menu_item
   if (!item) return null
+
+  // Check if completed before assigned date
+  const completedEarly = plate && completion.completed_date < plate.date_assigned
+  const isShadowing = completion.is_shadowing_moment
 
   return (
     <button
@@ -153,7 +173,26 @@ function CompletionCard({
             <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
           )}
           <p className="font-medium text-charcoal text-[15px] mt-1.5 leading-snug">{item.title}</p>
-          <p className="text-xs text-charcoal/40 mt-1">{completion.completed_date}</p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <p className="text-xs text-charcoal/40">
+              Completed {new Date(completion.completed_date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+            </p>
+            {plate && (
+              <p className="text-xs text-charcoal/30">
+                Assigned for {new Date(plate.date_assigned + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+              </p>
+            )}
+            {completedEarly && (
+              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                Shadowed early
+              </span>
+            )}
+            {isShadowing && !completedEarly && (
+              <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full">
+                Shadowing moment
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex flex-col items-end gap-1">
           {completion.trainee_rating && (
