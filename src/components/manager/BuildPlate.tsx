@@ -326,6 +326,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   onPlate={isOnPlate(item.id)}
                   completed={isCompleted(item.id)}
                   completedDate={getCompletion(item.id)?.completed_date}
+                  assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
                   onAssign={() => requestAssign([item], item.id)}
                   onRemove={() => removeFromPlate(item)}
                 />
@@ -417,6 +418,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                             onPlate={isOnPlate(item.id)}
                             completed={isCompleted(item.id)}
                             completedDate={getCompletion(item.id)?.completed_date}
+                            assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
                             onAssign={() => requestAssign([item], item.id)}
                             onRemove={() => removeFromPlate(item)}
                             compact
@@ -488,6 +490,7 @@ function MenuItemRow({
   onPlate,
   completed = false,
   completedDate,
+  assignedDate,
   onAssign,
   onRemove,
   compact = false,
@@ -496,12 +499,15 @@ function MenuItemRow({
   onPlate: boolean
   completed?: boolean
   completedDate?: string
+  assignedDate?: string
   onAssign: () => void
   onRemove: () => void
   compact?: boolean
 }) {
+  const shadowedEarly = completed && completedDate && assignedDate && completedDate < assignedDate
+
   return (
-    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${completed ? 'bg-green-50/50' : ''}`}>
+    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : ''}`}>
       <div className="flex-1">
         {!compact && item.category && (
           <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
@@ -509,7 +515,12 @@ function MenuItemRow({
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-charcoal/35">{item.time_needed} · {item.trainer_type}</p>
-          {completed && (
+          {completed && shadowedEarly && (
+            <span className="text-xs text-blue-600 font-medium">
+              Shadowed early on {new Date(completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+            </span>
+          )}
+          {completed && !shadowedEarly && (
             <span className="text-xs text-green-600 font-medium">
               Completed {completedDate ? new Date(completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : ''}
             </span>
@@ -517,7 +528,7 @@ function MenuItemRow({
         </div>
       </div>
       {completed ? (
-        <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-green-500 text-white">
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white ${shadowedEarly ? 'bg-blue-500' : 'bg-green-500'}`}>
           <Check size={16} />
         </div>
       ) : onPlate ? (
