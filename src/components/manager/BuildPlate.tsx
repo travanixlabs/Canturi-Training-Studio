@@ -480,7 +480,7 @@ function MenuItemRow({
           <p className="text-xs text-charcoal/35">
             {item.time_needed} · {item.trainer_type}
             {assignedDate && !completed && (
-              <span className="text-charcoal/25"> — {new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
+              <span className="text-charcoal/25"> — <span className="font-semibold text-charcoal/50">{new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span></span>
             )}
           </p>
           {completed && shadowedEarly && (
