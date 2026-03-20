@@ -41,7 +41,7 @@ export function AppHeader({ user, title }: Props) {
           onClick={handleSignOut}
           className="text-white/40 hover:text-white/70 text-xs tracking-wider uppercase transition-colors ml-1"
         >
-          Out
+          Log Out
         </button>
       </div>
     </header>
