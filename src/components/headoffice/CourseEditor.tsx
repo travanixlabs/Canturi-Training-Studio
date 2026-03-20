@@ -594,15 +594,24 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
               {/* Icon */}
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Icon <span className="text-charcoal/30 normal-case font-normal">(single character or emoji)</span> <span className="text-red-400">*</span>
+                  Icon <span className="text-red-400">*</span>
                 </label>
-                <input
-                  type="text"
-                  className="input"
-                  value={categoryForm.icon}
-                  onChange={e => setCategoryForm(f => ({ ...f, icon: e.target.value.slice(0, 2) }))}
-                  placeholder="e.g. 💎 or D"
-                />
+                <div className="grid grid-cols-8 gap-1.5">
+                  {['✦', '◈', '⌂', '◎', '◇', '▽', '❋', '★', '♦', '⚡', '🔧', '💎', '📦', '🎓', '👥', '🏪', '📋', '🎯', '💡', '🔑', '🛡️', '📐', '🎨', '✨'].map(icon => (
+                    <button
+                      key={icon}
+                      type="button"
+                      onClick={() => setCategoryForm(f => ({ ...f, icon }))}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${
+                        categoryForm.icon === icon
+                          ? 'bg-gold/10 border-2 border-gold text-charcoal'
+                          : 'bg-charcoal/3 border-2 border-transparent text-charcoal/60 hover:border-charcoal/15'
+                      }`}
+                    >
+                      {icon}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Colour */}
