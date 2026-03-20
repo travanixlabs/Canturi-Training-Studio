@@ -8,7 +8,7 @@ export default async function TraineeProgressPage() {
   if (!authUser) redirect('/login')
 
   const [{ data: categories }, { data: menuItems }, { data: completions }, { data: visibleCats }] = await Promise.all([
-    supabase.from('categories').select('*').order('sort_order'),
+    supabase.from('categories').select('*').eq('status', 'active').order('sort_order'),
     supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active'),
     supabase.from('completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('visible_categories').select('category_id').eq('user_id', authUser.id),

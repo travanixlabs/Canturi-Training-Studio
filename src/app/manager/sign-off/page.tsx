@@ -25,7 +25,7 @@ export default async function SignOffPage() {
       .select('*, menu_item:menu_items(*, category:categories(*)), trainee:users!completions_trainee_id_fkey(*)')
       .in('trainee_id', traineeIds)
       .order('created_at', { ascending: false }),
-    supabase.from('menu_items').select('*, category:categories(*)'),
+    supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active'),
     supabase.from('plates').select('*').in('trainee_id', traineeIds),
   ])
 

@@ -10,7 +10,7 @@ export default async function HeadOfficePage() {
   const [{ data: boutiques }, { data: allUsers }, { data: menuItems }, { data: completions }, { data: plates }, { data: visibleCats }] = await Promise.all([
     supabase.from('boutiques').select('*').order('city'),
     supabase.from('users').select('*'),
-    supabase.from('menu_items').select('*'),
+    supabase.from('menu_items').select('*').eq('status', 'active'),
     supabase
       .from('completions')
       .select('*, menu_item:menu_items(title, category:categories(name)), trainee:users!completions_trainee_id_fkey(name, boutique_id)')

@@ -9,7 +9,7 @@ export default async function TraineeMenuPage() {
   if (!authUser) redirect('/login')
 
   const [{ data: categories }, { data: menuItems }, { data: completions }, { data: profile }, { data: visibleCats }] = await Promise.all([
-    supabase.from('categories').select('*').order('sort_order'),
+    supabase.from('categories').select('*').eq('status', 'active').order('sort_order'),
     supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active').order('title'),
     supabase.from('completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
