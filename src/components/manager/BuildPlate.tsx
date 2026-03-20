@@ -301,8 +301,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
               {categories.map(category => {
                 const items = menuItems.filter(i => i.category_id === category.id)
                 const expanded = expandedCategories.has(category.id)
-                const onPlateCount = items.filter(i => isOnPlate(i.id)).length
                 const visible = isCategoryVisible(category.id)
+                const assignedCount = items.filter(i => isOnPlate(i.id)).length
+                const unassignedCount = items.length - assignedCount
 
                 return (
                   <div key={category.id} className={`card overflow-hidden ${isEmployee && !visible ? 'opacity-40' : ''}`}>
@@ -320,9 +321,10 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                         <div className="flex-1">
                           <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
                           <div className="flex gap-3 mt-0.5">
-                            {onPlateCount > 0 && (
-                              <p className="text-xs text-gold">{onPlateCount} on plate</p>
-                            )}
+                            <p className="text-xs text-charcoal/40">
+                              {assignedCount} assigned
+                              {unassignedCount > 0 && <span className="text-charcoal/25"> · {unassignedCount} unassigned</span>}
+                            </p>
                             {isEmployee && (
                               <p className="text-xs text-charcoal/30">{visible ? 'Visible' : 'Hidden'}</p>
                             )}
