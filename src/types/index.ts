@@ -38,7 +38,6 @@ export interface MenuItem {
   trainer_type: TrainerType
   resource_link: string | null
   boutique_id: string | null
-  is_visible: boolean
   created_at: string
   category?: Category
 }
@@ -70,6 +69,14 @@ export interface Completion {
   created_at: string
   menu_item?: MenuItem
   trainee?: User
+}
+
+export interface HiddenMenuItem {
+  id: string
+  user_id: string
+  menu_item_id: string
+  hidden_by: string
+  created_at: string
 }
 
 // Category colour mapping

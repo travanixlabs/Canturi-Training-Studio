@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useMemo, useTransition } from 'react'
-import { Search, X, ChevronDown, ChevronUp, Plus, Check, Minus } from 'lucide-react'
+import { Search, X, ChevronDown, ChevronUp, Plus, Check, Eye, EyeOff } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { User, Category, MenuItem, Plate } from '@/types'
+import type { User, Category, MenuItem, Plate, HiddenMenuItem } from '@/types'
 
 interface Props {
   manager: User
@@ -13,19 +13,23 @@ interface Props {
   categories: Category[]
   menuItems: MenuItem[]
   todayPlates: Plate[]
+  hiddenItems?: HiddenMenuItem[]
   showBoutique?: boolean
 }
 
-export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, showBoutique }: Props) {
+export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, hiddenItems: initialHidden = [], showBoutique }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
   const [search, setSearch] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [plates, setPlates] = useState<Plate[]>(todayPlates)
+  const [hiddenItems, setHiddenItems] = useState<HiddenMenuItem[]>(initialHidden)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const supabase = createClient()
+
+  const isEmployee = selectedTrainee?.role === 'trainee'
 
   const today = new Date().toLocaleDateString('en-AU', {
     weekday: 'long', day: 'numeric', month: 'long'
@@ -34,6 +38,11 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   const isOnPlate = (menuItemId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
     return plates.some(p => p.menu_item_id === menuItemId && p.trainee_id === tid)
+  }
+
+  const isHidden = (menuItemId: string, userId?: string) => {
+    const uid = userId ?? selectedTrainee?.id
+    return hiddenItems.some(h => h.menu_item_id === menuItemId && h.user_id === uid)
   }
 
   const traineeOnPlateCount = (traineeId: string) =>
@@ -47,11 +56,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     )
 
     if (existing) {
-      // Remove from plate
       setPlates(prev => prev.filter(p => p.id !== existing.id))
       await supabase.from('plates').delete().eq('id', existing.id)
     } else {
-      // Add to plate
       const { data, error } = await supabase.from('plates').insert({
         trainee_id: selectedTrainee.id,
         menu_item_id: item.id,
@@ -66,6 +73,31 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     }
 
     startTransition(() => router.refresh())
+  }
+
+  async function toggleVisibility(item: MenuItem) {
+    if (!selectedTrainee) return
+
+    const existing = hiddenItems.find(
+      h => h.menu_item_id === item.id && h.user_id === selectedTrainee.id
+    )
+
+    if (existing) {
+      // Make visible (remove from hidden)
+      setHiddenItems(prev => prev.filter(h => h.id !== existing.id))
+      await supabase.from('hidden_menu_items').delete().eq('id', existing.id)
+    } else {
+      // Hide
+      const { data, error } = await supabase.from('hidden_menu_items').insert({
+        user_id: selectedTrainee.id,
+        menu_item_id: item.id,
+        hidden_by: manager.id,
+      }).select().single()
+
+      if (!error && data) {
+        setHiddenItems(prev => [...prev, data as HiddenMenuItem])
+      }
+    }
   }
 
   const filteredItems = useMemo(() => {
@@ -88,6 +120,12 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
   const isSearching = search.trim().length > 0
 
+  const hiddenCountForCategory = (categoryId: string) => {
+    if (!selectedTrainee || !isEmployee) return 0
+    const items = menuItems.filter(i => i.category_id === categoryId)
+    return items.filter(i => isHidden(i.id)).length
+  }
+
   return (
     <div className="px-5 py-6">
       <div className="mb-5">
@@ -101,7 +139,6 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
           <p className="text-charcoal/40 text-sm">No employees found.</p>
         </div>
       ) : showBoutique ? (
-        /* Head Office view: split by role */
         <div className="mb-5 space-y-4">
           {[
             { label: 'Building for Managers', users: trainees.filter(t => t.role === 'manager') },
@@ -125,7 +162,6 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
           ))}
         </div>
       ) : (
-        /* Manager view: single list */
         <div className="mb-5">
           <p className="text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Building for</p>
           <div className="flex gap-2 flex-wrap">
@@ -145,7 +181,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
       {selectedTrainee && (
         <>
           {/* Today's plate summary */}
-          {isOnPlate('', selectedTrainee.id) === false && traineeOnPlateCount(selectedTrainee.id) === 0 ? (
+          {traineeOnPlateCount(selectedTrainee.id) === 0 ? (
             <div className="card p-4 mb-5 border border-dashed border-charcoal/15 bg-transparent">
               <p className="text-sm text-charcoal/40 text-center">
                 {selectedTrainee.name.split(' ')[0]}&apos;s plate is empty — browse the menu below and tap + to add items.
@@ -203,6 +239,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   item={item}
                   onPlate={isOnPlate(item.id)}
                   onToggle={() => togglePlate(item)}
+                  hidden={isEmployee ? isHidden(item.id) : false}
+                  onToggleVisibility={isEmployee ? () => toggleVisibility(item) : undefined}
                 />
               ))}
             </div>
@@ -215,6 +253,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                 const items = menuItems.filter(i => i.category_id === category.id)
                 const expanded = expandedCategories.has(category.id)
                 const onPlateCount = items.filter(i => isOnPlate(i.id)).length
+                const hiddenCount = hiddenCountForCategory(category.id)
 
                 return (
                   <div key={category.id} className="card overflow-hidden">
@@ -230,9 +269,14 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                       </span>
                       <div className="flex-1">
                         <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
-                        {onPlateCount > 0 && (
-                          <p className="text-xs text-gold mt-0.5">{onPlateCount} on plate</p>
-                        )}
+                        <div className="flex gap-3 mt-0.5">
+                          {onPlateCount > 0 && (
+                            <p className="text-xs text-gold">{onPlateCount} on plate</p>
+                          )}
+                          {hiddenCount > 0 && (
+                            <p className="text-xs text-charcoal/30">{hiddenCount} hidden</p>
+                          )}
+                        </div>
                       </div>
                       {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
                     </button>
@@ -245,6 +289,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                             item={item}
                             onPlate={isOnPlate(item.id)}
                             onToggle={() => togglePlate(item)}
+                            hidden={isEmployee ? isHidden(item.id) : false}
+                            onToggleVisibility={isEmployee ? () => toggleVisibility(item) : undefined}
                             compact
                           />
                         ))}
@@ -305,15 +351,19 @@ function MenuItemRow({
   item,
   onPlate,
   onToggle,
+  hidden = false,
+  onToggleVisibility,
   compact = false,
 }: {
   item: MenuItem
   onPlate: boolean
   onToggle: () => void
+  hidden?: boolean
+  onToggleVisibility?: () => void
   compact?: boolean
 }) {
   return (
-    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'}`}>
+    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${hidden ? 'opacity-40' : ''}`}>
       <div className="flex-1">
         {!compact && item.category && (
           <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
@@ -321,6 +371,23 @@ function MenuItemRow({
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
         <p className="text-xs text-charcoal/35 mt-0.5">{item.time_needed} · {item.trainer_type}</p>
       </div>
+
+      {/* Visibility toggle — only for employees */}
+      {onToggleVisibility && (
+        <button
+          onClick={onToggleVisibility}
+          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
+            hidden
+              ? 'text-charcoal/25 hover:text-charcoal/50'
+              : 'text-gold/60 hover:text-gold'
+          }`}
+          title={hidden ? 'Show to employee' : 'Hide from employee'}
+        >
+          {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+        </button>
+      )}
+
+      {/* Add to plate */}
       <button
         onClick={onToggle}
         className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
