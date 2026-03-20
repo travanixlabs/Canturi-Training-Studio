@@ -48,7 +48,7 @@ const emptyCourseForm = (): CourseFormData => ({
   category_id: '',
   tags: '',
   time_needed: '',
-  trainer_type: 'Self',
+  trainer_type: '' as TrainerType,
   difficulty_level: '',
   is_recurring: false,
   resource_link: '',
@@ -130,14 +130,12 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   }
 
   async function saveCourse() {
-    if (!courseForm.title.trim()) {
-      setCourseError('Title is required.')
-      return
-    }
-    if (!courseForm.category_id) {
-      setCourseError('Category is required.')
-      return
-    }
+    if (!courseForm.title.trim()) { setCourseError('Title is required.'); return }
+    if (!courseForm.description.trim()) { setCourseError('Description is required.'); return }
+    if (!courseForm.category_id) { setCourseError('Category is required.'); return }
+    if (!courseForm.tags.trim()) { setCourseError('Tags are required.'); return }
+    if (!courseForm.trainer_type) { setCourseError('Trainer type is required.'); return }
+    if (!courseForm.difficulty_level) { setCourseError('Difficulty level is required.'); return }
 
     setCourseSaving(true)
     setCourseError(null)
@@ -500,7 +498,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
               {/* Description */}
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Description
+                  Description <span className="text-red-400">*</span>
                 </label>
                 <textarea
                   className="textarea"
@@ -531,7 +529,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
               {/* Tags */}
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Tags <span className="text-charcoal/30 normal-case font-normal">(comma-separated)</span>
+                  Tags <span className="text-red-400">*</span> <span className="text-charcoal/30 normal-case font-normal">(comma-separated)</span>
                 </label>
                 <input
                   type="text"
@@ -559,7 +557,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
               {/* Trainer type */}
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Trainer type
+                  Trainer type <span className="text-red-400">*</span>
                 </label>
                 <div className="flex gap-2">
                   {TRAINER_TYPES.map(t => (
@@ -582,7 +580,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
               {/* Difficulty level */}
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Difficulty level
+                  Difficulty level <span className="text-red-400">*</span>
                 </label>
                 <div className="flex gap-2">
                   {DIFFICULTY_LEVELS.map(p => (
@@ -592,7 +590,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                       onClick={() =>
                         setCourseForm(f => ({
                           ...f,
-                          difficulty_level: f.difficulty_level === p.value ? '' : p.value,
+                          difficulty_level: p.value,
                         }))
                       }
                       className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all ${

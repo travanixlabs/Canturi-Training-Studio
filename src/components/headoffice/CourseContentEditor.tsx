@@ -1,11 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Plus, Save, Trash2, ChevronUp, ChevronDown, Check, BookOpen, GripVertical } from 'lucide-react'
+import { ArrowLeft, Plus, Save, Trash2, ChevronUp, ChevronDown, Check, BookOpen, FileText, Globe, Image, Video, FileUp, Upload } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { MenuItem, Module, Category, TrainerType, DifficultyLevel } from '@/types'
+import type { MenuItem, Module, ModuleType, Category, TrainerType, DifficultyLevel } from '@/types'
+
+const MODULE_TYPES: { value: ModuleType; label: string; icon: React.ReactNode }[] = [
+  { value: 'text', label: 'Text', icon: <FileText size={16} /> },
+  { value: 'webpage', label: 'Webpage', icon: <Globe size={16} /> },
+  { value: 'image', label: 'Image', icon: <Image size={16} /> },
+  { value: 'video', label: 'Video', icon: <Video size={16} /> },
+  { value: 'pdf', label: 'PDF', icon: <FileUp size={16} /> },
+]
 
 const TRAINER_TYPES: TrainerType[] = ['Self', 'Manager', 'Self/Manager']
 const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
@@ -38,6 +46,8 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
   const [modules, setModules] = useState<Module[]>(initialModules)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(modules[0]?.id ?? null)
   const [editingCourseDetails, setEditingCourseDetails] = useState(modules.length === 0)
+  const [showTypeSelector, setShowTypeSelector] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   // State
   const [saving, setSaving] = useState(false)
@@ -62,12 +72,15 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     setTimeout(() => setSaved(false), 2000)
   }
 
-  async function addModule() {
+  async function addModule(type: ModuleType) {
     const newOrder = modules.length
+    const typeLabel = MODULE_TYPES.find(t => t.value === type)?.label ?? type
     const { data, error } = await supabase.from('modules').insert({
       menu_item_id: initialItem.id,
-      title: `Module ${newOrder + 1}`,
+      title: `${typeLabel} ${newOrder + 1}`,
+      type,
       content: '',
+      file_url: null,
       sort_order: newOrder,
     }).select().single()
 
@@ -75,7 +88,32 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
       setModules(prev => [...prev, data as Module])
       setSelectedModuleId(data.id)
       setEditingCourseDetails(false)
+      setShowTypeSelector(false)
     }
+  }
+
+  async function handleFileUpload(moduleId: string, file: File) {
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `modules/${moduleId}/${Date.now()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('module-files')
+      .upload(path, file, { upsert: true })
+
+    if (uploadError) {
+      alert('Upload failed: ' + uploadError.message)
+      setUploading(false)
+      return
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('module-files')
+      .getPublicUrl(path)
+
+    const fileUrl = urlData.publicUrl
+    await updateModule(moduleId, { file_url: fileUrl })
+    setUploading(false)
   }
 
   async function updateModule(moduleId: string, updates: Partial<Module>) {
@@ -169,7 +207,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
               </button>
             ))}
             <button
-              onClick={addModule}
+              onClick={() => setShowTypeSelector(true)}
               className="px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border border-dashed border-charcoal/15 text-charcoal/40 hover:border-gold hover:text-gold transition-all"
             >
               <Plus size={12} />
@@ -228,12 +266,28 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             </div>
 
             <button
-              onClick={addModule}
+              onClick={() => setShowTypeSelector(true)}
               className="w-full mt-3 px-3 py-2.5 rounded-xl flex items-center gap-3 border border-dashed border-charcoal/15 text-charcoal/40 hover:border-gold hover:text-gold transition-all"
             >
               <Plus size={14} />
               <span className="text-sm">Add module</span>
             </button>
+
+            {/* Type selector */}
+            {showTypeSelector && (
+              <div className="mt-2 space-y-1">
+                {MODULE_TYPES.map(t => (
+                  <button
+                    key={t.value}
+                    onClick={() => addModule(t.value)}
+                    className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 hover:bg-gold/5 text-charcoal/60 hover:text-gold transition-all"
+                  >
+                    {t.icon}
+                    <span className="text-sm">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -320,13 +374,13 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             </div>
           )}
 
-          {/* Module content editor — mirrors CourseDetail module view */}
+          {/* Module content editor */}
           {activeModule && !editingCourseDetails && (
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <BookOpen size={14} className="text-charcoal/30" />
+                {MODULE_TYPES.find(t => t.value === (activeModule.type ?? 'text'))?.icon}
                 <p className="text-xs text-charcoal/40 uppercase tracking-wider">
-                  Module {modules.indexOf(activeModule) + 1} of {modules.length}
+                  {MODULE_TYPES.find(t => t.value === (activeModule.type ?? 'text'))?.label} · Module {modules.indexOf(activeModule) + 1} of {modules.length}
                 </p>
               </div>
 
@@ -340,19 +394,130 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Content</label>
-                <textarea
-                  className="textarea font-sans text-sm leading-relaxed"
-                  rows={16}
-                  value={activeModule.content}
-                  onChange={e => updateModule(activeModule.id, { content: e.target.value })}
-                  placeholder="Write the module content here. This is what the employee will read.&#10;&#10;You can use paragraphs, numbered lists, or bullet points."
-                />
-              </div>
+              {/* Text module */}
+              {(activeModule.type ?? 'text') === 'text' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Content</label>
+                  <textarea
+                    className="textarea font-sans text-sm leading-relaxed"
+                    rows={16}
+                    value={activeModule.content}
+                    onChange={e => updateModule(activeModule.id, { content: e.target.value })}
+                    placeholder="Write the module content here.&#10;&#10;You can use paragraphs, numbered lists, or bullet points."
+                  />
+                </div>
+              )}
 
-              {/* Preview */}
-              {activeModule.content && (
+              {/* Webpage module */}
+              {activeModule.type === 'webpage' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Webpage URL</label>
+                  <input
+                    className="input"
+                    value={activeModule.content}
+                    onChange={e => updateModule(activeModule.id, { content: e.target.value })}
+                    placeholder="https://example.com"
+                    type="url"
+                  />
+                  {activeModule.content && (
+                    <div className="mt-4 card overflow-hidden" style={{ height: '500px' }}>
+                      <iframe src={activeModule.content} className="w-full h-full border-0" title={activeModule.title} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Image module */}
+              {activeModule.type === 'image' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Image</label>
+                  {activeModule.file_url ? (
+                    <div className="space-y-3">
+                      <img src={activeModule.file_url} alt={activeModule.title} className="max-w-full rounded-xl border border-black/5" />
+                      <button
+                        onClick={() => updateModule(activeModule.id, { file_url: null })}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Remove image
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
+                      <Upload size={24} className="text-charcoal/30" />
+                      <p className="text-sm text-charcoal/40">{uploading ? 'Uploading…' : 'Click to upload an image'}</p>
+                      <p className="text-xs text-charcoal/25">PNG, JPEG, WebP</p>
+                      <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleFileUpload(activeModule.id, e.target.files[0])} />
+                    </label>
+                  )}
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
+                    <input className="input" value={activeModule.content} onChange={e => updateModule(activeModule.id, { content: e.target.value })} placeholder="Image caption" />
+                  </div>
+                </div>
+              )}
+
+              {/* Video module */}
+              {activeModule.type === 'video' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Video</label>
+                  {activeModule.file_url ? (
+                    <div className="space-y-3">
+                      <video src={activeModule.file_url} controls className="max-w-full rounded-xl" />
+                      <button
+                        onClick={() => updateModule(activeModule.id, { file_url: null })}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Remove video
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
+                      <Upload size={24} className="text-charcoal/30" />
+                      <p className="text-sm text-charcoal/40">{uploading ? 'Uploading…' : 'Click to upload a video'}</p>
+                      <p className="text-xs text-charcoal/25">MP4, WebM, MOV</p>
+                      <input type="file" accept="video/*" className="hidden" onChange={e => e.target.files?.[0] && handleFileUpload(activeModule.id, e.target.files[0])} />
+                    </label>
+                  )}
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description (optional)</label>
+                    <input className="input" value={activeModule.content} onChange={e => updateModule(activeModule.id, { content: e.target.value })} placeholder="Video description" />
+                  </div>
+                </div>
+              )}
+
+              {/* PDF module */}
+              {activeModule.type === 'pdf' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">PDF Document</label>
+                  {activeModule.file_url ? (
+                    <div className="space-y-3">
+                      <div className="card overflow-hidden" style={{ height: '600px' }}>
+                        <iframe src={activeModule.file_url} className="w-full h-full border-0" title={activeModule.title} />
+                      </div>
+                      <button
+                        onClick={() => updateModule(activeModule.id, { file_url: null })}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Remove PDF
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
+                      <Upload size={24} className="text-charcoal/30" />
+                      <p className="text-sm text-charcoal/40">{uploading ? 'Uploading…' : 'Click to upload a PDF'}</p>
+                      <p className="text-xs text-charcoal/25">PDF files only</p>
+                      <input type="file" accept=".pdf" className="hidden" onChange={e => e.target.files?.[0] && handleFileUpload(activeModule.id, e.target.files[0])} />
+                    </label>
+                  )}
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description (optional)</label>
+                    <input className="input" value={activeModule.content} onChange={e => updateModule(activeModule.id, { content: e.target.value })} placeholder="PDF description" />
+                  </div>
+                </div>
+              )}
+
+              {/* Preview for text modules */}
+              {(activeModule.type ?? 'text') === 'text' && activeModule.content && (
                 <div className="mt-6 pt-6 border-t border-black/5">
                   <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Preview</p>
                   <div className="card p-5">
@@ -366,15 +531,19 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             </div>
           )}
 
-          {/* Empty state — no modules and not editing course details */}
+          {/* Empty state */}
           {!activeModule && !editingCourseDetails && (
             <div className="text-center py-12">
               <p className="text-4xl mb-4">📖</p>
               <p className="font-serif text-lg text-charcoal/60 mb-2">No modules yet</p>
-              <p className="text-sm text-charcoal/40 mb-6">Add modules to build out the course content that employees will work through.</p>
-              <button onClick={addModule} className="btn-gold inline-flex items-center gap-2">
-                <Plus size={16} /> Add first module
-              </button>
+              <p className="text-sm text-charcoal/40 mb-6">Add modules to build out the course content.</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {MODULE_TYPES.map(t => (
+                  <button key={t.value} onClick={() => addModule(t.value)} className="btn-outline inline-flex items-center gap-2 text-sm">
+                    {t.icon} {t.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>

@@ -79,11 +79,15 @@ export interface Completion {
   trainee?: User
 }
 
+export type ModuleType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
+
 export interface Module {
   id: string
   menu_item_id: string
   title: string
+  type: ModuleType
   content: string
+  file_url: string | null
   sort_order: number
   created_at: string
 }
