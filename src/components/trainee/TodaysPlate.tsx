@@ -12,10 +12,11 @@ import { useRouter } from 'next/navigation'
 interface Props {
   plates: Plate[]
   completions: Completion[]
+  shadowedToday?: Completion[]
   currentUser: User
 }
 
-export function TodaysPlate({ plates, completions, currentUser }: Props) {
+export function TodaysPlate({ plates, completions, shadowedToday = [], currentUser }: Props) {
   const [selectedPlate, setSelectedPlate] = useState<Plate | null>(null)
   const router = useRouter()
 
@@ -29,7 +30,10 @@ export function TodaysPlate({ plates, completions, currentUser }: Props) {
   const completed = plates.filter(p => getCompletion(p.menu_item_id))
   const remaining = plates.filter(p => !getCompletion(p.menu_item_id))
 
-  if (plates.length === 0) {
+  const totalItems = plates.length + shadowedToday.length
+  const totalCompleted = completed.length + shadowedToday.length
+
+  if (plates.length === 0 && shadowedToday.length === 0) {
     return (
       <div className="px-5 py-8">
         <div className="mb-6">
@@ -59,12 +63,12 @@ export function TodaysPlate({ plates, completions, currentUser }: Props) {
           <div className="flex-1">
             <div className="flex justify-between text-sm mb-1.5">
               <span className="text-charcoal/60">Today&apos;s progress</span>
-              <span className="font-medium text-charcoal">{completed.length}/{plates.length}</span>
+              <span className="font-medium text-charcoal">{totalCompleted}/{totalItems}</span>
             </div>
             <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gold rounded-full transition-all duration-500"
-                style={{ width: `${plates.length > 0 ? (completed.length / plates.length) * 100 : 0}%` }}
+                style={{ width: `${totalItems > 0 ? (totalCompleted / totalItems) * 100 : 0}%` }}
               />
             </div>
           </div>
@@ -88,7 +92,7 @@ export function TodaysPlate({ plates, completions, currentUser }: Props) {
         )}
 
         {/* Completed */}
-        {completed.length > 0 && (
+        {(completed.length > 0 || shadowedToday.length > 0) && (
           <div>
             <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">Completed</h2>
             <div className="space-y-3 opacity-60">
@@ -100,6 +104,9 @@ export function TodaysPlate({ plates, completions, currentUser }: Props) {
                   completion={getCompletion(plate.menu_item_id)!}
                   onOpen={() => setSelectedPlate(plate)}
                 />
+              ))}
+              {shadowedToday.map(completion => (
+                <ShadowedCard key={completion.id} completion={completion} />
               ))}
             </div>
           </div>
@@ -177,5 +184,49 @@ function PlateCard({
         )}
       </div>
     </button>
+  )
+}
+
+function ShadowedCard({ completion }: { completion: Completion }) {
+  const item = completion.menu_item
+  if (!item) return null
+
+  const colour = item.category ? CATEGORY_COLOURS[item.category.name] ?? '#C9A96E' : '#C9A96E'
+
+  return (
+    <div className="card w-full text-left p-4">
+      <div
+        className="w-1 absolute left-0 top-4 bottom-4 rounded-r-full"
+        style={{ backgroundColor: colour }}
+      />
+      <div className="pl-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">
+            {item.category && (
+              <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
+            )}
+            <p className="font-medium text-charcoal mt-1.5 text-[15px] leading-snug">
+              {item.title}
+              <span className="text-gold font-normal ml-2 text-xs">Shadowed</span>
+            </p>
+          </div>
+          {completion.trainee_rating && (
+            <StarRating value={completion.trainee_rating} readonly size="sm" />
+          )}
+        </div>
+        <div className="flex items-center gap-3 mt-2 text-xs text-charcoal/40">
+          <span className="flex items-center gap-1">
+            <Clock size={11} />
+            {item.time_needed}
+          </span>
+          <span>{item.trainer_type}</span>
+        </div>
+        <div className="flex items-center gap-1.5 mt-2">
+          <span className="text-green-600 text-xs">✓</span>
+          <span className="text-xs text-green-600">Complete</span>
+          <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full ml-1">Shadowed</span>
+        </div>
+      </div>
+    </div>
   )
 }

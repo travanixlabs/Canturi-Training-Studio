@@ -22,21 +22,23 @@ export default async function TraineePlatePage() {
     .order('created_at', { ascending: true })
 
   // Fetch all completions for this trainee
-  const { data: completions } = await supabase
-    .from('completions')
-    .select('*')
-    .eq('trainee_id', authUser.id)
+  const [{ data: completions }, { data: profile }, { data: todayCompletions }] = await Promise.all([
+    supabase.from('completions').select('*').eq('trainee_id', authUser.id),
+    supabase.from('users').select('*').eq('id', authUser.id).single(),
+    supabase.from('completions').select('*, menu_item:menu_items(*, category:categories(*))').eq('trainee_id', authUser.id).eq('completed_date', today),
+  ])
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', authUser.id)
-    .single()
+  // Find shadowed completions today that aren't on a plate
+  const plateMenuItemIds = new Set((plates ?? []).map(p => p.menu_item_id))
+  const shadowedToday = (todayCompletions ?? []).filter(
+    c => c.is_shadowing_moment && !plateMenuItemIds.has(c.menu_item_id)
+  )
 
   return (
     <TodaysPlate
       plates={plates ?? []}
       completions={completions ?? []}
+      shadowedToday={shadowedToday}
       currentUser={profile as User}
     />
   )
