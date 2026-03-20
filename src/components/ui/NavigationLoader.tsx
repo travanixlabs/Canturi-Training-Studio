@@ -7,23 +7,17 @@ function NavigationLoaderInner() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
-  const [progress, setProgress] = useState(0)
   const [fadeOut, setFadeOut] = useState(false)
   const prevUrl = useRef(pathname)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // When URL changes, content is ready — dismiss immediately
+  // When URL changes, content is ready — dismiss
   useEffect(() => {
     const currentUrl = pathname + searchParams.toString()
     if (currentUrl !== prevUrl.current && loading) {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-      setProgress(100)
       setFadeOut(true)
-      // Quick fade out (150ms) then clean up
       const timer = setTimeout(() => {
         setLoading(false)
         setFadeOut(false)
-        setProgress(0)
       }, 150)
       prevUrl.current = currentUrl
       return () => clearTimeout(timer)
@@ -42,25 +36,10 @@ function NavigationLoaderInner() {
 
       setLoading(true)
       setFadeOut(false)
-      setProgress(5)
-
-      if (intervalRef.current) clearInterval(intervalRef.current)
-
-      let current = 5
-      intervalRef.current = setInterval(() => {
-        // Slow down as it approaches 95 — never reaches 100 until content loads
-        const remaining = 95 - current
-        current += remaining * 0.08 + Math.random() * 3
-        if (current >= 95) current = 95
-        setProgress(current)
-      }, 150)
     }
 
     document.addEventListener('click', handleClick, true)
-    return () => {
-      document.removeEventListener('click', handleClick, true)
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
+    return () => document.removeEventListener('click', handleClick, true)
   }, [pathname])
 
   if (!loading) return null
@@ -74,19 +53,12 @@ function NavigationLoaderInner() {
       }}
     >
       <div className="absolute inset-0 bg-ivory/60 backdrop-blur-[2px]" />
-      <div className="relative bg-white rounded-2xl shadow-xl px-8 py-6 min-w-[260px] text-center">
+      <div className="relative bg-white rounded-2xl shadow-xl px-8 py-6 min-w-[220px] text-center">
         <p className="font-serif text-lg text-charcoal mb-1">Loading</p>
-        <p className="text-xs text-charcoal/40 mb-4">Please wait</p>
-        <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden mb-2">
-          <div
-            className="h-full bg-gold rounded-full"
-            style={{
-              width: `${Math.round(progress)}%`,
-              transition: fadeOut ? 'width 100ms ease-out' : 'width 200ms ease-out',
-            }}
-          />
+        <p className="text-xs text-charcoal/40 mb-3">Please wait</p>
+        <div className="flex justify-center">
+          <div className="w-6 h-6 border-2 border-gold/30 border-t-gold rounded-full animate-spin" />
         </div>
-        <p className="text-xs text-gold font-medium">{Math.round(progress)}%</p>
       </div>
     </div>
   )
