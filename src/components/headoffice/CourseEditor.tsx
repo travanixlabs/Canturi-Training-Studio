@@ -627,19 +627,6 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                 <span className="text-sm text-charcoal/70">Recurring course</span>
               </div>
 
-              {/* Resource link */}
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Resource link <span className="text-charcoal/30 normal-case font-normal">(optional)</span>
-                </label>
-                <input
-                  type="url"
-                  className="input"
-                  value={courseForm.resource_link}
-                  onChange={e => setCourseForm(f => ({ ...f, resource_link: e.target.value }))}
-                  placeholder="https://…"
-                />
-              </div>
 
               {courseError && (
                 <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{courseError}</p>
