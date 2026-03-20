@@ -217,7 +217,9 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       .update({ status })
       .eq('id', item.id)
 
-    if (!error) {
+    if (error) {
+      alert('Failed to update status: ' + error.message)
+    } else {
       setMenuItems(prev => prev.map(i => (i.id === item.id ? { ...i, status } : i)))
     }
 
@@ -301,11 +303,13 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   }
 
   async function changeCategoryStatus(cat: Category, status: MenuItemStatus) {
-    // Update category status
-    await supabase.from('categories').update({ status }).eq('id', cat.id)
+    const { error } = await supabase.from('categories').update({ status }).eq('id', cat.id)
+    if (error) {
+      alert('Failed to update category: ' + error.message)
+      return
+    }
     setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, status } : c))
 
-    // Also update all courses in this category to the same status
     const catItems = menuItems.filter(i => i.category_id === cat.id)
     for (const item of catItems) {
       await supabase.from('menu_items').update({ status }).eq('id', item.id)
