@@ -84,6 +84,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<MenuItem | null>(null)
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<Category | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   // Status change pending
@@ -300,6 +301,34 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     )
   }
 
+  async function changeCategoryStatus(cat: Category, status: MenuItemStatus) {
+    // Update category status
+    await supabase.from('categories').update({ status }).eq('id', cat.id)
+    setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, status } : c))
+
+    // Also update all courses in this category to the same status
+    const catItems = menuItems.filter(i => i.category_id === cat.id)
+    for (const item of catItems) {
+      await supabase.from('menu_items').update({ status }).eq('id', item.id)
+    }
+    setMenuItems(prev => prev.map(i => i.category_id === cat.id ? { ...i, status } : i))
+  }
+
+  async function deleteCategory() {
+    if (!deleteCategoryTarget) return
+    setDeleting(true)
+
+    // Delete all courses in this category first
+    await supabase.from('menu_items').delete().eq('category_id', deleteCategoryTarget.id)
+    await supabase.from('categories').delete().eq('id', deleteCategoryTarget.id)
+
+    setMenuItems(prev => prev.filter(i => i.category_id !== deleteCategoryTarget.id))
+    setCategories(prev => prev.filter(c => c.id !== deleteCategoryTarget.id))
+    setDeleting(false)
+    setDeleteCategoryTarget(null)
+    startTransition(() => router.refresh())
+  }
+
   const itemsByCategory = (categoryId: string) =>
     menuItems.filter(i => i.category_id === categoryId)
 
@@ -329,7 +358,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
           return (
             <div
               key={category.id}
-              className={`card overflow-hidden transition-all ${draggedCategoryId === category.id ? 'opacity-50 scale-[0.98]' : ''}`}
+              className={`card overflow-hidden transition-all ${draggedCategoryId === category.id ? 'opacity-50 scale-[0.98]' : ''} ${category.status === 'hidden' || category.status === 'archived' ? 'opacity-50' : ''}`}
               draggable
               onDragStart={() => setDraggedCategoryId(category.id)}
               onDragEnd={() => setDraggedCategoryId(null)}
@@ -370,6 +399,30 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   title="Edit category"
                 >
                   <Pencil size={14} />
+                </button>
+
+                <button
+                  onClick={() => changeCategoryStatus(category, category.status === 'hidden' ? 'active' : 'hidden')}
+                  className="p-2 text-charcoal/25 hover:text-charcoal/50 transition-colors"
+                  title={category.status === 'hidden' ? 'Show category' : 'Hide category'}
+                >
+                  <EyeOff size={14} />
+                </button>
+
+                <button
+                  onClick={() => changeCategoryStatus(category, category.status === 'archived' ? 'active' : 'archived')}
+                  className="p-2 text-charcoal/25 hover:text-amber-500 transition-colors"
+                  title={category.status === 'archived' ? 'Unarchive category' : 'Archive category'}
+                >
+                  <Archive size={14} />
+                </button>
+
+                <button
+                  onClick={() => setDeleteCategoryTarget(category)}
+                  className="p-2 text-charcoal/25 hover:text-red-500 transition-colors"
+                  title="Delete category"
+                >
+                  <Trash2 size={14} />
                 </button>
 
                 <button
@@ -740,18 +793,30 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
               This cannot be undone. Consider archiving instead if you may need it later.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="btn-outline flex-1"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={deleteCourse}
-                disabled={deleting}
-                className="flex-1 px-4 py-3 rounded-xl font-medium text-sm bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50"
-              >
+              <button onClick={() => setDeleteTarget(null)} className="btn-outline flex-1">Cancel</button>
+              <button onClick={deleteCourse} disabled={deleting} className="flex-1 px-4 py-3 rounded-xl font-medium text-sm bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50">
                 {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteCategoryTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-charcoal/50 backdrop-blur-sm" onClick={() => setDeleteCategoryTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <h3 className="font-serif text-xl text-charcoal mb-2">Delete category?</h3>
+            <p className="text-sm text-charcoal/60 mb-1">
+              <span className="font-medium text-charcoal">&ldquo;{deleteCategoryTarget.name}&rdquo;</span> and all its courses will be permanently deleted.
+            </p>
+            <p className="text-sm text-charcoal/40 mb-6">
+              This cannot be undone. Consider archiving instead.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteCategoryTarget(null)} className="btn-outline flex-1">Cancel</button>
+              <button onClick={deleteCategory} disabled={deleting} className="flex-1 px-4 py-3 rounded-xl font-medium text-sm bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50">
+                {deleting ? 'Deleting…' : 'Delete all'}
               </button>
             </div>
           </div>

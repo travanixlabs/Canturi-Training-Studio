@@ -7,12 +7,14 @@ export default async function HeadOfficeProgressPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: boutiques }, { data: allUsers }, { data: categories }, { data: menuItems }, { data: completions }] = await Promise.all([
+  const [{ data: boutiques }, { data: allUsers }, { data: categories }, { data: menuItems }, { data: completions }, { data: plates }, { data: visibleCats }] = await Promise.all([
     supabase.from('boutiques').select('*').order('city'),
     supabase.from('users').select('*, boutique:boutiques(*)'),
     supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('menu_items').select('*'),
+    supabase.from('menu_items').select('*').eq('status', 'active'),
     supabase.from('completions').select('*'),
+    supabase.from('plates').select('*'),
+    supabase.from('visible_categories').select('*'),
   ])
 
   return (
@@ -22,6 +24,8 @@ export default async function HeadOfficeProgressPage() {
       categories={categories ?? []}
       menuItems={menuItems ?? []}
       completions={completions ?? []}
+      plates={plates ?? []}
+      visibleCategories={visibleCats ?? []}
     />
   )
 }

@@ -30,6 +30,7 @@ export interface Category {
   icon: string
   colour_hex: string
   sort_order: number
+  status: MenuItemStatus
 }
 
 export interface MenuItem {
