@@ -208,7 +208,7 @@ function CategoryGroup({
   completedInCategory: number
   onItemClick: (itemId: string) => void
 }) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
 
   return (
     <div className="card overflow-hidden">
