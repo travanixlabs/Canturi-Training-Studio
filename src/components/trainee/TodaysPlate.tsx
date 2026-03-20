@@ -246,7 +246,7 @@ function CategoryGroup({
             <button
               key={item.id}
               onClick={() => onItemClick(item.id)}
-              className="w-full px-5 py-3.5 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
+              className={`w-full px-5 py-3.5 flex items-center gap-3 text-left transition-colors ${item.completed ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2'}`}
             >
               <span
                 className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
