@@ -21,7 +21,7 @@ export default async function HeadOfficePlatePage() {
   const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: todayPlates }] = await Promise.all([
     supabase.from('users').select('*, boutique:boutiques(*)').in('role', ['trainee', 'manager']),
     supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('menu_items').select('*, category:categories(*)').order('title'),
+    supabase.from('menu_items').select('*, category:categories(*)').eq('is_visible', true).order('title'),
     supabase.from('plates').select('*').eq('date_assigned', today),
   ])
 

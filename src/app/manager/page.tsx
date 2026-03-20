@@ -21,7 +21,7 @@ export default async function ManagerPlatePage() {
   const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: todayPlates }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
     supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('menu_items').select('*, category:categories(*)').order('title'),
+    supabase.from('menu_items').select('*, category:categories(*)').eq('is_visible', true).order('title'),
     supabase.from('plates').select('*').eq('date_assigned', today).eq('boutique_id', manager.boutique_id),
   ])
 

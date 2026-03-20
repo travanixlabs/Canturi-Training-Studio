@@ -10,7 +10,7 @@ export default async function TraineeMenuPage() {
 
   const [{ data: categories }, { data: menuItems }, { data: completions }, { data: profile }] = await Promise.all([
     supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('menu_items').select('*, category:categories(*)').order('title'),
+    supabase.from('menu_items').select('*, category:categories(*)').eq('is_visible', true).order('title'),
     supabase.from('completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
   ])

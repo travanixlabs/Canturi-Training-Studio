@@ -38,6 +38,7 @@ export interface MenuItem {
   trainer_type: TrainerType
   resource_link: string | null
   boutique_id: string | null
+  is_visible: boolean
   created_at: string
   category?: Category
 }
