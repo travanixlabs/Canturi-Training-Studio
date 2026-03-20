@@ -54,10 +54,20 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
     if (!existingCompletion) return
     setReassigning(true)
 
-    // Delete the completion
-    await supabase.from('completions').delete().eq('id', existingCompletion.id)
+    // Delete the completion (resets all ratings, notes, completed status)
+    const { error: delError } = await supabase.from('completions').delete().eq('id', existingCompletion.id)
+    if (delError) {
+      setError('Failed to reassign. Check permissions.')
+      setReassigning(false)
+      return
+    }
 
-    // Create a new plate assignment for this date
+    // Remove any existing plate for this item+trainee
+    await supabase.from('plates').delete()
+      .eq('trainee_id', existingCompletion.trainee_id)
+      .eq('menu_item_id', existingCompletion.menu_item_id)
+
+    // Create a fresh plate assignment for the selected date
     await supabase.from('plates').insert({
       trainee_id: existingCompletion.trainee_id,
       menu_item_id: existingCompletion.menu_item_id,
