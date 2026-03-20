@@ -260,45 +260,6 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
       {selectedTrainee && (
         <>
-          {/* Today's plate summary */}
-          {traineeOnPlateCount(selectedTrainee.id) === 0 ? (
-            <div className="card p-4 mb-5 border border-dashed border-charcoal/15 bg-transparent">
-              <p className="text-sm text-charcoal/40 text-center">
-                {selectedTrainee.name.split(' ')[0]}&apos;s plate is empty — browse the menu below and tap + to assign.
-              </p>
-            </div>
-          ) : (
-            <div className="card p-4 mb-5 bg-charcoal/3 border-0">
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-xs font-medium text-charcoal/50 uppercase tracking-wider">
-                  {selectedTrainee.name.split(' ')[0]}&apos;s assigned items
-                </p>
-                <span className="text-xs text-gold font-medium">{traineeOnPlateCount(selectedTrainee.id)} items</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {menuItems
-                  .filter(item => isOnPlate(item.id, selectedTrainee.id))
-                  .map(item => {
-                    const plate = plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id)
-                    return (
-                      <span key={item.id} className="text-xs bg-white border border-black/8 text-charcoal px-2 py-1 rounded-lg flex items-center gap-1.5">
-                        {item.title}
-                        {plate && plate.date_assigned !== new Date().toISOString().split('T')[0] && (
-                          <span className="text-charcoal/30">{new Date(plate.date_assigned + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</span>
-                        )}
-                        <button
-                          onClick={() => removeFromPlate(item)}
-                          className="text-charcoal/30 hover:text-red-500 transition-colors"
-                        >
-                          <X size={10} />
-                        </button>
-                      </span>
-                    )
-                  })}
-              </div>
-            </div>
-          )}
-
           {/* Search */}
           <div className="relative mb-4">
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal/30" />

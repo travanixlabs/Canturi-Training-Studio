@@ -74,10 +74,13 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   const [courseSaving, setCourseSaving] = useState(false)
 
   // Category modal
-  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [categoryModal, setCategoryModal] = useState<{ mode: 'add' } | { mode: 'edit'; category: Category } | null>(null)
   const [categoryForm, setCategoryForm] = useState<CategoryFormData>(emptyCategoryForm())
   const [categoryError, setCategoryError] = useState<string | null>(null)
   const [categorySaving, setCategorySaving] = useState(false)
+
+  // Drag and drop
+  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null)
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<MenuItem | null>(null)
@@ -234,28 +237,67 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     setCategorySaving(true)
     setCategoryError(null)
 
-    const { data, error } = await supabase
-      .from('categories')
-      .insert({
+    if (categoryModal?.mode === 'edit') {
+      const { error } = await supabase.from('categories').update({
         name: categoryForm.name.trim(),
         icon: categoryForm.icon.trim(),
         colour_hex: categoryForm.colour_hex,
-        sort_order: categoryForm.sort_order ? parseInt(categoryForm.sort_order, 10) : categories.length + 1,
-      })
-      .select()
-      .single()
+      }).eq('id', categoryModal.category.id)
 
-    if (error) {
-      setCategoryError('Failed to create category. ' + error.message)
-      setCategorySaving(false)
-      return
+      if (error) {
+        setCategoryError('Failed to update. ' + error.message)
+        setCategorySaving(false)
+        return
+      }
+
+      setCategories(prev => prev.map(c => c.id === categoryModal.category.id ? { ...c, name: categoryForm.name.trim(), icon: categoryForm.icon.trim(), colour_hex: categoryForm.colour_hex } : c))
+    } else {
+      const { data, error } = await supabase.from('categories').insert({
+        name: categoryForm.name.trim(),
+        icon: categoryForm.icon.trim(),
+        colour_hex: categoryForm.colour_hex,
+        sort_order: categories.length + 1,
+      }).select().single()
+
+      if (error) {
+        setCategoryError('Failed to create category. ' + error.message)
+        setCategorySaving(false)
+        return
+      }
+
+      setCategories(prev => [...prev, data as Category].sort((a, b) => a.sort_order - b.sort_order))
     }
 
-    setCategories(prev => [...prev, data as Category].sort((a, b) => a.sort_order - b.sort_order))
     setCategorySaving(false)
-    setShowCategoryModal(false)
+    setCategoryModal(null)
     setCategoryForm(emptyCategoryForm())
     startTransition(() => router.refresh())
+  }
+
+  function openEditCategory(cat: Category) {
+    setCategoryForm({ name: cat.name, icon: cat.icon, colour_hex: cat.colour_hex, sort_order: '' })
+    setCategoryError(null)
+    setCategoryModal({ mode: 'edit', category: cat })
+  }
+
+  async function handleDrop(targetCategoryId: string) {
+    if (!draggedCategoryId || draggedCategoryId === targetCategoryId) return
+
+    const fromIdx = categories.findIndex(c => c.id === draggedCategoryId)
+    const toIdx = categories.findIndex(c => c.id === targetCategoryId)
+    if (fromIdx === -1 || toIdx === -1) return
+
+    const reordered = [...categories]
+    const [moved] = reordered.splice(fromIdx, 1)
+    reordered.splice(toIdx, 0, moved)
+
+    const updated = reordered.map((c, i) => ({ ...c, sort_order: i + 1 }))
+    setCategories(updated)
+    setDraggedCategoryId(null)
+
+    await Promise.all(
+      updated.map(c => supabase.from('categories').update({ sort_order: c.sort_order }).eq('id', c.id))
+    )
   }
 
   const itemsByCategory = (categoryId: string) =>
@@ -270,11 +312,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
           <p className="text-sm text-charcoal/40 mt-1">{menuItems.length} courses across {categories.length} categories</p>
         </div>
         <button
-          onClick={() => {
-            setCategoryForm(emptyCategoryForm())
-            setCategoryError(null)
-            setShowCategoryModal(true)
-          }}
+          onClick={() => { setCategoryForm(emptyCategoryForm()); setCategoryError(null); setCategoryModal({ mode: 'add' }) }}
           className="btn-outline flex items-center gap-2 text-sm"
         >
           <Plus size={15} />
@@ -289,12 +327,25 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
           const expanded = expandedCategories.has(category.id)
 
           return (
-            <div key={category.id} className="card overflow-hidden">
+            <div
+              key={category.id}
+              className={`card overflow-hidden transition-all ${draggedCategoryId === category.id ? 'opacity-50 scale-[0.98]' : ''}`}
+              draggable
+              onDragStart={() => setDraggedCategoryId(category.id)}
+              onDragEnd={() => setDraggedCategoryId(null)}
+              onDragOver={e => e.preventDefault()}
+              onDrop={() => handleDrop(category.id)}
+            >
               {/* Category header */}
               <div className="flex items-center">
+                {/* Drag handle */}
+                <div className="pl-3 pr-1 py-4 cursor-grab active:cursor-grabbing text-charcoal/20 hover:text-charcoal/40">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="5" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/><circle cx="5" cy="8" r="1.5"/><circle cx="11" cy="8" r="1.5"/><circle cx="5" cy="13" r="1.5"/><circle cx="11" cy="13" r="1.5"/></svg>
+                </div>
+
                 <button
                   onClick={() => toggleCategory(category.id)}
-                  className="flex-1 px-5 py-4 flex items-center gap-3 text-left"
+                  className="flex-1 pr-2 py-4 flex items-center gap-3 text-left"
                 >
                   <span
                     className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
@@ -311,6 +362,14 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   ) : (
                     <ChevronDown size={16} className="text-charcoal/30" />
                   )}
+                </button>
+
+                <button
+                  onClick={() => openEditCategory(category)}
+                  className="p-2 text-charcoal/25 hover:text-gold transition-colors"
+                  title="Edit category"
+                >
+                  <Pencil size={14} />
                 </button>
 
                 <button
@@ -559,17 +618,17 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       )}
 
       {/* Category form modal */}
-      {showCategoryModal && (
+      {categoryModal && (
         <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
           <div
             className="absolute inset-0 bg-charcoal/50 backdrop-blur-sm"
-            onClick={() => setShowCategoryModal(false)}
+            onClick={() => setCategoryModal(null)}
           />
           <div className="relative bg-white w-full sm:max-w-md sm:mx-4 sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="sticky top-0 bg-white border-b border-black/5 px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
-              <h2 className="font-serif text-xl text-charcoal">Add Category</h2>
+              <h2 className="font-serif text-xl text-charcoal">{categoryModal?.mode === 'edit' ? 'Edit Category' : 'Add Category'}</h2>
               <button
-                onClick={() => setShowCategoryModal(false)}
+                onClick={() => setCategoryModal(null)}
                 className="text-charcoal/40 hover:text-charcoal p-1 -mr-1 transition-colors"
               >
                 <X size={20} />
@@ -597,16 +656,17 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   Icon <span className="text-red-400">*</span>
                 </label>
                 <div className="grid grid-cols-8 gap-1.5">
-                  {['✦', '◈', '⌂', '◎', '◇', '▽', '❋', '★', '♦', '⚡', '🔧', '💎', '📦', '🎓', '👥', '🏪', '📋', '🎯', '💡', '🔑', '🛡️', '📐', '🎨', '✨'].map(icon => (
+                  {['✦', '◈', '⌂', '◎', '◇', '▽', '❋', '★', '♦', '⚡', '●', '■', '▲', '◆', '✧', '○', '□', '△', '◇', '✦', '⬟', '⬡', '✿', '❖'].map(icon => (
                     <button
                       key={icon}
                       type="button"
                       onClick={() => setCategoryForm(f => ({ ...f, icon }))}
                       className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${
                         categoryForm.icon === icon
-                          ? 'bg-gold/10 border-2 border-gold text-charcoal'
-                          : 'bg-charcoal/3 border-2 border-transparent text-charcoal/60 hover:border-charcoal/15'
+                          ? 'border-2 border-gold shadow-sm'
+                          : 'bg-charcoal/3 border-2 border-transparent hover:border-charcoal/15'
                       }`}
+                      style={{ color: categoryForm.colour_hex || '#1C1C1C' }}
                     >
                       {icon}
                     </button>
@@ -649,7 +709,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
 
               <div className="flex gap-3 pt-1">
                 <button
-                  onClick={() => setShowCategoryModal(false)}
+                  onClick={() => setCategoryModal(null)}
                   className="btn-outline flex-1"
                 >
                   Cancel
@@ -659,7 +719,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   disabled={categorySaving}
                   className="btn-gold flex-1"
                 >
-                  {categorySaving ? 'Saving…' : 'Add category'}
+                  {categorySaving ? 'Saving…' : categoryModal?.mode === 'edit' ? 'Save changes' : 'Add category'}
                 </button>
               </div>
             </div>
