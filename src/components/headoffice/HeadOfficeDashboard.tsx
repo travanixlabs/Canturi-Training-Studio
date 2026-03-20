@@ -21,13 +21,14 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
   const getEmployees = (boutique: Boutique) =>
     getUsersForBoutique(boutique).filter(u => u.role === 'trainee')
 
-  const groupPct = (users: User[]) => {
-    if (users.length === 0 || totalItems === 0) return 0
-    const total = users.reduce((sum, u) => {
-      const done = completions.filter(c => c.trainee_id === u.id).length
+  const boutiquePct = (boutique: Boutique) => {
+    const employees = getEmployees(boutique)
+    if (employees.length === 0 || totalItems === 0) return 0
+    const total = employees.reduce((sum, e) => {
+      const done = completions.filter(c => c.trainee_id === e.id).length
       return sum + (done / totalItems) * 100
     }, 0)
-    return Math.round(total / users.length)
+    return Math.round(total / employees.length)
   }
 
   const personPct = (userId: string) => {
@@ -35,7 +36,6 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
     return Math.round((completions.filter(c => c.trainee_id === userId).length / totalItems) * 100)
   }
 
-  // Recent activity feed (last 20 completions)
   const recentActivity = completions.slice(0, 20)
 
   const timeAgo = (dateStr: string) => {
@@ -54,62 +54,52 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
         <p className="text-sm text-charcoal/40 mt-1">Across all boutiques</p>
       </div>
 
-      {/* Managers section */}
-      <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">Managers</h2>
+      {/* Boutique cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {boutiques.map(boutique => {
           const managers = getManagers(boutique)
-          const pct = groupPct(managers)
-
-          return (
-            <div key={boutique.id} className="card p-5">
-              <div className="flex items-start justify-between mb-3">
-                <p className="font-serif text-lg text-charcoal leading-tight">{boutique.city}</p>
-                <p className="font-serif text-2xl text-gold">{pct}%</p>
-              </div>
-
-              <div className="h-1.5 bg-charcoal/8 rounded-full overflow-hidden mb-3">
-                <div className="h-full bg-gold rounded-full" style={{ width: `${pct}%` }} />
-              </div>
-
-              {managers.length === 0 ? (
-                <p className="text-xs text-charcoal/30">No managers</p>
-              ) : (
-                <div className="space-y-2">
-                  {managers.map(mgr => (
-                    <PersonRow key={mgr.id} user={mgr} pct={personPct(mgr.id)} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Employees section */}
-      <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">Employees</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        {boutiques.map(boutique => {
           const employees = getEmployees(boutique)
-          const pct = groupPct(employees)
+          const pct = boutiquePct(boutique)
 
           return (
             <div key={boutique.id} className="card p-5">
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-1">
                 <p className="font-serif text-lg text-charcoal leading-tight">{boutique.city}</p>
                 <p className="font-serif text-2xl text-gold">{pct}%</p>
               </div>
 
+              {/* Managers listed */}
+              <p className="text-xs text-charcoal/40 mb-3">
+                {managers.length > 0
+                  ? managers.map(m => m.name.split(' ')[0]).join(', ')
+                  : 'No manager'}
+              </p>
+
+              {/* Progress bar */}
               <div className="h-1.5 bg-charcoal/8 rounded-full overflow-hidden mb-3">
                 <div className="h-full bg-gold rounded-full" style={{ width: `${pct}%` }} />
               </div>
 
+              {/* Employees with progress */}
               {employees.length === 0 ? (
                 <p className="text-xs text-charcoal/30">No active employees</p>
               ) : (
                 <div className="space-y-2">
                   {employees.map(emp => (
-                    <PersonRow key={emp.id} user={emp} pct={personPct(emp.id)} />
+                    <div key={emp.id} className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs flex-shrink-0">
+                        {emp.avatar_initials}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between text-xs mb-0.5">
+                          <span className="text-charcoal/70">{emp.name}</span>
+                          <span className="text-charcoal/40">{personPct(emp.id)}%</span>
+                        </div>
+                        <div className="h-1 bg-charcoal/8 rounded-full overflow-hidden">
+                          <div className="h-full bg-gold/60 rounded-full" style={{ width: `${personPct(emp.id)}%` }} />
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -150,25 +140,6 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
           })}
         </div>
       )}
-    </div>
-  )
-}
-
-function PersonRow({ user, pct }: { user: User; pct: number }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs flex-shrink-0">
-        {user.avatar_initials}
-      </div>
-      <div className="flex-1">
-        <div className="flex justify-between text-xs mb-0.5">
-          <span className="text-charcoal/70">{user.name}</span>
-          <span className="text-charcoal/40">{pct}%</span>
-        </div>
-        <div className="h-1 bg-charcoal/8 rounded-full overflow-hidden">
-          <div className="h-full bg-gold/60 rounded-full" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
     </div>
   )
 }
