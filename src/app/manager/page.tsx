@@ -18,12 +18,12 @@ export default async function ManagerPlatePage() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: todayPlates }, { data: hiddenItems }] = await Promise.all([
+  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: todayPlates }, { data: visibleCats }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
     supabase.from('categories').select('*').order('sort_order'),
     supabase.from('menu_items').select('*, category:categories(*)').order('title'),
     supabase.from('plates').select('*').eq('date_assigned', today).eq('boutique_id', manager.boutique_id),
-    supabase.from('hidden_menu_items').select('*'),
+    supabase.from('visible_categories').select('*'),
   ])
 
   return (
@@ -33,7 +33,7 @@ export default async function ManagerPlatePage() {
       categories={categories ?? []}
       menuItems={menuItems ?? []}
       todayPlates={todayPlates ?? []}
-      hiddenItems={hiddenItems ?? []}
+      visibleCategories={visibleCats ?? []}
     />
   )
 }

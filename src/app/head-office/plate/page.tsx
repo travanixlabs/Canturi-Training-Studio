@@ -18,12 +18,12 @@ export default async function HeadOfficePlatePage() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: todayPlates }, { data: hiddenItems }] = await Promise.all([
+  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: todayPlates }, { data: visibleCats }] = await Promise.all([
     supabase.from('users').select('*, boutique:boutiques(*)').in('role', ['trainee', 'manager']),
     supabase.from('categories').select('*').order('sort_order'),
     supabase.from('menu_items').select('*, category:categories(*)').order('title'),
     supabase.from('plates').select('*').eq('date_assigned', today),
-    supabase.from('hidden_menu_items').select('*'),
+    supabase.from('visible_categories').select('*'),
   ])
 
   return (
@@ -33,7 +33,7 @@ export default async function HeadOfficePlatePage() {
       categories={categories ?? []}
       menuItems={menuItems ?? []}
       todayPlates={todayPlates ?? []}
-      hiddenItems={hiddenItems ?? []}
+      visibleCategories={visibleCats ?? []}
       showBoutique
     />
   )

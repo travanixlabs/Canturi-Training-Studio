@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useMemo, useTransition } from 'react'
-import { Search, X, ChevronDown, ChevronUp, Plus, Check, Eye, EyeOff } from 'lucide-react'
+import { Search, X, ChevronDown, ChevronUp, Plus, Check } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { User, Category, MenuItem, Plate, HiddenMenuItem } from '@/types'
+import type { User, Category, MenuItem, Plate, VisibleCategory } from '@/types'
 
 interface Props {
   manager: User
@@ -13,18 +13,18 @@ interface Props {
   categories: Category[]
   menuItems: MenuItem[]
   todayPlates: Plate[]
-  hiddenItems?: HiddenMenuItem[]
+  visibleCategories?: VisibleCategory[]
   showBoutique?: boolean
 }
 
-export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, hiddenItems: initialHidden = [], showBoutique }: Props) {
+export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, visibleCategories: initialVisible = [], showBoutique }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
   const [search, setSearch] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [plates, setPlates] = useState<Plate[]>(todayPlates)
-  const [hiddenItems, setHiddenItems] = useState<HiddenMenuItem[]>(initialHidden)
+  const [visibleCats, setVisibleCats] = useState<VisibleCategory[]>(initialVisible)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const supabase = createClient()
@@ -35,14 +35,14 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     weekday: 'long', day: 'numeric', month: 'long'
   })
 
+  const isCategoryVisible = (categoryId: string, userId?: string) => {
+    const uid = userId ?? selectedTrainee?.id
+    return visibleCats.some(v => v.category_id === categoryId && v.user_id === uid)
+  }
+
   const isOnPlate = (menuItemId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
     return plates.some(p => p.menu_item_id === menuItemId && p.trainee_id === tid)
-  }
-
-  const isHidden = (menuItemId: string, userId?: string) => {
-    const uid = userId ?? selectedTrainee?.id
-    return hiddenItems.some(h => h.menu_item_id === menuItemId && h.user_id === uid)
   }
 
   const traineeOnPlateCount = (traineeId: string) =>
@@ -75,27 +75,27 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     startTransition(() => router.refresh())
   }
 
-  async function toggleVisibility(item: MenuItem) {
+  async function toggleCategoryVisibility(categoryId: string) {
     if (!selectedTrainee) return
 
-    const existing = hiddenItems.find(
-      h => h.menu_item_id === item.id && h.user_id === selectedTrainee.id
+    const existing = visibleCats.find(
+      v => v.category_id === categoryId && v.user_id === selectedTrainee.id
     )
 
     if (existing) {
-      // Make visible (remove from hidden)
-      setHiddenItems(prev => prev.filter(h => h.id !== existing.id))
-      await supabase.from('hidden_menu_items').delete().eq('id', existing.id)
+      // Hide category
+      setVisibleCats(prev => prev.filter(v => v.id !== existing.id))
+      await supabase.from('visible_categories').delete().eq('id', existing.id)
     } else {
-      // Hide
-      const { data, error } = await supabase.from('hidden_menu_items').insert({
+      // Show category
+      const { data, error } = await supabase.from('visible_categories').insert({
         user_id: selectedTrainee.id,
-        menu_item_id: item.id,
-        hidden_by: manager.id,
+        category_id: categoryId,
+        enabled_by: manager.id,
       }).select().single()
 
       if (!error && data) {
-        setHiddenItems(prev => [...prev, data as HiddenMenuItem])
+        setVisibleCats(prev => [...prev, data as VisibleCategory])
       }
     }
   }
@@ -119,12 +119,6 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   }
 
   const isSearching = search.trim().length > 0
-
-  const hiddenCountForCategory = (categoryId: string) => {
-    if (!selectedTrainee || !isEmployee) return 0
-    const items = menuItems.filter(i => i.category_id === categoryId)
-    return items.filter(i => isHidden(i.id)).length
-  }
 
   return (
     <div className="px-5 py-6">
@@ -239,8 +233,6 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   item={item}
                   onPlate={isOnPlate(item.id)}
                   onToggle={() => togglePlate(item)}
-                  hidden={isEmployee ? isHidden(item.id) : false}
-                  onToggleVisibility={isEmployee ? () => toggleVisibility(item) : undefined}
                 />
               ))}
             </div>
@@ -253,35 +245,64 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                 const items = menuItems.filter(i => i.category_id === category.id)
                 const expanded = expandedCategories.has(category.id)
                 const onPlateCount = items.filter(i => isOnPlate(i.id)).length
-                const hiddenCount = hiddenCountForCategory(category.id)
+                const visible = isCategoryVisible(category.id)
 
                 return (
-                  <div key={category.id} className="card overflow-hidden">
-                    <button
-                      onClick={() => toggleCategory(category.id)}
-                      className="w-full px-5 py-4 flex items-center gap-3 text-left"
-                    >
-                      <span
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0"
-                        style={{ backgroundColor: category.colour_hex + '20', color: category.colour_hex }}
+                  <div key={category.id} className={`card overflow-hidden ${isEmployee && !visible ? 'opacity-40' : ''}`}>
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => toggleCategory(category.id)}
+                        className="flex-1 px-5 py-4 flex items-center gap-3 text-left"
                       >
-                        {category.icon}
-                      </span>
-                      <div className="flex-1">
-                        <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
-                        <div className="flex gap-3 mt-0.5">
-                          {onPlateCount > 0 && (
-                            <p className="text-xs text-gold">{onPlateCount} on plate</p>
-                          )}
-                          {hiddenCount > 0 && (
-                            <p className="text-xs text-charcoal/30">{hiddenCount} hidden</p>
-                          )}
+                        <span
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                          style={{ backgroundColor: category.colour_hex + '20', color: category.colour_hex }}
+                        >
+                          {category.icon}
+                        </span>
+                        <div className="flex-1">
+                          <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
+                          <div className="flex gap-3 mt-0.5">
+                            {onPlateCount > 0 && (
+                              <p className="text-xs text-gold">{onPlateCount} on plate</p>
+                            )}
+                            {isEmployee && (
+                              <p className="text-xs text-charcoal/30">{visible ? 'Visible' : 'Hidden'}</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
-                    </button>
+                        {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
+                      </button>
 
-                    {expanded && (
+                      {/* Category visibility toggle — only for employees */}
+                      {isEmployee && (
+                        <button
+                          onClick={() => toggleCategoryVisibility(category.id)}
+                          className={`mr-4 w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+                            visible
+                              ? 'bg-gold/10 text-gold border-2 border-gold/30'
+                              : 'bg-charcoal/5 text-charcoal/25 border-2 border-charcoal/10'
+                          }`}
+                          title={visible ? 'Hide from employee' : 'Show to employee'}
+                        >
+                          {visible ? (
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                              <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                          ) : (
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                              <line x1="1" y1="1" x2="23" y2="23"/>
+                              <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                            </svg>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {expanded && visible && (
                       <div className="border-t border-black/5 divide-y divide-black/5">
                         {items.map(item => (
                           <MenuItemRow
@@ -289,11 +310,17 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                             item={item}
                             onPlate={isOnPlate(item.id)}
                             onToggle={() => togglePlate(item)}
-                            hidden={isEmployee ? isHidden(item.id) : false}
-                            onToggleVisibility={isEmployee ? () => toggleVisibility(item) : undefined}
                             compact
                           />
                         ))}
+                      </div>
+                    )}
+
+                    {expanded && !visible && isEmployee && (
+                      <div className="border-t border-black/5 px-5 py-4">
+                        <p className="text-sm text-charcoal/30 text-center">
+                          {items.length} courses — hidden from {selectedTrainee.name.split(' ')[0]}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -351,19 +378,15 @@ function MenuItemRow({
   item,
   onPlate,
   onToggle,
-  hidden = false,
-  onToggleVisibility,
   compact = false,
 }: {
   item: MenuItem
   onPlate: boolean
   onToggle: () => void
-  hidden?: boolean
-  onToggleVisibility?: () => void
   compact?: boolean
 }) {
   return (
-    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${hidden ? 'opacity-40' : ''}`}>
+    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'}`}>
       <div className="flex-1">
         {!compact && item.category && (
           <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
@@ -371,23 +394,6 @@ function MenuItemRow({
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
         <p className="text-xs text-charcoal/35 mt-0.5">{item.time_needed} · {item.trainer_type}</p>
       </div>
-
-      {/* Visibility toggle — only for employees */}
-      {onToggleVisibility && (
-        <button
-          onClick={onToggleVisibility}
-          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-            hidden
-              ? 'text-charcoal/25 hover:text-charcoal/50'
-              : 'text-gold/60 hover:text-gold'
-          }`}
-          title={hidden ? 'Show to employee' : 'Hide from employee'}
-        >
-          {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
-        </button>
-      )}
-
-      {/* Add to plate */}
       <button
         onClick={onToggle}
         className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${

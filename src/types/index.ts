@@ -71,11 +71,11 @@ export interface Completion {
   trainee?: User
 }
 
-export interface HiddenMenuItem {
+export interface VisibleCategory {
   id: string
   user_id: string
-  menu_item_id: string
-  hidden_by: string
+  category_id: string
+  enabled_by: string
   created_at: string
 }
 
