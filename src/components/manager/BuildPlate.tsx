@@ -95,40 +95,48 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
         <p className="text-sm text-charcoal/40 mt-1">{today}</p>
       </div>
 
-      {/* Trainee selector */}
+      {/* People selector */}
       {trainees.length === 0 ? (
         <div className="card p-6 text-center mb-5">
-          <p className="text-charcoal/40 text-sm">No trainees in your boutique yet.</p>
+          <p className="text-charcoal/40 text-sm">No team members found.</p>
+        </div>
+      ) : showBoutique ? (
+        /* Head Office view: split by role */
+        <div className="mb-5 space-y-4">
+          {[
+            { label: 'Building for Managers', users: trainees.filter(t => t.role === 'manager') },
+            { label: 'Building for Employees', users: trainees.filter(t => t.role === 'trainee') },
+          ].map(group => group.users.length > 0 && (
+            <div key={group.label}>
+              <p className="text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">{group.label}</p>
+              <div className="flex gap-2 flex-wrap">
+                {group.users.map(person => (
+                  <PersonButton
+                    key={person.id}
+                    person={person}
+                    selected={selectedTrainee?.id === person.id}
+                    plateCount={traineeOnPlateCount(person.id)}
+                    showBoutique
+                    onClick={() => setSelectedTrainee(person)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
+        /* Manager view: single list */
         <div className="mb-5">
           <p className="text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Building for</p>
           <div className="flex gap-2 flex-wrap">
-            {trainees.map(trainee => (
-              <button
-                key={trainee.id}
-                onClick={() => setSelectedTrainee(trainee)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all text-sm font-medium ${
-                  selectedTrainee?.id === trainee.id
-                    ? 'border-gold bg-gold/10 text-gold'
-                    : 'border-charcoal/15 text-charcoal/60 hover:border-charcoal/30'
-                }`}
-              >
-                <span className="w-7 h-7 rounded-full bg-charcoal/8 flex items-center justify-center text-xs font-medium">
-                  {trainee.avatar_initials}
-                </span>
-                <span>
-                  {trainee.name}
-                  {showBoutique && trainee.boutique && (
-                    <span className="text-xs text-charcoal/30 ml-1">({(trainee.boutique as { city: string }).city})</span>
-                  )}
-                </span>
-                {traineeOnPlateCount(trainee.id) > 0 && (
-                  <span className="text-xs bg-gold/20 text-gold px-1.5 py-0.5 rounded-full">
-                    {traineeOnPlateCount(trainee.id)}
-                  </span>
-                )}
-              </button>
+            {trainees.map(person => (
+              <PersonButton
+                key={person.id}
+                person={person}
+                selected={selectedTrainee?.id === person.id}
+                plateCount={traineeOnPlateCount(person.id)}
+                onClick={() => setSelectedTrainee(person)}
+              />
             ))}
           </div>
         </div>
@@ -250,6 +258,46 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
         </>
       )}
     </div>
+  )
+}
+
+function PersonButton({
+  person,
+  selected,
+  plateCount,
+  showBoutique,
+  onClick,
+}: {
+  person: User
+  selected: boolean
+  plateCount: number
+  showBoutique?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all text-sm font-medium ${
+        selected
+          ? 'border-gold bg-gold/10 text-gold'
+          : 'border-charcoal/15 text-charcoal/60 hover:border-charcoal/30'
+      }`}
+    >
+      <span className="w-7 h-7 rounded-full bg-charcoal/8 flex items-center justify-center text-xs font-medium">
+        {person.avatar_initials}
+      </span>
+      <span>
+        {person.name}
+        {showBoutique && person.boutique && (
+          <span className="text-xs text-charcoal/30 ml-1">({(person.boutique as { city: string }).city})</span>
+        )}
+      </span>
+      {plateCount > 0 && (
+        <span className="text-xs bg-gold/20 text-gold px-1.5 py-0.5 rounded-full">
+          {plateCount}
+        </span>
+      )}
+    </button>
   )
 }
 
