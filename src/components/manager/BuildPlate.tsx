@@ -98,7 +98,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
       {/* People selector */}
       {trainees.length === 0 ? (
         <div className="card p-6 text-center mb-5">
-          <p className="text-charcoal/40 text-sm">No team members found.</p>
+          <p className="text-charcoal/40 text-sm">No employees found.</p>
         </div>
       ) : showBoutique ? (
         /* Head Office view: split by role */

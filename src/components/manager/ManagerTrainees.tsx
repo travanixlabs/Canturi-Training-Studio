@@ -36,9 +36,9 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions }
   if (trainees.length === 0) {
     return (
       <div className="px-5 py-6">
-        <h1 className="font-serif text-2xl text-charcoal mb-4">Trainees</h1>
+        <h1 className="font-serif text-2xl text-charcoal mb-4">Employees</h1>
         <div className="card p-6 text-center">
-          <p className="text-charcoal/40 text-sm">No active trainees in your boutique.</p>
+          <p className="text-charcoal/40 text-sm">No active employees in your boutique.</p>
         </div>
       </div>
     )
@@ -47,7 +47,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions }
   return (
     <div className="px-5 py-6">
       <div className="mb-5">
-        <h1 className="font-serif text-2xl text-charcoal">Trainees</h1>
+        <h1 className="font-serif text-2xl text-charcoal">Employees</h1>
       </div>
 
       {/* Trainee tabs */}

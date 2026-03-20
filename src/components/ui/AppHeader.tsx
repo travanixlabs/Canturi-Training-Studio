@@ -18,7 +18,7 @@ export function AppHeader({ user, title }: Props) {
     router.push('/login')
   }
 
-  const roleLabel = user.role === 'head_office' ? 'Head Office' : user.role === 'manager' ? 'Manager' : 'Trainee'
+  const roleLabel = user.role === 'head_office' ? 'Head Office' : user.role === 'manager' ? 'Manager' : 'Employee'
 
   return (
     <header className="bg-charcoal text-white px-5 py-4 flex items-center justify-between sticky top-0 z-40">

@@ -60,7 +60,7 @@ export function HeadOfficeProgress({ boutiques, allUsers, categories, menuItems,
               viewRole === 'trainee' ? 'bg-gold text-white' : 'text-charcoal/50 hover:text-charcoal'
             }`}
           >
-            Trainees
+            Employees
           </button>
           <button
             onClick={() => setViewRole('manager')}
@@ -104,7 +104,7 @@ export function HeadOfficeProgress({ boutiques, allUsers, categories, menuItems,
       {filteredUsers.length === 0 ? (
         <div className="card p-6 text-center">
           <p className="text-charcoal/40 text-sm">
-            No {viewRole === 'trainee' ? 'trainees' : 'managers'} found
+            No {viewRole === 'trainee' ? 'employees' : 'managers'} found
             {selectedBoutique !== 'all' && ` in ${getBoutiqueName(selectedBoutique)}`}.
           </p>
         </div>

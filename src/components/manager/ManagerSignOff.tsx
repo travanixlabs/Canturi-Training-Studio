@@ -39,7 +39,7 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
         {/* Trainee selector */}
         {trainees.length > 1 && (
           <div className="mb-5">
-            <p className="text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Trainee</p>
+            <p className="text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Employee</p>
             <div className="flex gap-2 flex-wrap">
               {trainees.map(trainee => (
                 <button
@@ -60,7 +60,7 @@ export function ManagerSignOff({ manager, trainees, completions, menuItems }: Pr
 
         {!selectedTrainee && trainees.length === 0 && (
           <div className="card p-6 text-center">
-            <p className="text-charcoal/40 text-sm">No trainees in your boutique.</p>
+            <p className="text-charcoal/40 text-sm">No employees in your boutique.</p>
           </div>
         )}
 
