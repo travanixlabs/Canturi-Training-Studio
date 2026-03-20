@@ -78,6 +78,22 @@ export interface Completion {
   trainee?: User
 }
 
+export interface Module {
+  id: string
+  menu_item_id: string
+  title: string
+  content: string
+  sort_order: number
+  created_at: string
+}
+
+export interface ModuleCompletion {
+  id: string
+  module_id: string
+  trainee_id: string
+  completed_at: string
+}
+
 export interface VisibleCategory {
   id: string
   user_id: string

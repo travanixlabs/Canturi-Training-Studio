@@ -1,8 +1,6 @@
 'use client'
 
-import { useState } from 'react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
-import { TaskModal } from '@/components/ui/TaskModal'
 import { StarRating } from '@/components/ui/StarRating'
 import { CATEGORY_COLOURS } from '@/types'
 import { Clock } from 'lucide-react'
@@ -17,7 +15,6 @@ interface Props {
 }
 
 export function TodaysPlate({ plates, completions, shadowedToday = [], currentUser }: Props) {
-  const [selectedPlate, setSelectedPlate] = useState<Plate | null>(null)
   const router = useRouter()
 
   const today = new Date().toLocaleDateString('en-AU', {
@@ -84,7 +81,7 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
                   key={plate.id}
                   plate={plate}
                   completed={false}
-                  onOpen={() => setSelectedPlate(plate)}
+                  onOpen={() => router.push(`/trainee/course/${plate.menu_item_id}`)}
                 />
               ))}
             </div>
@@ -102,7 +99,7 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
                   plate={plate}
                   completed
                   completion={getCompletion(plate.menu_item_id)!}
-                  onOpen={() => setSelectedPlate(plate)}
+                  onOpen={() => router.push(`/trainee/course/${plate.menu_item_id}`)}
                 />
               ))}
               {shadowedToday.map(completion => (
@@ -113,18 +110,6 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
         )}
       </div>
 
-      {/* Task modal */}
-      {selectedPlate?.menu_item && (
-        <TaskModal
-          item={selectedPlate.menu_item}
-          plate={selectedPlate}
-          existingCompletion={getCompletion(selectedPlate.menu_item_id)}
-          currentUser={currentUser}
-          mode="trainee"
-          onClose={() => setSelectedPlate(null)}
-          onComplete={() => router.refresh()}
-        />
-      )}
     </>
   )
 }

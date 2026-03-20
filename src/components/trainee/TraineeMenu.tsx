@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
-import { TaskModal } from '@/components/ui/TaskModal'
 import { CATEGORY_COLOURS } from '@/types'
 import type { Category, MenuItem, Completion, User } from '@/types'
 import { useRouter } from 'next/navigation'
@@ -17,7 +16,6 @@ interface Props {
 
 export function TraineeMenu({ categories, menuItems, completions, currentUser }: Props) {
   const [search, setSearch] = useState('')
-  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(categories.map(c => c.id)))
   const router = useRouter()
 
@@ -103,7 +101,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser }:
                   completed={isCompleted(item.id)}
                   searchQuery={search}
                   highlightText={highlightText}
-                  onOpen={() => setSelectedItem(item)}
+                  onOpen={() => router.push(`/trainee/course/${item.id}`)}
                 />
               ))}
             </div>
@@ -159,7 +157,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser }:
                       {items.map(item => (
                         <button
                           key={item.id}
-                          onClick={() => setSelectedItem(item)}
+                          onClick={() => router.push(`/trainee/course/${item.id}`)}
                           className="w-full px-5 py-3.5 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
                         >
                           <span
@@ -190,18 +188,6 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser }:
         )}
       </div>
 
-      {/* Task modal */}
-      {selectedItem && (
-        <TaskModal
-          item={selectedItem}
-          plate={null}
-          existingCompletion={getCompletion(selectedItem.id)}
-          currentUser={currentUser}
-          mode="trainee"
-          onClose={() => setSelectedItem(null)}
-          onComplete={() => router.refresh()}
-        />
-      )}
     </>
   )
 }
