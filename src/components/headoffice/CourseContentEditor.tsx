@@ -41,6 +41,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
   const [trainerType, setTrainerType] = useState<TrainerType>(initialItem.trainer_type)
   const [priorityLevel, setPriorityLevel] = useState<DifficultyLevel | ''>(initialItem.difficulty_level ?? '')
   const [isRecurring, setIsRecurring] = useState(initialItem.is_recurring)
+  const [recurringAmount, setRecurringAmount] = useState((initialItem as any).recurring_amount ?? 1)
 
   // Modules
   const [modules, setModules] = useState<Module[]>(initialModules)
@@ -56,6 +57,13 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
   const activeModule = modules.find(m => m.id === selectedModuleId)
 
   async function saveCourse() {
+    if (!title.trim()) { alert('Title is required.'); return }
+    if (!description.trim()) { alert('Description is required.'); return }
+    if (!categoryId) { alert('Course is required.'); return }
+    if (!tags.trim()) { alert('Tags are required.'); return }
+    if (!trainerType) { alert('Trainer type is required.'); return }
+    if (!priorityLevel) { alert('Difficulty level is required.'); return }
+    if (isRecurring && (!recurringAmount || recurringAmount < 1)) { alert('Recurring amount is required when recurring is enabled.'); return }
     setSaving(true)
     await supabase.from('menu_items').update({
       title,
@@ -66,6 +74,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
       trainer_type: trainerType,
       difficulty_level: priorityLevel || null,
       is_recurring: isRecurring,
+      recurring_amount: isRecurring ? recurringAmount : null,
     }).eq('id', initialItem.id)
     setSaving(false)
     setSaved(true)
@@ -362,14 +371,33 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setIsRecurring(!isRecurring)}
-                  className={`w-10 h-6 rounded-full transition-all ${isRecurring ? 'bg-gold' : 'bg-charcoal/15'}`}
-                >
-                  <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform mx-1 ${isRecurring ? 'translate-x-4' : ''}`} />
-                </button>
-                <span className="text-sm text-charcoal/70">Recurring (revisit regularly)</span>
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    onClick={() => setIsRecurring(!isRecurring)}
+                    className={`w-10 h-6 rounded-full transition-all ${isRecurring ? 'bg-gold' : 'bg-charcoal/15'}`}
+                  >
+                    <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform mx-1 ${isRecurring ? 'translate-x-4' : ''}`} />
+                  </button>
+                  <span className="text-sm text-charcoal/70">Recurring (revisit regularly)</span>
+                </div>
+
+                <div className={`${isRecurring ? '' : 'opacity-30 pointer-events-none'}`}>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+                    Recurring amount {isRecurring && <span className="text-red-400">*</span>}
+                  </label>
+                  <select
+                    className="input w-24"
+                    value={recurringAmount}
+                    onChange={e => setRecurringAmount(Number(e.target.value))}
+                    disabled={!isRecurring}
+                  >
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-charcoal/30 mt-1">Number of times this category must be completed</p>
+                </div>
               </div>
             </div>
           )}
