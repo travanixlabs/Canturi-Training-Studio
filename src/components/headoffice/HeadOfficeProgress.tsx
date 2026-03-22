@@ -122,7 +122,7 @@ export function HeadOfficeProgress({ boutiques, allUsers, categories, menuItems,
                 </div>
 
                 {assignedCount === 0 ? (
-                  <p className="text-xs text-charcoal/30">No courses assigned yet.</p>
+                  <p className="text-xs text-charcoal/30">No categories assigned yet.</p>
                 ) : (
                   <div className="space-y-2.5">
                     {assignedCats.map(cat => {

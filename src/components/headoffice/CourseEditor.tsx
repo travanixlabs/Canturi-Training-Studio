@@ -132,7 +132,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   async function saveCourse() {
     if (!courseForm.title.trim()) { setCourseError('Title is required.'); return }
     if (!courseForm.description.trim()) { setCourseError('Description is required.'); return }
-    if (!courseForm.category_id) { setCourseError('Category is required.'); return }
+    if (!courseForm.category_id) { setCourseError('Course is required.'); return }
     if (!courseForm.tags.trim()) { setCourseError('Tags are required.'); return }
     if (!courseForm.trainer_type) { setCourseError('Trainer type is required.'); return }
     if (!courseForm.difficulty_level) { setCourseError('Difficulty level is required.'); return }
@@ -163,7 +163,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         .single()
 
       if (error) {
-        setCourseError('Failed to create course. ' + error.message)
+        setCourseError('Failed to create category. ' + error.message)
         setCourseSaving(false)
         return
       }
@@ -178,7 +178,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         .single()
 
       if (error) {
-        setCourseError('Failed to update course. ' + error.message)
+        setCourseError('Failed to update category. ' + error.message)
         setCourseSaving(false)
         return
       }
@@ -260,7 +260,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       }).select().single()
 
       if (error) {
-        setCategoryError('Failed to create category. ' + error.message)
+        setCategoryError('Failed to create course. ' + error.message)
         setCategorySaving(false)
         return
       }
@@ -303,7 +303,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   async function changeCategoryStatus(cat: Category, status: MenuItemStatus) {
     const { error } = await supabase.from('categories').update({ status }).eq('id', cat.id)
     if (error) {
-      alert('Failed to update category: ' + error.message)
+      alert('Failed to update course: ' + error.message)
       return
     }
     setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, status } : c))
@@ -319,7 +319,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     if (!deleteCategoryTarget) return
     setDeleting(true)
 
-    // Delete all courses in this category first
+    // Delete all categories in this course first
     await supabase.from('menu_items').delete().eq('category_id', deleteCategoryTarget.id)
     await supabase.from('categories').delete().eq('id', deleteCategoryTarget.id)
 
@@ -338,15 +338,15 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       {/* Page header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="font-serif text-2xl text-charcoal">Courses</h1>
-          <p className="text-sm text-charcoal/40 mt-1">{menuItems.length} courses across {categories.length} categories</p>
+          <h1 className="font-serif text-2xl text-charcoal">Categories</h1>
+          <p className="text-sm text-charcoal/40 mt-1">{menuItems.length} categories across {categories.length} courses</p>
         </div>
         <button
           onClick={() => { setCategoryForm(emptyCategoryForm()); setCategoryError(null); setCategoryModal({ mode: 'add' }) }}
           className="btn-outline flex items-center gap-2 text-sm"
         >
           <Plus size={15} />
-          Add category
+          Add course
         </button>
       </div>
 
@@ -385,7 +385,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   </span>
                   <div className="flex-1">
                     <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
-                    <p className="text-xs text-charcoal/35 mt-0.5">{items.length} course{items.length !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-charcoal/35 mt-0.5">{items.length} {items.length !== 1 ? 'categories' : 'category'}</p>
                   </div>
                   {expanded ? (
                     <ChevronUp size={16} className="text-charcoal/30" />
@@ -397,7 +397,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                 <button
                   onClick={() => openEditCategory(category)}
                   className="p-2 text-charcoal/25 hover:text-gold transition-colors"
-                  title="Edit category"
+                  title="Edit course"
                 >
                   <Pencil size={14} />
                 </button>
@@ -405,7 +405,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                 <button
                   onClick={() => changeCategoryStatus(category, category.status === 'hidden' ? 'active' : 'hidden')}
                   className="p-2 text-charcoal/25 hover:text-charcoal/50 transition-colors"
-                  title={category.status === 'hidden' ? 'Show category' : 'Hide category'}
+                  title={category.status === 'hidden' ? 'Show course' : 'Hide course'}
                 >
                   <EyeOff size={14} />
                 </button>
@@ -413,7 +413,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                 <button
                   onClick={() => setDeleteCategoryTarget(category)}
                   className="p-2 text-charcoal/25 hover:text-red-500 transition-colors"
-                  title="Delete category"
+                  title="Delete course"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -423,7 +423,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   className="mr-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-charcoal/50 hover:text-gold border border-charcoal/10 hover:border-gold transition-all"
                 >
                   <Plus size={13} />
-                  Add course
+                  Add category
                 </button>
               </div>
 
@@ -432,12 +432,12 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                 <div className="border-t border-black/5 divide-y divide-black/5">
                   {items.length === 0 ? (
                     <div className="px-5 py-5 text-center">
-                      <p className="text-sm text-charcoal/30">No courses yet.</p>
+                      <p className="text-sm text-charcoal/30">No categories yet.</p>
                       <button
                         onClick={() => openAddCourse(category.id)}
                         className="mt-2 text-sm text-gold hover:text-gold/70 transition-colors"
                       >
-                        Add the first course
+                        Add the first category
                       </button>
                     </div>
                   ) : (
@@ -460,7 +460,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
 
         {categories.length === 0 && (
           <div className="card p-8 text-center">
-            <p className="text-charcoal/40 text-sm">No categories yet. Add a category to get started.</p>
+            <p className="text-charcoal/40 text-sm">No courses yet. Add a course to get started.</p>
           </div>
         )}
       </div>
@@ -473,7 +473,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
             {/* Header */}
             <div className="sticky top-0 bg-white border-b border-black/5 px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
               <h2 className="font-serif text-xl text-charcoal">
-                {courseModal.mode === 'add' ? 'Add Course' : 'Edit Course'}
+                {courseModal.mode === 'add' ? 'Add Category' : 'Edit Category'}
               </h2>
               <button onClick={closeCourseModal} className="text-charcoal/40 hover:text-charcoal p-1 -mr-1 transition-colors">
                 <X size={20} />
@@ -512,14 +512,14 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
               {/* Category */}
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Category <span className="text-red-400">*</span>
+                  Course <span className="text-red-400">*</span>
                 </label>
                 <select
                   className="input"
                   value={courseForm.category_id}
                   onChange={e => setCourseForm(f => ({ ...f, category_id: e.target.value }))}
                 >
-                  <option value="">Select a category…</option>
+                  <option value="">Select a course…</option>
                   {categories.map(c => (
                     <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                   ))}
@@ -622,7 +622,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                     }`}
                   />
                 </button>
-                <span className="text-sm text-charcoal/70">Recurring course</span>
+                <span className="text-sm text-charcoal/70">Recurring category</span>
               </div>
 
 
@@ -642,7 +642,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   disabled={courseSaving}
                   className="btn-gold flex-1"
                 >
-                  {courseSaving ? 'Saving…' : courseModal.mode === 'add' ? 'Add course' : 'Save changes'}
+                  {courseSaving ? 'Saving…' : courseModal.mode === 'add' ? 'Add category' : 'Save changes'}
                 </button>
               </div>
             </div>
@@ -659,7 +659,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
           />
           <div className="relative bg-white w-full sm:max-w-md sm:mx-4 sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="sticky top-0 bg-white border-b border-black/5 px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
-              <h2 className="font-serif text-xl text-charcoal">{categoryModal?.mode === 'edit' ? 'Edit Category' : 'Add Category'}</h2>
+              <h2 className="font-serif text-xl text-charcoal">{categoryModal?.mode === 'edit' ? 'Edit Course' : 'Add Course'}</h2>
               <button
                 onClick={() => setCategoryModal(null)}
                 className="text-charcoal/40 hover:text-charcoal p-1 -mr-1 transition-colors"
@@ -752,7 +752,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   disabled={categorySaving}
                   className="btn-gold flex-1"
                 >
-                  {categorySaving ? 'Saving…' : categoryModal?.mode === 'edit' ? 'Save changes' : 'Add category'}
+                  {categorySaving ? 'Saving…' : categoryModal?.mode === 'edit' ? 'Save changes' : 'Add course'}
                 </button>
               </div>
             </div>
@@ -765,7 +765,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-charcoal/50 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
-            <h3 className="font-serif text-xl text-charcoal mb-2">Delete course?</h3>
+            <h3 className="font-serif text-xl text-charcoal mb-2">Delete category?</h3>
             <p className="text-sm text-charcoal/60 mb-1">
               <span className="font-medium text-charcoal">&ldquo;{deleteTarget.title}&rdquo;</span> will be permanently deleted.
             </p>
@@ -786,9 +786,9 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-charcoal/50 backdrop-blur-sm" onClick={() => setDeleteCategoryTarget(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
-            <h3 className="font-serif text-xl text-charcoal mb-2">Delete category?</h3>
+            <h3 className="font-serif text-xl text-charcoal mb-2">Delete course?</h3>
             <p className="text-sm text-charcoal/60 mb-1">
-              <span className="font-medium text-charcoal">&ldquo;{deleteCategoryTarget.name}&rdquo;</span> and all its courses will be permanently deleted.
+              <span className="font-medium text-charcoal">&ldquo;{deleteCategoryTarget.name}&rdquo;</span> and all its categories will be permanently deleted.
             </p>
             <p className="text-sm text-charcoal/40 mb-6">
               This cannot be undone. Consider archiving instead.
@@ -894,7 +894,7 @@ function CourseRow({
         <button
           onClick={onEdit}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-gold hover:bg-gold/10 transition-all"
-          title="Edit course"
+          title="Edit category"
         >
           <Pencil size={14} />
         </button>
@@ -902,7 +902,7 @@ function CourseRow({
           <button
             onClick={() => onChangeStatus('hidden')}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-charcoal/60 hover:bg-charcoal/5 transition-all"
-            title="Hide course"
+            title="Hide category"
           >
             <EyeOff size={14} />
           </button>
@@ -910,7 +910,7 @@ function CourseRow({
         <button
           onClick={onDelete}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-red-500 hover:bg-red-50 transition-all"
-          title="Delete course"
+          title="Delete category"
         >
           <Trash2 size={14} />
         </button>

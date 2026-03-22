@@ -102,7 +102,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
         <>
           {totalItems === 0 ? (
             <div className="card p-6 text-center">
-              <p className="text-charcoal/40 text-sm">No courses assigned to {selected.name.split(' ')[0]} yet.</p>
+              <p className="text-charcoal/40 text-sm">No categories assigned to {selected.name.split(' ')[0]} yet.</p>
             </div>
           ) : (
             <>
@@ -127,7 +127,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
               </div>
 
               {/* By category */}
-              <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">By category</h2>
+              <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">By course</h2>
               <div className="space-y-3">
                 {assignedCategories.map(cat => {
                   const pct = categoryPct(selected.id, cat.id)

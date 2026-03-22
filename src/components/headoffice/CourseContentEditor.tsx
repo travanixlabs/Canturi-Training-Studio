@@ -164,7 +164,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
           {category && (
             <CategoryBadge categoryName={category.name} icon={category.icon} />
           )}
-          <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{title || 'Untitled Course'}</h1>
+          <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{title || 'Untitled Category'}</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -190,7 +190,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                   : 'border-charcoal/10 text-charcoal/50'
               }`}
             >
-              Course Details
+              Category Details
             </button>
             {modules.map((mod, i) => (
               <button
@@ -225,7 +225,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
               }`}
             >
               <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs">⚙</span>
-              <span className="text-sm font-medium">Course Details</span>
+              <span className="text-sm font-medium">Category Details</span>
             </button>
 
             <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">
@@ -296,7 +296,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
           {/* Course details editor */}
           {editingCourseDetails && (
             <div className="space-y-5">
-              <h2 className="font-serif text-xl text-charcoal">Course Details</h2>
+              <h2 className="font-serif text-xl text-charcoal">Category Details</h2>
 
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>
@@ -310,7 +310,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Category</label>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Course</label>
                   <select className="input" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
                     {categories.map(c => (
                       <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
@@ -536,7 +536,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             <div className="text-center py-12">
               <p className="text-4xl mb-4">📖</p>
               <p className="font-serif text-lg text-charcoal/60 mb-2">No modules yet</p>
-              <p className="text-sm text-charcoal/40 mb-6">Add modules to build out the course content.</p>
+              <p className="text-sm text-charcoal/40 mb-6">Add modules to build out the category content.</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {MODULE_TYPES.map(t => (
                   <button key={t.value} onClick={() => addModule(t.value)} className="btn-outline inline-flex items-center gap-2 text-sm">

@@ -47,8 +47,8 @@ export function TraineeProgress({ categories, menuItems, completions }: Props) {
         )}
       </div>
 
-      {/* Per-category breakdown */}
-      <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">By category</h2>
+      {/* Per-course breakdown */}
+      <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">By course</h2>
       <div className="space-y-3">
         {categories.map(category => {
           const items = menuItems.filter(i => i.category_id === category.id)

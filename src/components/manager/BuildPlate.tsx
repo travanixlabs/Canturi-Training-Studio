@@ -185,7 +185,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
               <div>
                 <h3 className="font-serif text-lg text-charcoal">Assign to date</h3>
                 <p className="text-xs text-charcoal/40 mt-0.5">
-                  {datePicker.items.length === 1 ? datePicker.items[0].title : `${datePicker.items.length} courses`}
+                  {datePicker.items.length === 1 ? datePicker.items[0].title : `${datePicker.items.length} categories`}
                   {' → '}{selectedTrainee?.name.split(' ')[0]}
                 </p>
               </div>
@@ -333,12 +333,12 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                         {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
                       </button>
 
-                      {/* Assign all courses in category */}
+                      {/* Assign all categories in course */}
                       {(!isEmployee || visible) && (
                         <button
                           onClick={() => requestAssign(items, `cat-${category.id}`)}
                           className="mr-2 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border-2 border-charcoal/10 text-charcoal/30 hover:border-gold hover:text-gold transition-all"
-                          title={`Assign all ${category.name} courses`}
+                          title={`Assign all ${category.name} categories`}
                         >
                           <Plus size={18} />
                         </button>
@@ -393,7 +393,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                     {expanded && isEmployee && !visible && (
                       <div className="border-t border-black/5 px-5 py-4">
                         <p className="text-sm text-charcoal/30 text-center">
-                          {items.length} courses — hidden from {selectedTrainee.name.split(' ')[0]}
+                          {items.length} categories — hidden from {selectedTrainee.name.split(' ')[0]}
                         </p>
                       </div>
                     )}
