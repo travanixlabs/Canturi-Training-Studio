@@ -32,6 +32,7 @@ interface CourseFormData {
   trainer_type: TrainerType
   difficulty_level: DifficultyLevel | ''
   is_recurring: boolean
+  recurring_amount: number
   resource_link: string
 }
 
@@ -51,6 +52,7 @@ const emptyCourseForm = (): CourseFormData => ({
   trainer_type: '' as TrainerType,
   difficulty_level: '',
   is_recurring: false,
+  recurring_amount: 1,
   resource_link: '',
 })
 
@@ -118,6 +120,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       trainer_type: item.trainer_type,
       difficulty_level: item.difficulty_level ?? '',
       is_recurring: item.is_recurring ?? false,
+      recurring_amount: (item as any).recurring_amount ?? 1,
       resource_link: item.resource_link ?? '',
     })
     setCourseError(null)
@@ -136,6 +139,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     if (!courseForm.tags.trim()) { setCourseError('Tags are required.'); return }
     if (!courseForm.trainer_type) { setCourseError('Trainer type is required.'); return }
     if (!courseForm.difficulty_level) { setCourseError('Difficulty level is required.'); return }
+    if (courseForm.is_recurring && (!courseForm.recurring_amount || courseForm.recurring_amount < 1)) { setCourseError('Recurring amount is required when recurring is enabled.'); return }
 
     setCourseSaving(true)
     setCourseError(null)
@@ -152,6 +156,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       trainer_type: courseForm.trainer_type,
       difficulty_level: courseForm.difficulty_level || null,
       is_recurring: courseForm.is_recurring,
+      recurring_amount: courseForm.is_recurring ? courseForm.recurring_amount : null,
       resource_link: courseForm.resource_link.trim() || null,
     }
 
@@ -606,23 +611,43 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
               </div>
 
               {/* Is recurring */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={courseForm.is_recurring}
-                  onClick={() => setCourseForm(f => ({ ...f, is_recurring: !f.is_recurring }))}
-                  className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${
-                    courseForm.is_recurring ? 'bg-gold' : 'bg-charcoal/15'
-                  }`}
-                >
-                  <span
-                    className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                      courseForm.is_recurring ? 'translate-x-5' : 'translate-x-1'
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={courseForm.is_recurring}
+                    onClick={() => setCourseForm(f => ({ ...f, is_recurring: !f.is_recurring }))}
+                    className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${
+                      courseForm.is_recurring ? 'bg-gold' : 'bg-charcoal/15'
                     }`}
-                  />
-                </button>
-                <span className="text-sm text-charcoal/70">Recurring category</span>
+                  >
+                    <span
+                      className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                        courseForm.is_recurring ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-sm text-charcoal/70">Recurring (revisit regularly)</span>
+                </div>
+
+                {/* Recurring amount */}
+                <div className={`${courseForm.is_recurring ? '' : 'opacity-30 pointer-events-none'}`}>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+                    Recurring amount {courseForm.is_recurring && <span className="text-red-400">*</span>}
+                  </label>
+                  <select
+                    className="input w-24"
+                    value={courseForm.recurring_amount}
+                    onChange={e => setCourseForm(f => ({ ...f, recurring_amount: Number(e.target.value) }))}
+                    disabled={!courseForm.is_recurring}
+                  >
+                    {Array.from({ length: 20 }, (_, i) => i + 1).map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-charcoal/30 mt-1">Number of times this category must be completed</p>
+                </div>
               </div>
 
 
