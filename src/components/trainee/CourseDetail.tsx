@@ -33,6 +33,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const [markingRecurring, setMarkingRecurring] = useState(false)
   const [showCourseCelebration, setShowCourseCelebration] = useState(false)
   const [viewingRecurringTask, setViewingRecurringTask] = useState(false)
+  const [sessionNotes, setSessionNotes] = useState('')
 
   const hasModules = modules.length > 0
 
@@ -42,13 +43,12 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const willCompleteCourse = otherSiblings.length > 0 && otherSiblingsDone
   const courseName = menuItem.category?.name ?? 'Course'
 
-  // Recurring task state
+  // Session state
   const isRecurringItem = menuItem.is_recurring && !!menuItem.recurring_amount
   const recurringTotal = menuItem.recurring_amount ?? 0
   const recurringDone = recurringComps.length
   const recurringFullyComplete = isRecurringItem && recurringDone >= recurringTotal
   const todayStr = new Date().toISOString().split('T')[0]
-  const doneToday = recurringComps.some(rc => rc.completed_date === todayStr)
 
   const isModuleComplete = (moduleId: string) =>
     completedModules.some(mc => mc.module_id === moduleId && mc.trainee_id === currentUser.id)
@@ -97,19 +97,31 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
     }
   }
 
-  async function markRecurringTaskDone() {
-    if (doneToday || markingRecurring) return
+  async function markSessionDone() {
+    if (markingRecurring || !sessionNotes.trim()) return
     setMarkingRecurring(true)
     const { data, error } = await supabase.from('recurring_task_completions').insert({
       trainee_id: currentUser.id,
       menu_item_id: menuItem.id,
       completed_date: todayStr,
+      notes: sessionNotes.trim(),
     }).select().single()
     if (!error && data) {
       setRecurringComps(prev => [...prev, data as RecurringTaskCompletion])
+      setSessionNotes('')
     }
     setMarkingRecurring(false)
   }
+
+  function formatDate(dateStr: string) {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
+  // Session history sorted most recent first
+  const sessionHistory = useMemo(
+    () => [...recurringComps].sort((a, b) => b.completed_date.localeCompare(a.completed_date) || b.created_at.localeCompare(a.created_at)),
+    [recurringComps]
+  )
 
   return (
     <>
@@ -170,7 +182,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     }`}
                   >
                     <span>↻</span>
-                    <span className="truncate max-w-[120px]">Recurring Task</span>
+                    <span className="truncate max-w-[120px]">Session</span>
                   </button>
                 )}
               </div>
@@ -208,7 +220,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     )
                   })}
 
-                  {/* Recurring Task sidebar item */}
+                  {/* Session sidebar item */}
                   {isRecurringItem && (
                     <>
                       <div className="border-t border-black/5 my-2" />
@@ -225,7 +237,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
                           viewingRecurringTask ? 'bg-blue-500 text-white' : allModulesComplete ? 'bg-charcoal/8 text-charcoal/40' : 'bg-charcoal/5 text-charcoal/15'
                         }`}>↻</span>
-                        <span className="text-sm">Recurring Task</span>
+                        <span className="text-sm">Session</span>
                         {!allModulesComplete && <span className="text-[10px] text-charcoal/20 ml-auto">Complete modules first</span>}
                       </button>
                     </>
@@ -309,20 +321,20 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     onClick={() => setViewingRecurringTask(true)}
                     className="btn-gold w-full"
                   >
-                    Recurring Task Details
+                    Session Details
                   </button>
                 )}
               </div>
             ) : null}
 
-            {/* Recurring Task Details — inline */}
+            {/* Session Details — inline */}
             {viewingRecurringTask && isRecurringItem && (
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-charcoal/30">↻</span>
-                  <p className="text-xs text-charcoal/40 uppercase tracking-wider">Recurring Task</p>
+                  <p className="text-xs text-charcoal/40 uppercase tracking-wider">Session</p>
                 </div>
-                <h2 className="font-serif text-xl text-charcoal mb-4">Recurring Task Details</h2>
+                <h2 className="font-serif text-xl text-charcoal mb-4">Session Details</h2>
 
                 {menuItem.recurring_task_content && (
                   <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap mb-6">
@@ -333,7 +345,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                 {/* Progress */}
                 <div className="card p-4 mb-6">
                   <div className="flex justify-between text-sm mb-1.5">
-                    <span className="text-charcoal/60">Recurring task progress</span>
+                    <span className="text-charcoal/60">Session progress</span>
                     <span className={`font-medium ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal'}`}>
                       {recurringDone}/{recurringTotal}
                     </span>
@@ -345,26 +357,49 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     />
                   </div>
                   <p className={`text-xs mt-2 ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
-                    {recurringDone} out of {recurringTotal} recurring tasks completed
+                    {recurringDone} out of {recurringTotal} sessions completed
                   </p>
                 </div>
 
+                {/* Session history log */}
+                {sessionHistory.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Session History</p>
+                    <div className="space-y-2">
+                      {sessionHistory.map((entry) => (
+                        <div key={entry.id} className="card p-4">
+                          <p className="text-xs font-medium text-charcoal/50 mb-1">{formatDate(entry.completed_date)}</p>
+                          {entry.notes ? (
+                            <p className="text-sm text-charcoal/70 leading-relaxed whitespace-pre-wrap">{entry.notes}</p>
+                          ) : (
+                            <p className="text-sm text-charcoal/30 italic">No notes recorded</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes textarea + Mark session as done */}
                 {!courseCompleted && !recurringFullyComplete && (
                   <div className="mb-6">
-                    {doneToday ? (
-                      <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 px-4 py-3 rounded-xl">
-                        <Check size={16} />
-                        <span>Done for today. {recurringDone} of {recurringTotal} completed.</span>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={markRecurringTaskDone}
-                        disabled={markingRecurring}
-                        className="btn-gold w-full"
-                      >
-                        {markingRecurring ? 'Saving...' : 'Mark recurring task as done'}
-                      </button>
-                    )}
+                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+                      Session Notes <span className="text-red-400">*</span>
+                    </label>
+                    <textarea
+                      className="textarea font-sans text-sm leading-relaxed mb-3"
+                      rows={4}
+                      value={sessionNotes}
+                      onChange={e => setSessionNotes(e.target.value)}
+                      placeholder="What did you observe or practise today?"
+                    />
+                    <button
+                      onClick={markSessionDone}
+                      disabled={markingRecurring || !sessionNotes.trim()}
+                      className={`btn-gold w-full ${!sessionNotes.trim() ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      {markingRecurring ? 'Saving...' : 'Mark session as done'}
+                    </button>
                   </div>
                 )}
 
@@ -399,7 +434,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
         </div>
       </div>
 
-      {/* Recurring Task Details — inline in main content area is handled below */}
+      {/* Session Details — inline in main content area is handled above */}
 
       {/* Completion popup */}
       {showCompleteModal && (

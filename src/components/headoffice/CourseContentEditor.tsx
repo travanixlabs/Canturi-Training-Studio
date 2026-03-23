@@ -66,7 +66,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     if (!trainerType) { alert('Trainer type is required.'); return }
     if (!priorityLevel) { alert('Difficulty level is required.'); return }
     if (isRecurring && (!recurringAmount || recurringAmount < 1)) { alert('Recurring amount is required when recurring is enabled.'); return }
-    if (isRecurring && !recurringTaskContent.trim()) { alert('Recurring Task Details content is required. Please fill in the Recurring Task page.'); setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false); return }
+    if (isRecurring && !recurringTaskContent.trim()) { alert('Session Details content is required. Please fill in the Session page.'); setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false); return }
     setSaving(true)
     await supabase.from('menu_items').update({
       title,
@@ -302,11 +302,11 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
               </div>
             )}
 
-            {/* Recurring Task — only when recurring is enabled */}
+            {/* Session — only when recurring is enabled */}
             {isRecurring && (
               <>
                 <div className="border-t border-black/5 mt-4 pt-4">
-                  <p className="text-xs font-medium text-charcoal/30 uppercase tracking-wider mb-2">Recurring Task</p>
+                  <p className="text-xs font-medium text-charcoal/30 uppercase tracking-wider mb-2">Session</p>
                 </div>
                 <button
                   onClick={() => { setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false) }}
@@ -317,7 +317,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                   }`}
                 >
                   <span className="w-5 h-5 rounded-full bg-charcoal/8 flex items-center justify-center text-[10px]">↻</span>
-                  <span className="truncate">Recurring Task Details</span>
+                  <span className="truncate">Session Details</span>
                   {!recurringTaskContent.trim() && (
                     <span className="text-red-400 text-xs ml-auto">*</span>
                   )}
@@ -586,19 +586,19 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             </div>
           )}
 
-          {/* Recurring Task Details editor */}
+          {/* Session Details editor */}
           {editingRecurringTask && !editingCourseDetails && (
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-charcoal/30">↻</span>
-                <p className="text-xs text-charcoal/40 uppercase tracking-wider">Recurring Task</p>
+                <p className="text-xs text-charcoal/40 uppercase tracking-wider">Session</p>
               </div>
 
               <div className="mb-4">
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>
                 <input
                   className="input font-serif text-xl bg-charcoal/3 cursor-not-allowed"
-                  value="Recurring Task Details"
+                  value="Session Details"
                   disabled
                 />
               </div>
@@ -612,7 +612,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                   rows={16}
                   value={recurringTaskContent}
                   onChange={e => setRecurringTaskContent(e.target.value)}
-                  placeholder="Describe what the employee must do each time they complete this recurring task.&#10;&#10;For example: 'Perform a full ultrasonic clean cycle on 3 pieces. Log the piece types and any issues observed.'"
+                  placeholder="Describe what the employee must do each time they complete this session.&#10;&#10;For example: 'Perform a full ultrasonic clean cycle on 3 pieces. Log the piece types and any issues observed.'"
                 />
               </div>
 
@@ -620,7 +620,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                 <div className="mt-6 pt-6 border-t border-black/5">
                   <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Preview</p>
                   <div className="card p-5">
-                    <h3 className="font-serif text-lg text-charcoal mb-3">Recurring Task Details</h3>
+                    <h3 className="font-serif text-lg text-charcoal mb-3">Session Details</h3>
                     <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap">
                       {recurringTaskContent}
                     </div>

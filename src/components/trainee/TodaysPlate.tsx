@@ -316,7 +316,7 @@ function CategoryGroup({
                   </p>
                   {item.isRecurring ? (
                     <p className={`text-xs font-medium mt-0.5 ${recurringFullyComplete ? 'text-green-600' : recurringInProgress ? 'text-blue-600' : 'text-charcoal/40'}`}>
-                      {item.recurringDone} out of {item.recurringTotal} recurring tasks completed
+                      {item.recurringDone} out of {item.recurringTotal} sessions completed
                     </p>
                   ) : (
                     <div className="flex items-center gap-2 mt-0.5">

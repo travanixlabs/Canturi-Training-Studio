@@ -715,7 +715,7 @@ function MenuItemRow({
         {isRecurringItem ? (
           <div className="mt-0.5">
             <p className={`text-xs font-medium ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
-              {recurringFullyComplete ? 'Completed' : `${recurringDone} out of ${recurringTotal} recurring tasks completed`}
+              {recurringFullyComplete ? 'Completed' : `${recurringDone} out of ${recurringTotal} sessions completed`}
               {!recurringFullyComplete && assignedDate && (
                 <span className="font-semibold text-charcoal/50 ml-1">{new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
               )}

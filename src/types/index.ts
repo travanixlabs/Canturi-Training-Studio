@@ -106,6 +106,7 @@ export interface RecurringTaskCompletion {
   trainee_id: string
   menu_item_id: string
   completed_date: string
+  notes: string | null
   created_at: string
 }
 

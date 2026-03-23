@@ -200,7 +200,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                               </p>
                               {isRec ? (
                                 <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : recInProgress ? 'text-blue-600' : 'text-charcoal/40'}`}>
-                                  {recDone} out of {recTotal} recurring tasks completed
+                                  {recDone} out of {recTotal} sessions completed
                                 </p>
                               ) : null}
                             </div>
