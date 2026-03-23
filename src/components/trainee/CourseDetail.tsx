@@ -51,10 +51,11 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
 
   const activeModule = useMemo(() => {
     if (!hasModules) return null
+    if (viewingRecurringTask) return null
     if (selectedModuleId) return modules.find(m => m.id === selectedModuleId) ?? modules[0]
     const firstIncomplete = modules.find(m => !isModuleComplete(m.id))
     return firstIncomplete ?? modules[0]
-  }, [selectedModuleId, modules, completedModules])
+  }, [selectedModuleId, modules, completedModules, viewingRecurringTask])
 
   async function toggleModuleComplete(moduleId: string) {
     const existing = completedModules.find(mc => mc.module_id === moduleId && mc.trainee_id === currentUser.id)
