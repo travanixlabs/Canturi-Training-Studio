@@ -9,13 +9,14 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: menuItem }, { data: modules }, { data: moduleCompletions }, { data: completion }, { data: profile }, { data: plate }] = await Promise.all([
+  const [{ data: menuItem }, { data: modules }, { data: moduleCompletions }, { data: completion }, { data: profile }, { data: plate }, { data: recurringCompletions }] = await Promise.all([
     supabase.from('menu_items').select('*, category:categories(*)').eq('id', id).single(),
     supabase.from('modules').select('*').eq('menu_item_id', id).order('sort_order'),
     supabase.from('module_completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('completions').select('*').eq('menu_item_id', id).eq('trainee_id', authUser.id).maybeSingle(),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('plates').select('*').eq('menu_item_id', id).eq('trainee_id', authUser.id).order('date_assigned', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('recurring_task_completions').select('*').eq('menu_item_id', id).eq('trainee_id', authUser.id),
   ])
 
   if (!menuItem || !profile) redirect('/trainee')
@@ -28,6 +29,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       existingCompletion={completion ?? null}
       plate={plate ?? null}
       currentUser={profile as User}
+      recurringCompletions={recurringCompletions ?? []}
     />
   )
 }

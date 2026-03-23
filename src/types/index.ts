@@ -47,6 +47,8 @@ export interface MenuItem {
   status: MenuItemStatus
   difficulty_level: DifficultyLevel | null
   is_recurring: boolean
+  recurring_amount: number | null
+  recurring_task_content: string | null
   category?: Category
 }
 
@@ -97,6 +99,14 @@ export interface ModuleCompletion {
   module_id: string
   trainee_id: string
   completed_at: string
+}
+
+export interface RecurringTaskCompletion {
+  id: string
+  trainee_id: string
+  menu_item_id: string
+  completed_date: string
+  created_at: string
 }
 
 export interface VisibleCategory {

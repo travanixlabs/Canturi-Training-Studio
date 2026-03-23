@@ -5,7 +5,7 @@ import { Search, X, ChevronDown, ChevronUp, Plus, Check, Calendar } from 'lucide
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { User, Category, MenuItem, Plate, VisibleCategory, Completion } from '@/types'
+import type { User, Category, MenuItem, Plate, VisibleCategory, Completion, RecurringTaskCompletion } from '@/types'
 
 interface Props {
   manager: User
@@ -15,6 +15,7 @@ interface Props {
   todayPlates: Plate[]
   visibleCategories?: VisibleCategory[]
   completions?: Completion[]
+  recurringCompletions?: RecurringTaskCompletion[]
   showBoutique?: boolean
 }
 
@@ -34,7 +35,7 @@ function getUpcomingDates() {
   return dates
 }
 
-export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, visibleCategories: initialVisible = [], completions: allCompletions = [], showBoutique }: Props) {
+export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, visibleCategories: initialVisible = [], completions: allCompletions = [], recurringCompletions: initialRecurring = [], showBoutique }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
@@ -44,6 +45,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   const [visibleCats, setVisibleCats] = useState<VisibleCategory[]>(initialVisible)
   const [isPending, startTransition] = useTransition()
   const [datePicker, setDatePicker] = useState<{ items: MenuItem[]; anchorId: string } | null>(null)
+  const [multiDatePicker, setMultiDatePicker] = useState<{ item: MenuItem; anchorId: string } | null>(null)
+  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
+  const [recurringCompletions, setRecurringCompletions] = useState<RecurringTaskCompletion[]>(initialRecurring)
   const router = useRouter()
   const supabase = createClient()
 
@@ -72,12 +76,23 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     return allCompletions.find(c => c.menu_item_id === menuItemId && c.trainee_id === selectedTrainee?.id)
   }
 
+  const getRecurringCount = (menuItemId: string, traineeId?: string) => {
+    const tid = traineeId ?? selectedTrainee?.id
+    return recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === tid).length
+  }
+
   const traineeOnPlateCount = (traineeId: string) =>
     plates.filter(p => p.trainee_id === traineeId).length
 
   // Show date picker for a single item or multiple items (category)
   function requestAssign(items: MenuItem[], anchorId: string) {
     if (!selectedTrainee) return
+    // For a single recurring item, show multi-date picker
+    if (items.length === 1 && items[0].is_recurring) {
+      setMultiDatePicker({ item: items[0], anchorId })
+      setSelectedDates(new Set())
+      return
+    }
     setDatePicker({ items, anchorId })
   }
 
@@ -115,8 +130,62 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     startTransition(() => router.refresh())
   }
 
+  async function assignMultipleDates() {
+    if (!selectedTrainee || !multiDatePicker || selectedDates.size === 0) return
+    const item = multiDatePicker.item
+
+    const newPlates: Plate[] = []
+    for (const date of Array.from(selectedDates).sort()) {
+      // Skip if already has a plate for this item+trainee+date
+      const alreadyExists = plates.some(
+        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.date_assigned === date
+      )
+      if (alreadyExists) continue
+
+      const { data, error } = await supabase.from('plates').insert({
+        trainee_id: selectedTrainee.id,
+        menu_item_id: item.id,
+        assigned_by: manager.id,
+        date_assigned: date,
+        boutique_id: selectedTrainee.boutique_id || manager.boutique_id,
+      }).select().single()
+
+      if (!error && data) {
+        newPlates.push(data as Plate)
+      }
+    }
+
+    if (newPlates.length > 0) {
+      setPlates(prev => [...prev, ...newPlates])
+    }
+    setMultiDatePicker(null)
+    setSelectedDates(new Set())
+    startTransition(() => router.refresh())
+  }
+
   async function removeFromPlate(item: MenuItem) {
     if (!selectedTrainee) return
+
+    if (item.is_recurring) {
+      // For recurring items, only remove plates where there is NO recurring_task_completion for that date
+      const traineeRecurringDates = new Set(
+        recurringCompletions
+          .filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee.id)
+          .map(rc => rc.completed_date)
+      )
+      const removable = plates.filter(
+        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && !traineeRecurringDates.has(p.date_assigned)
+      )
+      if (removable.length === 0) return
+      const removeIds = removable.map(p => p.id)
+      setPlates(prev => prev.filter(p => !removeIds.includes(p.id)))
+      for (const p of removable) {
+        await supabase.from('plates').delete().eq('id', p.id)
+      }
+      startTransition(() => router.refresh())
+      return
+    }
+
     const existing = plates.find(
       p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id
     )
@@ -213,6 +282,71 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
         </div>
       )}
 
+      {/* Multi-date picker modal for recurring items */}
+      {multiDatePicker && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setMultiDatePicker(null)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-serif text-lg text-charcoal">Assign recurring dates</h3>
+                <p className="text-xs text-charcoal/40 mt-0.5">
+                  {multiDatePicker.item.title}
+                  {' → '}{selectedTrainee?.name.split(' ')[0]}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Select multiple dates · {selectedDates.size} selected
+                </p>
+              </div>
+              <button onClick={() => setMultiDatePicker(null)} className="text-charcoal/30 hover:text-charcoal">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto mb-4">
+              {upcomingDates.map(date => {
+                const checked = selectedDates.has(date.value)
+                return (
+                  <button
+                    key={date.value}
+                    onClick={() => {
+                      setSelectedDates(prev => {
+                        const next = new Set(prev)
+                        if (next.has(date.value)) next.delete(date.value)
+                        else next.add(date.value)
+                        return next
+                      })
+                    }}
+                    className={`px-3 py-3 rounded-xl text-sm font-medium text-left transition-all border flex items-center gap-2 ${
+                      checked
+                        ? 'border-gold bg-gold/10 text-gold'
+                        : date.isToday
+                        ? 'border-gold/30 bg-gold/5 text-charcoal/70 hover:border-gold'
+                        : 'border-charcoal/10 text-charcoal/70 hover:border-gold hover:text-gold'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                      checked ? 'bg-gold border-gold' : 'border-charcoal/20'
+                    }`}>
+                      {checked && <Check size={10} className="text-white" />}
+                    </span>
+                    <span>
+                      {date.label}
+                      {date.isToday && <span className="block text-xs text-gold/60 mt-0.5">Today</span>}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <button
+              onClick={assignMultipleDates}
+              disabled={selectedDates.size === 0}
+              className="btn-gold w-full disabled:opacity-40"
+            >
+              Assign {selectedDates.size} date{selectedDates.size !== 1 ? 's' : ''}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* People selector */}
       {trainees.length === 0 ? (
         <div className="card p-6 text-center mb-5">
@@ -290,6 +424,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
                   onAssign={() => requestAssign([item], item.id)}
                   onRemove={() => removeFromPlate(item)}
+                  recurringCount={item.is_recurring ? getRecurringCount(item.id) : undefined}
                 />
               ))}
             </div>
@@ -420,6 +555,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   onAssign={() => requestAssign([item], item.id)}
                                   onRemove={() => removeFromPlate(item)}
                                   compact
+                                  recurringCount={getRecurringCount(item.id)}
                                 />
                               ))}
                             </div>
@@ -495,6 +631,7 @@ function MenuItemRow({
   onAssign,
   onRemove,
   compact = false,
+  recurringCount,
 }: {
   item: MenuItem
   onPlate: boolean
@@ -504,16 +641,30 @@ function MenuItemRow({
   onAssign: () => void
   onRemove: () => void
   compact?: boolean
+  recurringCount?: number
 }) {
   const shadowedEarly = completed && completedDate && assignedDate && completedDate < assignedDate
+  const isRecurringItem = item.is_recurring && item.recurring_amount
+  const recurringTotal = item.recurring_amount ?? 0
+  const recurringDone = recurringCount ?? 0
+  const recurringFullyComplete = isRecurringItem && recurringDone >= recurringTotal
 
   return (
-    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : ''}`}>
+    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${
+      isRecurringItem
+        ? (recurringFullyComplete ? 'bg-green-50/50' : recurringDone > 0 ? 'bg-blue-50/50' : '')
+        : (completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : '')
+    }`}>
       <div className="flex-1">
         {!compact && item.category && (
           <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
         )}
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
+        {isRecurringItem ? (
+          <p className={`text-xs font-medium mt-0.5 ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
+            {recurringDone} out of {recurringTotal} recurring tasks completed
+          </p>
+        ) : (
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-charcoal/35">
             {item.time_needed} · {item.trainer_type}
@@ -532,6 +683,7 @@ function MenuItemRow({
             </span>
           )}
         </div>
+        )}
       </div>
       {/* Edit date button for assigned items */}
       {onPlate && !completed && (

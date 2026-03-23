@@ -18,13 +18,14 @@ export default async function HeadOfficePlatePage() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: allPlates }, { data: visibleCats }, { data: completions }] = await Promise.all([
+  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: allPlates }, { data: visibleCats }, { data: completions }, { data: recurringCompletions }] = await Promise.all([
     supabase.from('users').select('*, boutique:boutiques(*)').eq('role', 'trainee'),
     supabase.from('categories').select('*').eq('status', 'active').order('sort_order'),
     supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active').order('title'),
     supabase.from('plates').select('*'),
     supabase.from('visible_categories').select('*'),
     supabase.from('completions').select('*'),
+    supabase.from('recurring_task_completions').select('*'),
   ])
 
   return (
@@ -36,6 +37,7 @@ export default async function HeadOfficePlatePage() {
       todayPlates={allPlates ?? []}
       visibleCategories={visibleCats ?? []}
       completions={completions ?? []}
+      recurringCompletions={recurringCompletions ?? []}
       showBoutique
     />
   )

@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { CATEGORY_COLOURS } from '@/types'
-import type { Category, MenuItem, Completion, User } from '@/types'
+import type { Category, MenuItem, Completion, User, RecurringTaskCompletion } from '@/types'
 import { useRouter } from 'next/navigation'
 
 interface Props {
@@ -12,15 +12,23 @@ interface Props {
   menuItems: MenuItem[]
   completions: Completion[]
   currentUser: User
+  recurringCompletions?: RecurringTaskCompletion[]
 }
 
-export function TraineeMenu({ categories, menuItems, completions, currentUser }: Props) {
+export function TraineeMenu({ categories, menuItems, completions, currentUser, recurringCompletions = [] }: Props) {
   const [search, setSearch] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const router = useRouter()
 
   const isCompleted = (itemId: string) => completions.some(c => c.menu_item_id === itemId)
   const getCompletion = (itemId: string) => completions.find(c => c.menu_item_id === itemId) ?? null
+
+  const getRecurringCount = (itemId: string) =>
+    recurringCompletions.filter(rc => rc.menu_item_id === itemId && rc.trainee_id === currentUser.id).length
+
+  const todayStr = new Date().toISOString().split('T')[0]
+  const isDoneToday = (itemId: string) =>
+    recurringCompletions.some(rc => rc.menu_item_id === itemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) return menuItems
@@ -154,31 +162,54 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser }:
                   {/* Items */}
                   {expanded && (
                     <div className="border-t border-black/5 divide-y divide-black/5">
-                      {items.map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => router.push(`/trainee/course/${item.id}`)}
-                          className={`w-full px-5 py-3.5 flex items-center gap-3 text-left transition-colors ${isCompleted(item.id) ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2'}`}
-                        >
-                          <span
-                            className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
-                              isCompleted(item.id)
-                                ? 'border-transparent'
-                                : 'border-charcoal/20'
-                            }`}
-                            style={isCompleted(item.id) ? { backgroundColor: category.colour_hex } : {}}
+                      {items.map(item => {
+                        const isRec = item.is_recurring && !!item.recurring_amount
+                        const recDone = isRec ? getRecurringCount(item.id) : 0
+                        const recTotal = item.recurring_amount ?? 0
+                        const recFullyComplete = isRec && recDone >= recTotal
+                        const recInProgress = isRec && recDone > 0 && !recFullyComplete
+                        const recDoneToday = isRec && isDoneToday(item.id)
+
+                        const bgClass = isRec
+                          ? (recFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : recInProgress && recDoneToday ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-charcoal/2')
+                          : (isCompleted(item.id) ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
+
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => router.push(`/trainee/course/${item.id}`)}
+                            className={`w-full px-5 py-3.5 flex items-center gap-3 text-left transition-colors ${bgClass}`}
                           >
-                            {isCompleted(item.id) && <span className="text-white">✓</span>}
-                          </span>
-                          <div className="flex-1">
-                            <p className={`text-[14px] leading-snug ${isCompleted(item.id) ? 'text-charcoal/40' : 'text-charcoal'}`}>
-                              {item.title}
-                            </p>
-                            <p className="text-xs text-charcoal/35 mt-0.5">{item.time_needed} · {item.trainer_type}</p>
-                          </div>
-                          <span className="text-charcoal/20 text-lg">›</span>
-                        </button>
-                      ))}
+                            <span
+                              className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
+                                isRec
+                                  ? (recFullyComplete ? 'border-transparent bg-green-500' : recInProgress ? 'border-transparent bg-blue-500' : 'border-charcoal/20')
+                                  : (isCompleted(item.id) ? 'border-transparent' : 'border-charcoal/20')
+                              }`}
+                              style={!isRec && isCompleted(item.id) ? { backgroundColor: category.colour_hex } : {}}
+                            >
+                              {(isCompleted(item.id) || recFullyComplete) && <span className="text-white">✓</span>}
+                            </span>
+                            <div className="flex-1">
+                              <p className={`text-[14px] leading-snug ${
+                                isRec
+                                  ? (recFullyComplete ? 'text-charcoal/40' : 'text-charcoal')
+                                  : (isCompleted(item.id) ? 'text-charcoal/40' : 'text-charcoal')
+                              }`}>
+                                {item.title}
+                              </p>
+                              {isRec ? (
+                                <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : recInProgress ? 'text-blue-600' : 'text-charcoal/40'}`}>
+                                  {recDone} out of {recTotal} recurring tasks completed
+                                </p>
+                              ) : (
+                                <p className="text-xs text-charcoal/35 mt-0.5">{item.time_needed} · {item.trainer_type}</p>
+                              )}
+                            </div>
+                            <span className="text-charcoal/20 text-lg">›</span>
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

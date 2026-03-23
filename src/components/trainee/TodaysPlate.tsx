@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import { CATEGORY_COLOURS } from '@/types'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
-import type { Plate, Completion, User, Category } from '@/types'
+import type { Plate, Completion, User, Category, RecurringTaskCompletion } from '@/types'
 import { useRouter } from 'next/navigation'
 
 interface Props {
@@ -12,9 +12,10 @@ interface Props {
   completions: Completion[]
   shadowedToday?: Completion[]
   currentUser: User
+  recurringCompletions?: RecurringTaskCompletion[]
 }
 
-export function TodaysPlate({ plates, completions, shadowedToday = [], currentUser }: Props) {
+export function TodaysPlate({ plates, completions, shadowedToday = [], currentUser, recurringCompletions = [] }: Props) {
   const router = useRouter()
 
   const today = new Date().toLocaleDateString('en-AU', {
@@ -23,6 +24,13 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
 
   const getCompletion = (menuItemId: string) =>
     completions.find(c => c.menu_item_id === menuItemId) ?? null
+
+  const getRecurringCount = (menuItemId: string) =>
+    recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id).length
+
+  const todayStr = new Date().toISOString().split('T')[0]
+  const isDoneToday = (menuItemId: string) =>
+    recurringCompletions.some(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
 
   const completedPlates = plates.filter(p => getCompletion(p.menu_item_id))
   const remainingPlates = plates.filter(p => !getCompletion(p.menu_item_id))
@@ -118,13 +126,21 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
                 key={group.category?.id ?? 'none'}
                 category={group.category}
                 colour={group.colour}
-                items={group.plates.map(p => ({
-                  id: p.menu_item_id,
-                  title: p.menu_item?.title ?? '',
-                  timeNeeded: p.menu_item?.time_needed ?? '',
-                  trainerType: p.menu_item?.trainer_type ?? '',
-                  completed: false,
-                }))}
+                items={group.plates.map(p => {
+                  const mi = p.menu_item
+                  const isRec = mi?.is_recurring && !!mi?.recurring_amount
+                  return {
+                    id: p.menu_item_id,
+                    title: mi?.title ?? '',
+                    timeNeeded: mi?.time_needed ?? '',
+                    trainerType: mi?.trainer_type ?? '',
+                    completed: false,
+                    isRecurring: isRec,
+                    recurringDone: isRec ? getRecurringCount(p.menu_item_id) : undefined,
+                    recurringTotal: isRec ? (mi?.recurring_amount ?? 0) : undefined,
+                    recurringDoneToday: isRec ? isDoneToday(p.menu_item_id) : undefined,
+                  }
+                })}
                 totalInCategory={group.plates.length}
                 completedInCategory={0}
                 onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
@@ -142,14 +158,22 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
         for (const group of completedGroups) {
           const key = group.category?.id ?? 'none'
           if (!merged[key]) merged[key] = { category: group.category, colour: group.colour, items: [] }
-          merged[key].items.push(...group.plates.map(p => ({
-            id: p.menu_item_id,
-            title: p.menu_item?.title ?? '',
-            timeNeeded: p.menu_item?.time_needed ?? '',
-            trainerType: p.menu_item?.trainer_type ?? '',
-            completed: true,
-            rating: getCompletion(p.menu_item_id)?.trainee_rating ?? undefined,
-          })))
+          merged[key].items.push(...group.plates.map(p => {
+            const mi = p.menu_item
+            const isRec = mi?.is_recurring && !!mi?.recurring_amount
+            return {
+              id: p.menu_item_id,
+              title: mi?.title ?? '',
+              timeNeeded: mi?.time_needed ?? '',
+              trainerType: mi?.trainer_type ?? '',
+              completed: true,
+              rating: getCompletion(p.menu_item_id)?.trainee_rating ?? undefined,
+              isRecurring: isRec,
+              recurringDone: isRec ? getRecurringCount(p.menu_item_id) : undefined,
+              recurringTotal: isRec ? (mi?.recurring_amount ?? 0) : undefined,
+              recurringDoneToday: isRec ? isDoneToday(p.menu_item_id) : undefined,
+            }
+          }))
         }
 
         for (const group of shadowedByCategory) {
@@ -199,6 +223,10 @@ interface ItemInfo {
   completed: boolean
   shadowed?: boolean
   rating?: number
+  isRecurring?: boolean
+  recurringDone?: number
+  recurringTotal?: number
+  recurringDoneToday?: boolean
 }
 
 function CategoryGroup({
@@ -250,34 +278,54 @@ function CategoryGroup({
 
       {expanded && (
         <div className="border-t border-black/5 divide-y divide-black/5">
-          {items.map(item => (
-            <button
-              key={item.id}
-              onClick={() => onItemClick(item.id)}
-              className={`w-full px-5 py-3.5 flex items-center gap-3 text-left transition-colors ${item.completed ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2'}`}
-            >
-              <span
-                className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
-                  item.completed ? 'border-transparent' : 'border-charcoal/20'
-                }`}
-                style={item.completed ? { backgroundColor: colour } : {}}
+          {items.map(item => {
+            const recurringFullyComplete = item.isRecurring && (item.recurringDone ?? 0) >= (item.recurringTotal ?? 0)
+            const recurringInProgress = item.isRecurring && (item.recurringDone ?? 0) > 0 && !recurringFullyComplete
+            const bgClass = item.isRecurring
+              ? (recurringFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : recurringInProgress && item.recurringDoneToday ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-charcoal/2')
+              : (item.completed ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => onItemClick(item.id)}
+                className={`w-full px-5 py-3.5 flex items-center gap-3 text-left transition-colors ${bgClass}`}
               >
-                {item.completed && <span className="text-white text-[10px]">✓</span>}
-              </span>
-              <div className="flex-1">
-                <p className={`text-[14px] leading-snug ${item.completed ? 'text-charcoal/40' : 'text-charcoal'}`}>
-                  {item.title}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="text-xs text-charcoal/35">{item.timeNeeded} · {item.trainerType}</p>
-                  {item.shadowed && (
-                    <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full">Shadowed</span>
+                <span
+                  className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
+                    item.isRecurring
+                      ? (recurringFullyComplete ? 'border-transparent bg-green-500' : recurringInProgress ? 'border-transparent bg-blue-500' : 'border-charcoal/20')
+                      : (item.completed ? 'border-transparent' : 'border-charcoal/20')
+                  }`}
+                  style={!item.isRecurring && item.completed ? { backgroundColor: colour } : {}}
+                >
+                  {(item.completed || recurringFullyComplete) && <span className="text-white text-[10px]">✓</span>}
+                </span>
+                <div className="flex-1">
+                  <p className={`text-[14px] leading-snug ${
+                    item.isRecurring
+                      ? (recurringFullyComplete ? 'text-charcoal/40' : 'text-charcoal')
+                      : (item.completed ? 'text-charcoal/40' : 'text-charcoal')
+                  }`}>
+                    {item.title}
+                  </p>
+                  {item.isRecurring ? (
+                    <p className={`text-xs font-medium mt-0.5 ${recurringFullyComplete ? 'text-green-600' : recurringInProgress ? 'text-blue-600' : 'text-charcoal/40'}`}>
+                      {item.recurringDone} out of {item.recurringTotal} recurring tasks completed
+                    </p>
+                  ) : (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-charcoal/35">{item.timeNeeded} · {item.trainerType}</p>
+                      {item.shadowed && (
+                        <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full">Shadowed</span>
+                      )}
+                    </div>
                   )}
                 </div>
-              </div>
-              {!item.completed && <span className="text-charcoal/20 text-lg">›</span>}
-            </button>
-          ))}
+                {!item.completed && !recurringFullyComplete && <span className="text-charcoal/20 text-lg">›</span>}
+              </button>
+            )
+          })}
         </div>
       )}
     </div>

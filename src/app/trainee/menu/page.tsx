@@ -8,12 +8,13 @@ export default async function TraineeMenuPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: categories }, { data: menuItems }, { data: completions }, { data: profile }, { data: visibleCats }] = await Promise.all([
+  const [{ data: categories }, { data: menuItems }, { data: completions }, { data: profile }, { data: visibleCats }, { data: recurringCompletions }] = await Promise.all([
     supabase.from('categories').select('*').eq('status', 'active').order('sort_order'),
     supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active').order('title'),
     supabase.from('completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('visible_categories').select('category_id').eq('user_id', authUser.id),
+    supabase.from('recurring_task_completions').select('*').eq('trainee_id', authUser.id),
   ])
 
   const visibleCategoryIds = new Set((visibleCats ?? []).map(v => v.category_id))
@@ -26,6 +27,7 @@ export default async function TraineeMenuPage() {
       menuItems={visibleMenuItems}
       completions={completions ?? []}
       currentUser={profile as User}
+      recurringCompletions={recurringCompletions ?? []}
     />
   )
 }

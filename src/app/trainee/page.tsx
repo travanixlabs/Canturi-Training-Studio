@@ -22,10 +22,11 @@ export default async function TraineePlatePage() {
     .order('created_at', { ascending: true })
 
   // Fetch all completions for this trainee
-  const [{ data: completions }, { data: profile }, { data: todayCompletions }] = await Promise.all([
+  const [{ data: completions }, { data: profile }, { data: todayCompletions }, { data: recurringCompletions }] = await Promise.all([
     supabase.from('completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('completions').select('*, menu_item:menu_items(*, category:categories(*))').eq('trainee_id', authUser.id).eq('completed_date', today),
+    supabase.from('recurring_task_completions').select('*').eq('trainee_id', authUser.id),
   ])
 
   // Find shadowed completions today that aren't on a plate
@@ -40,6 +41,7 @@ export default async function TraineePlatePage() {
       completions={completions ?? []}
       shadowedToday={shadowedToday}
       currentUser={profile as User}
+      recurringCompletions={recurringCompletions ?? []}
     />
   )
 }
