@@ -188,7 +188,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     }`}
                   >
                     <span>↻</span>
-                    <span className="truncate max-w-[120px]">Session</span>
+                    <span className="truncate max-w-[120px]">Session {recurringDone} / {recurringTotal}</span>
                   </button>
                 )}
               </div>
@@ -243,7 +243,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
                           viewingRecurringTask ? 'bg-blue-500 text-white' : allModulesComplete ? 'bg-charcoal/8 text-charcoal/40' : 'bg-charcoal/5 text-charcoal/15'
                         }`}>↻</span>
-                        <span className="text-sm">Session</span>
+                        <span className="text-sm">Session {recurringDone} / {recurringTotal}</span>
                         {!allModulesComplete && <span className="text-[10px] text-charcoal/20 ml-auto">Complete modules first</span>}
                       </button>
                     </>
@@ -377,9 +377,13 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                   <div className="mb-6">
                     <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Session History</p>
                     <div className="space-y-2">
-                      {sessionHistory.map((entry) => (
+                      {sessionHistory.map((entry, idx) => {
+                        const sessionNum = sessionHistory.length - idx
+                        return (
                         <div key={entry.id} className="card p-4">
                           <p className="text-xs font-medium text-charcoal/50 mb-1">
+                            <span className="text-charcoal font-semibold">Session {sessionNum}</span>
+                            {' · '}
                             {new Date(entry.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
                             {' '}
                             <span className="text-charcoal/30">{new Date(entry.created_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -390,7 +394,8 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                             <p className="text-sm text-charcoal/30 italic">No notes recorded</p>
                           )}
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
