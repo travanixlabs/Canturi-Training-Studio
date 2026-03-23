@@ -81,6 +81,14 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     return recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === tid).length
   }
 
+  const getRecurringDates = (menuItemId: string, traineeId?: string) => {
+    const tid = traineeId ?? selectedTrainee?.id
+    return recurringCompletions
+      .filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === tid)
+      .map(rc => rc.completed_date)
+      .sort()
+  }
+
   const traineeOnPlateCount = (traineeId: string) =>
     plates.filter(p => p.trainee_id === traineeId).length
 
@@ -425,6 +433,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   onAssign={() => requestAssign([item], item.id)}
                   onRemove={() => removeFromPlate(item)}
                   recurringCount={item.is_recurring ? getRecurringCount(item.id) : undefined}
+                                  recurringDates={item.is_recurring ? getRecurringDates(item.id) : undefined}
                 />
               ))}
             </div>
@@ -556,6 +565,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   onRemove={() => removeFromPlate(item)}
                                   compact
                                   recurringCount={getRecurringCount(item.id)}
+                                  recurringDates={getRecurringDates(item.id)}
                                 />
                               ))}
                             </div>
@@ -632,6 +642,7 @@ function MenuItemRow({
   onRemove,
   compact = false,
   recurringCount,
+  recurringDates,
 }: {
   item: MenuItem
   onPlate: boolean
@@ -642,6 +653,7 @@ function MenuItemRow({
   onRemove: () => void
   compact?: boolean
   recurringCount?: number
+  recurringDates?: string[]
 }) {
   const shadowedEarly = completed && completedDate && assignedDate && completedDate < assignedDate
   const isRecurringItem = item.is_recurring && item.recurring_amount
@@ -661,9 +673,16 @@ function MenuItemRow({
         )}
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
         {isRecurringItem ? (
-          <p className={`text-xs font-medium mt-0.5 ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
-            {recurringDone} out of {recurringTotal} recurring tasks completed
-          </p>
+          <div className="mt-0.5">
+            <p className={`text-xs font-medium ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
+              {recurringFullyComplete ? 'Completed' : `${recurringDone} out of ${recurringTotal} recurring tasks completed`}
+            </p>
+            {recurringFullyComplete && recurringDates && recurringDates.length > 0 && (
+              <p className="text-xs text-green-600/70 mt-0.5">
+                {recurringDates.map(d => new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })).join(' | ')}
+              </p>
+            )}
+          </div>
         ) : (
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-charcoal/35">
