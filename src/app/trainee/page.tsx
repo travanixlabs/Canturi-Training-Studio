@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { todayAEDT } from '@/lib/dates'
 import { redirect } from 'next/navigation'
 import { TodaysPlate } from '@/components/trainee/TodaysPlate'
 import type { User } from '@/types'
@@ -8,7 +9,7 @@ export default async function TraineePlatePage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayAEDT()
 
   // Fetch today's plate items with their menu items and categories
   const { data: plates } = await supabase
@@ -20,6 +21,17 @@ export default async function TraineePlatePage() {
     .eq('trainee_id', authUser.id)
     .eq('date_assigned', today)
     .order('created_at', { ascending: true })
+
+  // Fetch overdue plates (past dates, for non-recurring items)
+  const { data: overduePlates } = await supabase
+    .from('plates')
+    .select(`
+      *,
+      menu_item:menu_items(*, category:categories(*))
+    `)
+    .eq('trainee_id', authUser.id)
+    .lt('date_assigned', today)
+    .order('date_assigned', { ascending: true })
 
   // Fetch all completions for this trainee
   const [{ data: completions }, { data: profile }, { data: todayCompletions }, { data: recurringCompletions }] = await Promise.all([
@@ -38,6 +50,7 @@ export default async function TraineePlatePage() {
   return (
     <TodaysPlate
       plates={plates ?? []}
+      overduePlates={overduePlates ?? []}
       completions={completions ?? []}
       shadowedToday={shadowedToday}
       currentUser={profile as User}

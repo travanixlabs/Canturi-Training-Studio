@@ -6,6 +6,7 @@ import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { TaskModal } from '@/components/ui/TaskModal'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
 import type { User, Category, MenuItem, Plate, VisibleCategory, Completion, RecurringTaskCompletion } from '@/types'
 
 interface Props {
@@ -28,7 +29,7 @@ function getUpcomingDates() {
     const d = new Date(now)
     d.setDate(d.getDate() + i)
     dates.push({
-      value: d.toISOString().split('T')[0],
+      value: toDateStringAEDT(d),
       label: d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }),
       isToday: i === 0,
     })
@@ -585,7 +586,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   completed={isCompleted(item.id)}
                                   completedDate={getCompletion(item.id)?.completed_date}
                                   assignedDate={(() => {
-                                    const todayStr = new Date().toISOString().split('T')[0]
+                                    const todayStr = todayAEDT()
                                     const futureDates = plates
                                       .filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.date_assigned >= todayStr)
                                       .map(p => p.date_assigned)

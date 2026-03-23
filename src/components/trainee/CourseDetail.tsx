@@ -8,6 +8,7 @@ import { CourseCelebrationScreen } from '@/components/ui/CourseCelebrationScreen
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { MenuItem, Module, ModuleCompletion, Completion, Plate, User, RecurringTaskCompletion } from '@/types'
+import { todayAEDT } from '@/lib/dates'
 
 interface Props {
   menuItem: MenuItem
@@ -49,7 +50,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const recurringTotal = menuItem.recurring_amount ?? 0
   const recurringDone = recurringComps.length
   const recurringFullyComplete = isRecurringItem && recurringDone >= recurringTotal
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todayAEDT()
   const assignedPlateDates = allPlates.filter(p => p.menu_item_id === menuItem.id && p.trainee_id === currentUser.id).map(p => p.date_assigned)
   const assignedSessionCount = recurringComps.filter(rc => assignedPlateDates.includes(rc.completed_date)).length
   const shadowedSessionCount = recurringDone - assignedSessionCount

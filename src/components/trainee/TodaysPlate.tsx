@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 import type { Plate, Completion, User, Category, RecurringTaskCompletion } from '@/types'
 import { useRouter } from 'next/navigation'
+import { todayAEDT } from '@/lib/dates'
 
 interface Props {
   plates: Plate[]
@@ -36,7 +37,7 @@ export function TodaysPlate({ plates, overduePlates = [], completions, shadowedT
     return { assigned, shadowed: rcs.length - assigned }
   }
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todayAEDT()
   const isDoneToday = (menuItemId: string) =>
     recurringCompletions.some(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
 

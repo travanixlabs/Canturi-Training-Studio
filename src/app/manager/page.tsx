@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { todayAEDT } from '@/lib/dates'
 import { redirect } from 'next/navigation'
 import { BuildPlate } from '@/components/manager/BuildPlate'
 import type { User } from '@/types'
@@ -16,7 +17,7 @@ export default async function ManagerPlatePage() {
 
   if (!manager) redirect('/login')
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayAEDT()
 
   const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: allPlates }, { data: visibleCats }, { data: completions }, { data: recurringCompletions }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),

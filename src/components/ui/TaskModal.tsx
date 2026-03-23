@@ -7,6 +7,7 @@ import { StarRating } from './StarRating'
 import { CelebrationScreen } from './CelebrationScreen'
 import { createClient } from '@/lib/supabase/client'
 import type { MenuItem, Plate, Completion, User } from '@/types'
+import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
 
 interface Props {
   item: MenuItem
@@ -43,7 +44,7 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
       const d = new Date(now)
       d.setDate(d.getDate() + i)
       dates.push({
-        value: d.toISOString().split('T')[0],
+        value: toDateStringAEDT(d),
         label: d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }),
         isToday: i === 0,
       })
@@ -95,7 +96,7 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
       trainee_id: currentUser.id,
       trainee_notes: traineeNotes || null,
       trainee_rating: traineeRating,
-      completed_date: new Date().toISOString().split('T')[0],
+      completed_date: todayAEDT(),
       is_shadowing_moment: isShadowing,
     }
 

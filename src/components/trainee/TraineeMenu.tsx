@@ -6,6 +6,7 @@ import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { CATEGORY_COLOURS } from '@/types'
 import type { Category, MenuItem, Completion, User, RecurringTaskCompletion, Plate } from '@/types'
 import { useRouter } from 'next/navigation'
+import { todayAEDT } from '@/lib/dates'
 
 interface Props {
   categories: Category[]
@@ -34,7 +35,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
     return { assigned, shadowed: rcs.length - assigned }
   }
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todayAEDT()
   const isDoneToday = (itemId: string) =>
     recurringCompletions.some(rc => rc.menu_item_id === itemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
 
@@ -194,10 +195,11 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                         const comp = getCompletion(item.id)
                         const shadowedEarly = isShadowedEarly(item.id)
                         const assignedDate = getAssignedDate(item.id)
+                        const isOverdue = !isRec && !completed && assignedDate && assignedDate < todayStr
 
                         const bgClass = isRec
                           ? (recFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : recInProgress && recDoneToday ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-charcoal/2')
-                          : (completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : 'hover:bg-charcoal/2')
+                          : (completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : isOverdue ? 'bg-red-50/50 hover:bg-red-50' : 'hover:bg-charcoal/2')
 
                         return (
                           <button
@@ -209,7 +211,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                               className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
                                 isRec
                                   ? (recFullyComplete ? 'border-transparent bg-green-500' : recInProgress ? 'border-transparent bg-blue-500' : 'border-charcoal/20')
-                                  : (completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : 'border-charcoal/20')
+                                  : (completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : isOverdue ? 'border-red-300 bg-red-50' : 'border-charcoal/20')
                               }`}
                             >
                               {(completed || recFullyComplete) && <span className="text-white text-[10px]">✓</span>}
@@ -248,8 +250,10 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                                   )}
                                 </p>
                               ) : assignedDate ? (
-                                <p className="text-xs text-charcoal/40 mt-0.5">
-                                  <span className="font-semibold text-charcoal/50">{formatDate(assignedDate)}</span>
+                                <p className="text-xs mt-0.5">
+                                  <span className={`font-semibold ${isOverdue ? 'text-red-500' : 'text-charcoal/50'}`}>
+                                    {isOverdue ? 'Overdue — ' : ''}{formatDate(assignedDate)}
+                                  </span>
                                 </p>
                               ) : null}
                             </div>
