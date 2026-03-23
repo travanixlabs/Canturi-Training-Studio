@@ -204,6 +204,17 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     }
   }
 
+  async function reassignItem(item: MenuItem) {
+    if (!selectedTrainee) return
+    // Delete the completion record
+    await supabase.from('completions').delete()
+      .eq('menu_item_id', item.id)
+      .eq('trainee_id', selectedTrainee.id)
+    // Show date picker to reassign
+    requestAssign([item], `reassign-${item.id}`)
+    startTransition(() => router.refresh())
+  }
+
   async function toggleCategoryVisibility(categoryId: string) {
     if (!selectedTrainee) return
 
@@ -433,7 +444,10 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   onAssign={() => requestAssign([item], item.id)}
                   onRemove={() => removeFromPlate(item)}
                   recurringCount={item.is_recurring ? getRecurringCount(item.id) : undefined}
-                                  recurringDates={item.is_recurring ? getRecurringDates(item.id) : undefined}
+                  recurringDates={item.is_recurring ? getRecurringDates(item.id) : undefined}
+                  onReassign={() => reassignItem(item)}
+                  traineeNotes={getCompletion(item.id)?.trainee_notes ?? undefined}
+                  traineeRating={getCompletion(item.id)?.trainee_rating ?? undefined}
                 />
               ))}
             </div>
@@ -540,6 +554,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   onAssign={() => requestAssign([item], item.id)}
                                   onRemove={() => removeFromPlate(item)}
                                   compact
+                                  onReassign={() => reassignItem(item)}
+                                  traineeNotes={getCompletion(item.id)?.trainee_notes ?? undefined}
+                                  traineeRating={getCompletion(item.id)?.trainee_rating ?? undefined}
                                 />
                               ))}
                             </div>
@@ -573,6 +590,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   compact
                                   recurringCount={getRecurringCount(item.id)}
                                   recurringDates={getRecurringDates(item.id)}
+                                  onReassign={() => reassignItem(item)}
+                                  traineeNotes={getCompletion(item.id)?.trainee_notes ?? undefined}
+                                  traineeRating={getCompletion(item.id)?.trainee_rating ?? undefined}
                                 />
                               ))}
                             </div>
@@ -650,6 +670,9 @@ function MenuItemRow({
   compact = false,
   recurringCount,
   recurringDates,
+  onReassign,
+  traineeNotes,
+  traineeRating,
 }: {
   item: MenuItem
   onPlate: boolean
@@ -661,7 +684,11 @@ function MenuItemRow({
   compact?: boolean
   recurringCount?: number
   recurringDates?: string[]
+  onReassign?: () => void
+  traineeNotes?: string
+  traineeRating?: number
 }) {
+  const [showDetail, setShowDetail] = useState(false)
   const shadowedEarly = completed && completedDate && assignedDate && completedDate < assignedDate
   const isRecurringItem = item.is_recurring && item.recurring_amount
   const recurringTotal = item.recurring_amount ?? 0
@@ -724,9 +751,13 @@ function MenuItemRow({
         </button>
       )}
       {completed ? (
-        <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white ${shadowedEarly ? 'bg-blue-500' : 'bg-green-500'}`}>
+        <button
+          onClick={() => setShowDetail(true)}
+          className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-white cursor-pointer hover:opacity-80 transition-opacity ${shadowedEarly ? 'bg-blue-500' : 'bg-green-500'}`}
+          title="View details"
+        >
           <Check size={16} />
-        </div>
+        </button>
       ) : onPlate ? (
         <button
           onClick={onRemove}
@@ -742,6 +773,76 @@ function MenuItemRow({
         >
           <Plus size={16} />
         </button>
+      )}
+
+      {/* Detail modal for completed items */}
+      {showDetail && (completed || (isRecurringItem && recurringDone > 0)) && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setShowDetail(false)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                {item.category && <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />}
+                <h3 className="font-serif text-lg text-charcoal mt-1">{item.title}</h3>
+              </div>
+              <button onClick={() => setShowDetail(false)} className="text-charcoal/30 hover:text-charcoal">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {isRecurringItem ? (
+                <div>
+                  <p className={`text-sm font-medium ${recurringFullyComplete ? 'text-green-600' : 'text-blue-600'}`}>
+                    {recurringDone} out of {recurringTotal} recurring tasks completed
+                  </p>
+                  {recurringDates && recurringDates.length > 0 && (
+                    <p className="text-xs text-charcoal/40 mt-1">
+                      Completed on: {recurringDates.map(d => new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })).join(', ')}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${shadowedEarly ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
+                    {shadowedEarly ? 'Shadowed early' : 'Completed'}
+                  </span>
+                  {completedDate && (
+                    <span className="text-xs text-charcoal/40">
+                      {new Date(completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {traineeNotes && (
+                <div>
+                  <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-1">Employee notes</p>
+                  <p className="text-sm text-charcoal/70">{traineeNotes}</p>
+                </div>
+              )}
+
+              {traineeRating != null && traineeRating > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-1">Employee self-rating</p>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map(s => (
+                      <span key={s} className={`text-lg ${s <= traineeRating ? 'text-gold' : 'text-charcoal/15'}`}>★</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {onReassign && (
+              <button
+                onClick={() => { setShowDetail(false); onReassign() }}
+                className="w-full py-3 rounded-xl text-sm font-medium border-2 border-charcoal/15 text-charcoal/60 hover:border-gold hover:text-gold transition-all"
+              >
+                Reassign to employee
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
