@@ -42,6 +42,8 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
   const [priorityLevel, setPriorityLevel] = useState<DifficultyLevel | ''>(initialItem.difficulty_level ?? '')
   const [isRecurring, setIsRecurring] = useState(initialItem.is_recurring)
   const [recurringAmount, setRecurringAmount] = useState((initialItem as any).recurring_amount ?? 1)
+  const [recurringTaskContent, setRecurringTaskContent] = useState((initialItem as any).recurring_task_content ?? '')
+  const [editingRecurringTask, setEditingRecurringTask] = useState(false)
 
   // Modules
   const [modules, setModules] = useState<Module[]>(initialModules)
@@ -64,6 +66,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     if (!trainerType) { alert('Trainer type is required.'); return }
     if (!priorityLevel) { alert('Difficulty level is required.'); return }
     if (isRecurring && (!recurringAmount || recurringAmount < 1)) { alert('Recurring amount is required when recurring is enabled.'); return }
+    if (isRecurring && !recurringTaskContent.trim()) { alert('Recurring Task Details content is required. Please fill in the Recurring Task page.'); setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false); return }
     setSaving(true)
     await supabase.from('menu_items').update({
       title,
@@ -75,6 +78,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
       difficulty_level: priorityLevel || null,
       is_recurring: isRecurring,
       recurring_amount: isRecurring ? recurringAmount : null,
+      recurring_task_content: isRecurring ? recurringTaskContent : null,
     }).eq('id', initialItem.id)
     setSaving(false)
     setSaved(true)
@@ -192,7 +196,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
           {/* Mobile: horizontal strip */}
           <div className="lg:hidden px-4 py-3 flex gap-2 overflow-x-auto">
             <button
-              onClick={() => { setEditingCourseDetails(true); setSelectedModuleId(null) }}
+              onClick={() => { setEditingCourseDetails(true); setSelectedModuleId(null); setEditingRecurringTask(false) }}
               className={`px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border transition-all ${
                 editingCourseDetails
                   ? 'border-gold bg-gold/10 text-gold'
@@ -204,7 +208,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             {modules.map((mod, i) => (
               <button
                 key={mod.id}
-                onClick={() => { setSelectedModuleId(mod.id); setEditingCourseDetails(false) }}
+                onClick={() => { setSelectedModuleId(mod.id); setEditingCourseDetails(false); setEditingRecurringTask(false) }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border transition-all ${
                   selectedModuleId === mod.id && !editingCourseDetails
                     ? 'border-gold bg-gold/10 text-gold'
@@ -226,7 +230,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
           {/* Desktop: vertical list */}
           <div className="hidden lg:block p-4">
             <button
-              onClick={() => { setEditingCourseDetails(true); setSelectedModuleId(null) }}
+              onClick={() => { setEditingCourseDetails(true); setSelectedModuleId(null); setEditingRecurringTask(false) }}
               className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all mb-3 ${
                 editingCourseDetails
                   ? 'bg-gold/10 text-gold'
@@ -245,7 +249,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
               {modules.map((mod, i) => (
                 <div key={mod.id} className="group flex items-center gap-1">
                   <button
-                    onClick={() => { setSelectedModuleId(mod.id); setEditingCourseDetails(false) }}
+                    onClick={() => { setSelectedModuleId(mod.id); setEditingCourseDetails(false); setEditingRecurringTask(false) }}
                     className={`flex-1 text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
                       selectedModuleId === mod.id && !editingCourseDetails
                         ? 'bg-gold/10 text-gold'
@@ -296,6 +300,29 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                   </button>
                 ))}
               </div>
+            )}
+
+            {/* Recurring Task — only when recurring is enabled */}
+            {isRecurring && (
+              <>
+                <div className="border-t border-black/5 mt-4 pt-4">
+                  <p className="text-xs font-medium text-charcoal/30 uppercase tracking-wider mb-2">Recurring Task</p>
+                </div>
+                <button
+                  onClick={() => { setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false) }}
+                  className={`w-full px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all text-sm font-medium ${
+                    editingRecurringTask
+                      ? 'bg-gold/10 text-gold border border-gold/30'
+                      : 'text-charcoal/50 hover:bg-ivory/80'
+                  }`}
+                >
+                  <span className="w-5 h-5 rounded-full bg-charcoal/8 flex items-center justify-center text-[10px]">↻</span>
+                  <span className="truncate">Recurring Task Details</span>
+                  {!recurringTaskContent.trim() && (
+                    <span className="text-red-400 text-xs ml-auto">*</span>
+                  )}
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -559,8 +586,52 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             </div>
           )}
 
+          {/* Recurring Task Details editor */}
+          {editingRecurringTask && !editingCourseDetails && (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-charcoal/30">↻</span>
+                <p className="text-xs text-charcoal/40 uppercase tracking-wider">Recurring Task</p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>
+                <input
+                  className="input font-serif text-xl bg-charcoal/3 cursor-not-allowed"
+                  value="Recurring Task Details"
+                  disabled
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+                  Content <span className="text-red-400">*</span>
+                </label>
+                <textarea
+                  className="textarea font-sans text-sm leading-relaxed"
+                  rows={16}
+                  value={recurringTaskContent}
+                  onChange={e => setRecurringTaskContent(e.target.value)}
+                  placeholder="Describe what the employee must do each time they complete this recurring task.&#10;&#10;For example: 'Perform a full ultrasonic clean cycle on 3 pieces. Log the piece types and any issues observed.'"
+                />
+              </div>
+
+              {recurringTaskContent.trim() && (
+                <div className="mt-6 pt-6 border-t border-black/5">
+                  <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Preview</p>
+                  <div className="card p-5">
+                    <h3 className="font-serif text-lg text-charcoal mb-3">Recurring Task Details</h3>
+                    <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap">
+                      {recurringTaskContent}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Empty state */}
-          {!activeModule && !editingCourseDetails && (
+          {!activeModule && !editingCourseDetails && !editingRecurringTask && (
             <div className="text-center py-12">
               <p className="text-4xl mb-4">📖</p>
               <p className="font-serif text-lg text-charcoal/60 mb-2">No modules yet</p>
