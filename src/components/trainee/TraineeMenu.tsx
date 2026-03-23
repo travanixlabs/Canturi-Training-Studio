@@ -38,6 +38,18 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
   const isDoneToday = (itemId: string) =>
     recurringCompletions.some(rc => rc.menu_item_id === itemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
 
+  const getAssignedDate = (itemId: string) =>
+    plates.find(p => p.menu_item_id === itemId && p.trainee_id === currentUser.id)?.date_assigned ?? null
+
+  const isShadowedEarly = (itemId: string) => {
+    const comp = getCompletion(itemId)
+    const assignedDate = getAssignedDate(itemId)
+    return !!(comp && assignedDate && comp.completed_date < assignedDate)
+  }
+
+  const formatDate = (d: string) =>
+    new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })
+
   const filteredItems = useMemo(() => {
     if (!search.trim()) return menuItems
     const q = search.toLowerCase()
@@ -178,9 +190,14 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                         const recInProgress = isRec && recDone > 0 && !recFullyComplete
                         const recDoneToday = isRec && isDoneToday(item.id)
 
+                        const completed = isCompleted(item.id)
+                        const comp = getCompletion(item.id)
+                        const shadowedEarly = isShadowedEarly(item.id)
+                        const assignedDate = getAssignedDate(item.id)
+
                         const bgClass = isRec
                           ? (recFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : recInProgress && recDoneToday ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-charcoal/2')
-                          : (isCompleted(item.id) ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
+                          : (completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : 'hover:bg-charcoal/2')
 
                         return (
                           <button
@@ -192,17 +209,16 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                               className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
                                 isRec
                                   ? (recFullyComplete ? 'border-transparent bg-green-500' : recInProgress ? 'border-transparent bg-blue-500' : 'border-charcoal/20')
-                                  : (isCompleted(item.id) ? 'border-transparent' : 'border-charcoal/20')
+                                  : (completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : 'border-charcoal/20')
                               }`}
-                              style={!isRec && isCompleted(item.id) ? { backgroundColor: category.colour_hex } : {}}
                             >
-                              {(isCompleted(item.id) || recFullyComplete) && <span className="text-white">✓</span>}
+                              {(completed || recFullyComplete) && <span className="text-white text-[10px]">✓</span>}
                             </span>
                             <div className="flex-1">
                               <p className={`text-[14px] leading-snug ${
                                 isRec
                                   ? (recFullyComplete ? 'text-charcoal/40' : 'text-charcoal')
-                                  : (isCompleted(item.id) ? 'text-charcoal/40' : 'text-charcoal')
+                                  : (completed ? 'text-charcoal/40' : 'text-charcoal')
                               }`}>
                                 {item.title}
                               </p>
@@ -217,6 +233,23 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                                       </span>
                                     )
                                   })()}
+                                </p>
+                              ) : completed ? (
+                                <p className="text-xs mt-0.5">
+                                  {shadowedEarly ? (
+                                    <span className="text-blue-600 font-medium">Shadowed early on {formatDate(comp!.completed_date)}</span>
+                                  ) : (
+                                    <>
+                                      <span className="text-green-600 font-medium">Completed {formatDate(comp!.completed_date)}</span>
+                                      {assignedDate && (
+                                        <span className="font-semibold text-charcoal/50 ml-1">{formatDate(assignedDate)}</span>
+                                      )}
+                                    </>
+                                  )}
+                                </p>
+                              ) : assignedDate ? (
+                                <p className="text-xs text-charcoal/40 mt-0.5">
+                                  <span className="font-semibold text-charcoal/50">{formatDate(assignedDate)}</span>
                                 </p>
                               ) : null}
                             </div>

@@ -147,6 +147,7 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
                     timeNeeded: mi?.time_needed ?? '',
                     trainerType: mi?.trainer_type ?? '',
                     completed: false,
+                    assignedDate: p.date_assigned,
                     isRecurring: isRec,
                     recurringDone: isRec ? getRecurringCount(p.menu_item_id) : undefined,
                     recurringBreakdown: isRec ? getRecurringBreakdown(p.menu_item_id) : undefined,
@@ -174,13 +175,18 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
           merged[key].items.push(...group.plates.map(p => {
             const mi = p.menu_item
             const isRec = mi?.is_recurring && !!mi?.recurring_amount
+            const comp = getCompletion(p.menu_item_id)
+            const shadowedEarly = !!(comp && p.date_assigned && comp.completed_date < p.date_assigned)
             return {
               id: p.menu_item_id,
               title: mi?.title ?? '',
               timeNeeded: mi?.time_needed ?? '',
               trainerType: mi?.trainer_type ?? '',
               completed: true,
-              rating: getCompletion(p.menu_item_id)?.trainee_rating ?? undefined,
+              completedDate: comp?.completed_date,
+              assignedDate: p.date_assigned,
+              shadowedEarly,
+              rating: comp?.trainee_rating ?? undefined,
               isRecurring: isRec,
               recurringDone: isRec ? getRecurringCount(p.menu_item_id) : undefined,
               recurringTotal: isRec ? (mi?.recurring_amount ?? 0) : undefined,
@@ -235,6 +241,9 @@ interface ItemInfo {
   trainerType: string
   completed: boolean
   shadowed?: boolean
+  shadowedEarly?: boolean
+  completedDate?: string
+  assignedDate?: string
   rating?: number
   isRecurring?: boolean
   recurringDone?: number
@@ -297,7 +306,7 @@ function CategoryGroup({
             const recurringInProgress = item.isRecurring && (item.recurringDone ?? 0) > 0 && !recurringFullyComplete
             const bgClass = item.isRecurring
               ? (recurringFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : recurringInProgress && item.recurringDoneToday ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-charcoal/2')
-              : (item.completed ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
+              : (item.completed ? (item.shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : 'hover:bg-charcoal/2')
 
             return (
               <button
@@ -309,9 +318,8 @@ function CategoryGroup({
                   className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
                     item.isRecurring
                       ? (recurringFullyComplete ? 'border-transparent bg-green-500' : recurringInProgress ? 'border-transparent bg-blue-500' : 'border-charcoal/20')
-                      : (item.completed ? 'border-transparent' : 'border-charcoal/20')
+                      : (item.completed ? (item.shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : 'border-charcoal/20')
                   }`}
-                  style={!item.isRecurring && item.completed ? { backgroundColor: colour } : {}}
                 >
                   {(item.completed || recurringFullyComplete) && <span className="text-white text-[10px]">✓</span>}
                 </span>
@@ -332,13 +340,23 @@ function CategoryGroup({
                         </span>
                       )}
                     </p>
-                  ) : (
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {item.shadowed && (
-                        <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full">Shadowed</span>
+                  ) : item.completed && item.completedDate ? (
+                    <p className="text-xs mt-0.5">
+                      {item.shadowedEarly ? (
+                        <span className="text-blue-600 font-medium">
+                          Shadowed early on {new Date(item.completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+                        </span>
+                      ) : (
+                        <span className="text-green-600 font-medium">
+                          Completed {new Date(item.completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+                        </span>
                       )}
-                    </div>
-                  )}
+                    </p>
+                  ) : item.assignedDate ? (
+                    <p className="text-xs text-charcoal/40 mt-0.5">
+                      <span className="font-semibold text-charcoal/50">{new Date(item.assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
+                    </p>
+                  ) : null}
                 </div>
                 {!item.completed && !recurringFullyComplete && <span className="text-charcoal/20 text-lg">›</span>}
               </button>
