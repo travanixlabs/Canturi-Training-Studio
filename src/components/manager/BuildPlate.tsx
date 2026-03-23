@@ -560,7 +560,14 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   onPlate={isOnPlate(item.id)}
                                   completed={isCompleted(item.id)}
                                   completedDate={getCompletion(item.id)?.completed_date}
-                                  assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
+                                  assignedDate={(() => {
+                                    const todayStr = new Date().toISOString().split('T')[0]
+                                    const futureDates = plates
+                                      .filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.date_assigned >= todayStr)
+                                      .map(p => p.date_assigned)
+                                      .sort()
+                                    return futureDates[0] ?? plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned
+                                  })()}
                                   onAssign={() => requestAssign([item], item.id)}
                                   onRemove={() => removeFromPlate(item)}
                                   compact
@@ -675,6 +682,9 @@ function MenuItemRow({
         {isRecurringItem ? (
           <div className="mt-0.5">
             <p className={`text-xs font-medium ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
+              {!recurringFullyComplete && assignedDate && (
+                <span className="font-semibold text-charcoal/50 mr-1">{new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
+              )}
               {recurringFullyComplete ? 'Completed' : `${recurringDone} out of ${recurringTotal} recurring tasks completed`}
             </p>
             {recurringFullyComplete && recurringDates && recurringDates.length > 0 && (
