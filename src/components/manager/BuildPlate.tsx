@@ -295,113 +295,143 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
             </div>
           )}
 
-          {/* Category browse */}
-          {!isSearching && (
-            <div className="space-y-2">
-              {categories.map(category => {
-                const items = menuItems.filter(i => i.category_id === category.id)
-                const expanded = expandedCategories.has(category.id)
-                const visible = isCategoryVisible(category.id)
-                const assignedCount = items.filter(i => isOnPlate(i.id)).length
-                const unassignedCount = items.length - assignedCount
+          {/* Category browse — split into non-recurring and recurring */}
+          {!isSearching && (() => {
+            const nonRecurringItems = menuItems.filter(i => !i.is_recurring)
+            const recurringItems = menuItems.filter(i => i.is_recurring)
+            const nonRecurringCats = categories.filter(c => nonRecurringItems.some(i => i.category_id === c.id))
+            const recurringCats = categories.filter(c => recurringItems.some(i => i.category_id === c.id))
 
-                return (
-                  <div key={category.id} className={`card overflow-hidden ${isEmployee && !visible ? 'opacity-40' : ''}`}>
-                    <div className="flex items-center">
-                      <button
-                        onClick={() => toggleCategory(category.id)}
-                        className="flex-1 px-5 py-4 flex items-center gap-3 text-left"
+            const renderCategoryBlock = (category: Category, items: MenuItem[]) => {
+              const expanded = expandedCategories.has(category.id)
+              const visible = isCategoryVisible(category.id)
+              const assignedCount = items.filter(i => isOnPlate(i.id)).length
+              const unassignedCount = items.length - assignedCount
+
+              return (
+                <div key={category.id} className={`card overflow-hidden ${isEmployee && !visible ? 'opacity-40' : ''}`}>
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => toggleCategory(category.id)}
+                      className="flex-1 px-5 py-4 flex items-center gap-3 text-left"
+                    >
+                      <span
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                        style={{ backgroundColor: category.colour_hex + '20', color: category.colour_hex }}
                       >
-                        <span
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0"
-                          style={{ backgroundColor: category.colour_hex + '20', color: category.colour_hex }}
-                        >
-                          {category.icon}
-                        </span>
-                        <div className="flex-1">
-                          <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
-                          <div className="flex gap-3 mt-0.5">
-                            <p className="text-xs text-charcoal/40">
-                              {assignedCount} assigned
-                              {unassignedCount > 0 && <span className="text-charcoal/25"> · {unassignedCount} unassigned</span>}
-                            </p>
-                            {isEmployee && !visible && (
-                              <p className="text-xs text-charcoal/30">Hidden</p>
-                            )}
-                          </div>
-                        </div>
-                        {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
-                      </button>
-
-                      {/* Assign all categories in course */}
-                      {(!isEmployee || visible) && (
-                        <button
-                          onClick={() => requestAssign(items, `cat-${category.id}`)}
-                          className="mr-2 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border-2 border-charcoal/10 text-charcoal/30 hover:border-gold hover:text-gold transition-all"
-                          title={`Assign all ${category.name} categories`}
-                        >
-                          <Plus size={18} />
-                        </button>
-                      )}
-
-                      {/* Category visibility toggle — only for employees */}
-                      {isEmployee && (
-                        <button
-                          onClick={() => toggleCategoryVisibility(category.id)}
-                          className={`mr-4 w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
-                            visible
-                              ? 'bg-gold/10 text-gold border-2 border-gold/30'
-                              : 'bg-charcoal/5 text-charcoal/25 border-2 border-charcoal/10'
-                          }`}
-                          title={visible ? 'Hide from employee' : 'Show to employee'}
-                        >
-                          {visible ? (
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                              <circle cx="12" cy="12" r="3"/>
-                            </svg>
-                          ) : (
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                              <line x1="1" y1="1" x2="23" y2="23"/>
-                              <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-                            </svg>
+                        {category.icon}
+                      </span>
+                      <div className="flex-1">
+                        <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
+                        <div className="flex gap-3 mt-0.5">
+                          <p className="text-xs text-charcoal/40">
+                            {assignedCount} assigned
+                            {unassignedCount > 0 && <span className="text-charcoal/25"> · {unassignedCount} unassigned</span>}
+                          </p>
+                          {isEmployee && !visible && (
+                            <p className="text-xs text-charcoal/30">Hidden</p>
                           )}
-                        </button>
-                      )}
-                    </div>
-
-                    {expanded && (!isEmployee || visible) && (
-                      <div className="border-t border-black/5 divide-y divide-black/5">
-                        {items.map(item => (
-                          <MenuItemRow
-                            key={item.id}
-                            item={item}
-                            onPlate={isOnPlate(item.id)}
-                            completed={isCompleted(item.id)}
-                            completedDate={getCompletion(item.id)?.completed_date}
-                            assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
-                            onAssign={() => requestAssign([item], item.id)}
-                            onRemove={() => removeFromPlate(item)}
-                            compact
-                          />
-                        ))}
+                        </div>
                       </div>
+                      {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
+                    </button>
+
+                    {/* Assign all categories in course */}
+                    {(!isEmployee || visible) && (
+                      <button
+                        onClick={() => requestAssign(items, `cat-${category.id}`)}
+                        className="mr-2 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border-2 border-charcoal/10 text-charcoal/30 hover:border-gold hover:text-gold transition-all"
+                        title={`Assign all ${category.name} categories`}
+                      >
+                        <Plus size={18} />
+                      </button>
                     )}
 
-                    {expanded && isEmployee && !visible && (
-                      <div className="border-t border-black/5 px-5 py-4">
-                        <p className="text-sm text-charcoal/30 text-center">
-                          {items.length} categories — hidden from {selectedTrainee.name.split(' ')[0]}
-                        </p>
-                      </div>
+                    {/* Category visibility toggle — only for employees */}
+                    {isEmployee && (
+                      <button
+                        onClick={() => toggleCategoryVisibility(category.id)}
+                        className={`mr-4 w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
+                          visible
+                            ? 'bg-gold/10 text-gold border-2 border-gold/30'
+                            : 'bg-charcoal/5 text-charcoal/25 border-2 border-charcoal/10'
+                        }`}
+                        title={visible ? 'Hide from employee' : 'Show to employee'}
+                      >
+                        {visible ? (
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                          </svg>
+                        ) : (
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                            <line x1="1" y1="1" x2="23" y2="23"/>
+                            <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                          </svg>
+                        )}
+                      </button>
                     )}
                   </div>
-                )
-              })}
-            </div>
-          )}
+
+                  {expanded && (!isEmployee || visible) && (
+                    <div className="border-t border-black/5 divide-y divide-black/5">
+                      {items.map(item => (
+                        <MenuItemRow
+                          key={item.id}
+                          item={item}
+                          onPlate={isOnPlate(item.id)}
+                          completed={isCompleted(item.id)}
+                          completedDate={getCompletion(item.id)?.completed_date}
+                          assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
+                          onAssign={() => requestAssign([item], item.id)}
+                          onRemove={() => removeFromPlate(item)}
+                          compact
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {expanded && isEmployee && !visible && (
+                    <div className="border-t border-black/5 px-5 py-4">
+                      <p className="text-sm text-charcoal/30 text-center">
+                        {items.length} categories — hidden from {selectedTrainee.name.split(' ')[0]}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )
+            }
+
+            return (
+              <div className="space-y-6">
+                {/* Non-recurring categories */}
+                {nonRecurringCats.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Categories</p>
+                    <div className="space-y-2">
+                      {nonRecurringCats.map(category =>
+                        renderCategoryBlock(category, nonRecurringItems.filter(i => i.category_id === category.id))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recurring categories */}
+                {recurringCats.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Recurring Categories</p>
+                    <div className="space-y-2">
+                      {recurringCats.map(category =>
+                        renderCategoryBlock(category, recurringItems.filter(i => i.category_id === category.id))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </>
       )}
     </div>
