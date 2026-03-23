@@ -33,10 +33,15 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
     recurringCompletions.some(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
 
   const completedPlates = plates.filter(p => getCompletion(p.menu_item_id))
-  const remainingPlates = plates.filter(p => !getCompletion(p.menu_item_id))
+  const recurringDoneTodayPlates = plates.filter(p =>
+    !getCompletion(p.menu_item_id) && p.menu_item?.is_recurring && isDoneToday(p.menu_item_id)
+  )
+  const remainingPlates = plates.filter(p =>
+    !getCompletion(p.menu_item_id) && !(p.menu_item?.is_recurring && isDoneToday(p.menu_item_id))
+  )
 
   const totalItems = plates.length + shadowedToday.length
-  const totalCompleted = completedPlates.length + shadowedToday.length
+  const totalCompleted = completedPlates.length + recurringDoneTodayPlates.length + shadowedToday.length
 
   // Group plates by category
   const groupByCategory = (items: Plate[]) => {
@@ -76,7 +81,7 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
   }, [shadowedToday])
 
   const remainingGroups = useMemo(() => groupByCategory(remainingPlates), [remainingPlates])
-  const completedGroups = useMemo(() => groupByCategory(completedPlates), [completedPlates])
+  const completedGroups = useMemo(() => groupByCategory([...completedPlates, ...recurringDoneTodayPlates]), [completedPlates, recurringDoneTodayPlates])
 
   if (plates.length === 0 && shadowedToday.length === 0) {
     return (
