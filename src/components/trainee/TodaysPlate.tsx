@@ -315,7 +315,6 @@ function CategoryGroup({
                     </p>
                   ) : (
                     <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-xs text-charcoal/35">{item.timeNeeded} · {item.trainerType}</p>
                       {item.shadowed && (
                         <span className="text-xs text-gold bg-gold/10 px-2 py-0.5 rounded-full">Shadowed</span>
                       )}

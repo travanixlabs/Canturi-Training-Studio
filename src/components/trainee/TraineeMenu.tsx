@@ -202,9 +202,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                                 <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : recInProgress ? 'text-blue-600' : 'text-charcoal/40'}`}>
                                   {recDone} out of {recTotal} recurring tasks completed
                                 </p>
-                              ) : (
-                                <p className="text-xs text-charcoal/35 mt-0.5">{item.time_needed} · {item.trainer_type}</p>
-                              )}
+                              ) : null}
                             </div>
                             <span className="text-charcoal/20 text-lg">›</span>
                           </button>
