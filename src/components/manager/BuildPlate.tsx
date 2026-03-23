@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition } from 'react'
 import { Search, X, ChevronDown, ChevronUp, Plus, Check, Calendar } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
+import { TaskModal } from '@/components/ui/TaskModal'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { User, Category, MenuItem, Plate, VisibleCategory, Completion, RecurringTaskCompletion } from '@/types'
@@ -446,8 +447,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   recurringCount={item.is_recurring ? getRecurringCount(item.id) : undefined}
                   recurringDates={item.is_recurring ? getRecurringDates(item.id) : undefined}
                   onReassign={() => reassignItem(item)}
-                  traineeNotes={getCompletion(item.id)?.trainee_notes ?? undefined}
-                  traineeRating={getCompletion(item.id)?.trainee_rating ?? undefined}
+                  completion={getCompletion(item.id)}
+                  currentUser={manager}
+                  plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
                 />
               ))}
             </div>
@@ -555,8 +557,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   onRemove={() => removeFromPlate(item)}
                                   compact
                                   onReassign={() => reassignItem(item)}
-                                  traineeNotes={getCompletion(item.id)?.trainee_notes ?? undefined}
-                                  traineeRating={getCompletion(item.id)?.trainee_rating ?? undefined}
+                                  completion={getCompletion(item.id)}
+                                  currentUser={manager}
+                                  plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
                                 />
                               ))}
                             </div>
@@ -591,8 +594,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   recurringCount={getRecurringCount(item.id)}
                                   recurringDates={getRecurringDates(item.id)}
                                   onReassign={() => reassignItem(item)}
-                                  traineeNotes={getCompletion(item.id)?.trainee_notes ?? undefined}
-                                  traineeRating={getCompletion(item.id)?.trainee_rating ?? undefined}
+                                  completion={getCompletion(item.id)}
+                                  currentUser={manager}
+                                  plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
                                 />
                               ))}
                             </div>
@@ -671,8 +675,9 @@ function MenuItemRow({
   recurringCount,
   recurringDates,
   onReassign,
-  traineeNotes,
-  traineeRating,
+  completion,
+  currentUser,
+  plate,
 }: {
   item: MenuItem
   onPlate: boolean
@@ -685,8 +690,9 @@ function MenuItemRow({
   recurringCount?: number
   recurringDates?: string[]
   onReassign?: () => void
-  traineeNotes?: string
-  traineeRating?: number
+  completion?: Completion | null
+  currentUser?: User
+  plate?: Plate | null
 }) {
   const [showDetail, setShowDetail] = useState(false)
   const shadowedEarly = completed && completedDate && assignedDate && completedDate < assignedDate
@@ -775,74 +781,18 @@ function MenuItemRow({
         </button>
       )}
 
-      {/* Detail modal for completed items */}
-      {showDetail && (completed || (isRecurringItem && recurringDone > 0)) && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setShowDetail(false)}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                {item.category && <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />}
-                <h3 className="font-serif text-lg text-charcoal mt-1">{item.title}</h3>
-              </div>
-              <button onClick={() => setShowDetail(false)} className="text-charcoal/30 hover:text-charcoal">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              {isRecurringItem ? (
-                <div>
-                  <p className={`text-sm font-medium ${recurringFullyComplete ? 'text-green-600' : 'text-blue-600'}`}>
-                    {recurringDone} out of {recurringTotal} recurring tasks completed
-                  </p>
-                  {recurringDates && recurringDates.length > 0 && (
-                    <p className="text-xs text-charcoal/40 mt-1">
-                      Completed on: {recurringDates.map(d => new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })).join(', ')}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-medium px-2 py-1 rounded-full ${shadowedEarly ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'}`}>
-                    {shadowedEarly ? 'Shadowed early' : 'Completed'}
-                  </span>
-                  {completedDate && (
-                    <span className="text-xs text-charcoal/40">
-                      {new Date(completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {traineeNotes && (
-                <div>
-                  <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-1">Employee notes</p>
-                  <p className="text-sm text-charcoal/70">{traineeNotes}</p>
-                </div>
-              )}
-
-              {traineeRating != null && traineeRating > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-1">Employee self-rating</p>
-                  <div className="flex gap-1">
-                    {[1,2,3,4,5].map(s => (
-                      <span key={s} className={`text-lg ${s <= traineeRating ? 'text-gold' : 'text-charcoal/15'}`}>★</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {onReassign && (
-              <button
-                onClick={() => { setShowDetail(false); onReassign() }}
-                className="w-full py-3 rounded-xl text-sm font-medium border-2 border-charcoal/15 text-charcoal/60 hover:border-gold hover:text-gold transition-all"
-              >
-                Reassign to employee
-              </button>
-            )}
-          </div>
-        </div>
+      {/* Sign Off modal for completed items */}
+      {showDetail && currentUser && (
+        <TaskModal
+          item={item}
+          plate={plate}
+          existingCompletion={completion}
+          currentUser={currentUser}
+          mode="manager"
+          onClose={() => setShowDetail(false)}
+          onComplete={() => { setShowDetail(false) }}
+          onReassign={onReassign ? () => { setShowDetail(false); onReassign() } : undefined}
+        />
       )}
     </div>
   )
