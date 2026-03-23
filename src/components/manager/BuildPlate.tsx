@@ -686,9 +686,8 @@ function MenuItemRow({
         ) : (
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-charcoal/35">
-            {item.time_needed} · {item.trainer_type}
             {assignedDate && !completed && (
-              <span className="font-semibold text-charcoal/50 ml-1">{new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
+              <span className="font-semibold text-charcoal/50">{new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
             )}
           </p>
           {completed && shadowedEarly && (
