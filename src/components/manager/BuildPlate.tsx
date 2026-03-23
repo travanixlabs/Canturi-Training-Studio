@@ -302,17 +302,18 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
             const nonRecurringCats = categories.filter(c => nonRecurringItems.some(i => i.category_id === c.id))
             const recurringCats = categories.filter(c => recurringItems.some(i => i.category_id === c.id))
 
-            const renderCategoryBlock = (category: Category, items: MenuItem[]) => {
-              const expanded = expandedCategories.has(category.id)
+            const renderCategoryBlock = (category: Category, items: MenuItem[], keyPrefix = '') => {
+              const expandKey = keyPrefix + category.id
+              const expanded = expandedCategories.has(expandKey)
               const visible = isCategoryVisible(category.id)
               const assignedCount = items.filter(i => isOnPlate(i.id)).length
               const unassignedCount = items.length - assignedCount
 
               return (
-                <div key={category.id} className={`card overflow-hidden ${isEmployee && !visible ? 'opacity-40' : ''}`}>
+                <div key={expandKey} className={`card overflow-hidden ${isEmployee && !visible ? 'opacity-40' : ''}`}>
                   <div className="flex items-center">
                     <button
-                      onClick={() => toggleCategory(category.id)}
+                      onClick={() => toggleCategory(expandKey)}
                       className="flex-1 px-5 py-4 flex items-center gap-3 text-left"
                     >
                       <span
@@ -412,7 +413,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                     <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Categories</p>
                     <div className="space-y-2">
                       {nonRecurringCats.map(category =>
-                        renderCategoryBlock(category, nonRecurringItems.filter(i => i.category_id === category.id))
+                        renderCategoryBlock(category, nonRecurringItems.filter(i => i.category_id === category.id), 'nr-')
                       )}
                     </div>
                   </div>
@@ -424,7 +425,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                     <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Recurring Categories</p>
                     <div className="space-y-2">
                       {recurringCats.map(category =>
-                        renderCategoryBlock(category, recurringItems.filter(i => i.category_id === category.id))
+                        renderCategoryBlock(category, recurringItems.filter(i => i.category_id === category.id), 'rc-')
                       )}
                     </div>
                   </div>
