@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { CATEGORY_COLOURS } from '@/types'
-import type { Category, MenuItem, Completion, User, RecurringTaskCompletion } from '@/types'
+import type { Category, MenuItem, Completion, User, RecurringTaskCompletion, Plate } from '@/types'
 import { useRouter } from 'next/navigation'
 
 interface Props {
@@ -13,9 +13,10 @@ interface Props {
   completions: Completion[]
   currentUser: User
   recurringCompletions?: RecurringTaskCompletion[]
+  plates?: Plate[]
 }
 
-export function TraineeMenu({ categories, menuItems, completions, currentUser, recurringCompletions = [] }: Props) {
+export function TraineeMenu({ categories, menuItems, completions, currentUser, recurringCompletions = [], plates = [] }: Props) {
   const [search, setSearch] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const router = useRouter()
@@ -25,6 +26,13 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
 
   const getRecurringCount = (itemId: string) =>
     recurringCompletions.filter(rc => rc.menu_item_id === itemId && rc.trainee_id === currentUser.id).length
+
+  const getRecurringBreakdown = (itemId: string) => {
+    const rcs = recurringCompletions.filter(rc => rc.menu_item_id === itemId && rc.trainee_id === currentUser.id)
+    const plateDates = plates.filter(p => p.menu_item_id === itemId && p.trainee_id === currentUser.id).map(p => p.date_assigned)
+    const assigned = rcs.filter(rc => plateDates.includes(rc.completed_date)).length
+    return { assigned, shadowed: rcs.length - assigned }
+  }
 
   const todayStr = new Date().toISOString().split('T')[0]
   const isDoneToday = (itemId: string) =>
@@ -201,6 +209,14 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                               {isRec ? (
                                 <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : recInProgress ? 'text-blue-600' : 'text-charcoal/40'}`}>
                                   {recDone} out of {recTotal} sessions completed
+                                  {recDone > 0 && (() => {
+                                    const bd = getRecurringBreakdown(item.id)
+                                    return (
+                                      <span className="text-charcoal/30 ml-1">
+                                        | {bd.assigned > 0 && `${bd.assigned} assigned`}{bd.assigned > 0 && bd.shadowed > 0 && ' / '}{bd.shadowed > 0 && `${bd.shadowed} shadowed`}
+                                      </span>
+                                    )
+                                  })()}
                                 </p>
                               ) : null}
                             </div>

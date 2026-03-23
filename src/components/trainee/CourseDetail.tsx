@@ -19,9 +19,10 @@ interface Props {
   recurringCompletions?: RecurringTaskCompletion[]
   siblingItems?: MenuItem[]
   siblingCompletions?: Completion[]
+  allPlates?: Plate[]
 }
 
-export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, existingCompletion, plate, currentUser, recurringCompletions: initialRC = [], siblingItems = [], siblingCompletions = [] }: Props) {
+export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, existingCompletion, plate, currentUser, recurringCompletions: initialRC = [], siblingItems = [], siblingCompletions = [], allPlates = [] }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -49,6 +50,9 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const recurringDone = recurringComps.length
   const recurringFullyComplete = isRecurringItem && recurringDone >= recurringTotal
   const todayStr = new Date().toISOString().split('T')[0]
+  const assignedPlateDates = allPlates.filter(p => p.menu_item_id === menuItem.id && p.trainee_id === currentUser.id).map(p => p.date_assigned)
+  const assignedSessionCount = recurringComps.filter(rc => assignedPlateDates.includes(rc.completed_date)).length
+  const shadowedSessionCount = recurringDone - assignedSessionCount
 
   const isModuleComplete = (moduleId: string) =>
     completedModules.some(mc => mc.module_id === moduleId && mc.trainee_id === currentUser.id)
@@ -358,6 +362,11 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                   </div>
                   <p className={`text-xs mt-2 ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
                     {recurringDone} out of {recurringTotal} sessions completed
+                    {recurringDone > 0 && (
+                      <span className="text-charcoal/30 ml-1">
+                        | {assignedSessionCount > 0 && `${assignedSessionCount} assigned`}{assignedSessionCount > 0 && shadowedSessionCount > 0 && ' / '}{shadowedSessionCount > 0 && `${shadowedSessionCount} shadowed`}
+                      </span>
+                    )}
                   </p>
                 </div>
 
@@ -368,7 +377,11 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     <div className="space-y-2">
                       {sessionHistory.map((entry) => (
                         <div key={entry.id} className="card p-4">
-                          <p className="text-xs font-medium text-charcoal/50 mb-1">{formatDate(entry.completed_date)}</p>
+                          <p className="text-xs font-medium text-charcoal/50 mb-1">
+                            {new Date(entry.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {' '}
+                            <span className="text-charcoal/30">{new Date(entry.created_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </p>
                           {entry.notes ? (
                             <p className="text-sm text-charcoal/70 leading-relaxed whitespace-pre-wrap">{entry.notes}</p>
                           ) : (

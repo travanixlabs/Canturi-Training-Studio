@@ -139,7 +139,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     if (!courseForm.tags.trim()) { setCourseError('Tags are required.'); return }
     if (!courseForm.trainer_type) { setCourseError('Trainer type is required.'); return }
     if (!courseForm.difficulty_level) { setCourseError('Difficulty level is required.'); return }
-    if (courseForm.is_recurring && (!courseForm.recurring_amount || courseForm.recurring_amount < 1)) { setCourseError('Recurring amount is required when recurring is enabled.'); return }
+    if (courseForm.is_recurring && (!courseForm.recurring_amount || courseForm.recurring_amount < 1)) { setCourseError('Sessions Count is required when recurring is enabled.'); return }
 
     setCourseSaving(true)
     setCourseError(null)
@@ -628,13 +628,13 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                       }`}
                     />
                   </button>
-                  <span className="text-sm text-charcoal/70">Recurring (revisit regularly)</span>
+                  <span className="text-sm text-charcoal/70">Sessions</span>
                 </div>
 
-                {/* Recurring amount */}
+                {/* Sessions Count */}
                 <div className={`${courseForm.is_recurring ? '' : 'opacity-30 pointer-events-none'}`}>
                   <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                    Recurring amount {courseForm.is_recurring && <span className="text-red-400">*</span>}
+                    Sessions Count {courseForm.is_recurring && <span className="text-red-400">*</span>}
                   </label>
                   <select
                     className="input w-24"
@@ -646,7 +646,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-charcoal/30 mt-1">Number of times this category must be completed</p>
+                  <p className="text-xs text-charcoal/30 mt-1">Number of sessions to complete</p>
                 </div>
               </div>
 
@@ -904,7 +904,7 @@ function CourseRow({
             </span>
           )}
           {item.is_recurring && (
-            <span className="text-xs text-charcoal/30">· Recurring</span>
+            <span className="text-xs text-charcoal/30">· Session</span>
           )}
           {(item.tags ?? []).map(tag => (
             <span key={tag} className="text-xs text-charcoal/25 bg-charcoal/5 px-1.5 py-0.5 rounded-full">

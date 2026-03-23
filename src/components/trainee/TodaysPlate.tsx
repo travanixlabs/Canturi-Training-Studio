@@ -28,6 +28,13 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
   const getRecurringCount = (menuItemId: string) =>
     recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id).length
 
+  const getRecurringBreakdown = (menuItemId: string) => {
+    const rcs = recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id)
+    const plateDates = plates.filter(p => p.menu_item_id === menuItemId && p.trainee_id === currentUser.id).map(p => p.date_assigned)
+    const assigned = rcs.filter(rc => plateDates.includes(rc.completed_date)).length
+    return { assigned, shadowed: rcs.length - assigned }
+  }
+
   const todayStr = new Date().toISOString().split('T')[0]
   const isDoneToday = (menuItemId: string) =>
     recurringCompletions.some(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
@@ -142,6 +149,7 @@ export function TodaysPlate({ plates, completions, shadowedToday = [], currentUs
                     completed: false,
                     isRecurring: isRec,
                     recurringDone: isRec ? getRecurringCount(p.menu_item_id) : undefined,
+                    recurringBreakdown: isRec ? getRecurringBreakdown(p.menu_item_id) : undefined,
                     recurringTotal: isRec ? (mi?.recurring_amount ?? 0) : undefined,
                     recurringDoneToday: isRec ? isDoneToday(p.menu_item_id) : undefined,
                   }
@@ -232,6 +240,7 @@ interface ItemInfo {
   recurringDone?: number
   recurringTotal?: number
   recurringDoneToday?: boolean
+  recurringBreakdown?: { assigned: number; shadowed: number }
 }
 
 function CategoryGroup({
@@ -317,6 +326,11 @@ function CategoryGroup({
                   {item.isRecurring ? (
                     <p className={`text-xs font-medium mt-0.5 ${recurringFullyComplete ? 'text-green-600' : recurringInProgress ? 'text-blue-600' : 'text-charcoal/40'}`}>
                       {item.recurringDone} out of {item.recurringTotal} sessions completed
+                      {(item.recurringDone ?? 0) > 0 && item.recurringBreakdown && (
+                        <span className="text-charcoal/30 ml-1">
+                          | {item.recurringBreakdown.assigned > 0 && `${item.recurringBreakdown.assigned} assigned`}{item.recurringBreakdown.assigned > 0 && item.recurringBreakdown.shadowed > 0 && ' / '}{item.recurringBreakdown.shadowed > 0 && `${item.recurringBreakdown.shadowed} shadowed`}
+                        </span>
+                      )}
                     </p>
                   ) : (
                     <div className="flex items-center gap-2 mt-0.5">

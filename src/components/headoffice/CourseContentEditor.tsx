@@ -65,7 +65,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     if (!tags.trim()) { alert('Tags are required.'); return }
     if (!trainerType) { alert('Trainer type is required.'); return }
     if (!priorityLevel) { alert('Difficulty level is required.'); return }
-    if (isRecurring && (!recurringAmount || recurringAmount < 1)) { alert('Recurring amount is required when recurring is enabled.'); return }
+    if (isRecurring && (!recurringAmount || recurringAmount < 1)) { alert('Sessions Count is required when recurring is enabled.'); return }
     if (isRecurring && !recurringTaskContent.trim()) { alert('Session Details content is required. Please fill in the Session page.'); setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false); return }
     setSaving(true)
     await supabase.from('menu_items').update({
@@ -406,12 +406,12 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                   >
                     <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform mx-1 ${isRecurring ? 'translate-x-4' : ''}`} />
                   </button>
-                  <span className="text-sm text-charcoal/70">Recurring (revisit regularly)</span>
+                  <span className="text-sm text-charcoal/70">Sessions</span>
                 </div>
 
                 <div className={`${isRecurring ? '' : 'opacity-30 pointer-events-none'}`}>
                   <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                    Recurring amount {isRecurring && <span className="text-red-400">*</span>}
+                    Sessions Count {isRecurring && <span className="text-red-400">*</span>}
                   </label>
                   <select
                     className="input w-24"
@@ -423,7 +423,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-charcoal/30 mt-1">Number of times this category must be completed</p>
+                  <p className="text-xs text-charcoal/30 mt-1">Number of sessions to complete</p>
                 </div>
               </div>
             </div>

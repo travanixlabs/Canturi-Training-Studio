@@ -450,6 +450,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                   completion={getCompletion(item.id)}
                   currentUser={manager}
                   plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
+                  assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
+                  recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
                 />
               ))}
             </div>
@@ -560,6 +562,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   completion={getCompletion(item.id)}
                                   currentUser={manager}
                                   plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
+                  assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
+                  recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
                                 />
                               ))}
                             </div>
@@ -570,7 +574,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                         {recurring.length > 0 && (
                           <div className={nonRecurring.length > 0 ? 'border-t border-black/5' : ''}>
                             <div className="px-5 pt-3 pb-1">
-                              <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Recurring Categories</p>
+                              <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Session Categories</p>
                             </div>
                             <div className="divide-y divide-black/5">
                               {recurring.map(item => (
@@ -597,6 +601,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   completion={getCompletion(item.id)}
                                   currentUser={manager}
                                   plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
+                  assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
+                  recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
                                 />
                               ))}
                             </div>
@@ -678,6 +684,8 @@ function MenuItemRow({
   completion,
   currentUser,
   plate,
+  assignedPlateDates,
+  recurringCompletionDates,
 }: {
   item: MenuItem
   onPlate: boolean
@@ -693,6 +701,8 @@ function MenuItemRow({
   completion?: Completion | null
   currentUser?: User
   plate?: Plate | null
+  assignedPlateDates?: string[]
+  recurringCompletionDates?: string[]
 }) {
   const [showDetail, setShowDetail] = useState(false)
   const shadowedEarly = completed && completedDate && assignedDate && completedDate < assignedDate
@@ -700,6 +710,12 @@ function MenuItemRow({
   const recurringTotal = item.recurring_amount ?? 0
   const recurringDone = recurringCount ?? 0
   const recurringFullyComplete = isRecurringItem && recurringDone >= recurringTotal
+
+  // Compute assigned vs shadowed session counts
+  const assignedSessionCount = isRecurringItem && recurringCompletionDates && assignedPlateDates
+    ? recurringCompletionDates.filter(d => assignedPlateDates.includes(d)).length
+    : 0
+  const shadowedSessionCount = recurringDone - assignedSessionCount
 
   return (
     <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${
@@ -716,6 +732,11 @@ function MenuItemRow({
           <div className="mt-0.5">
             <p className={`text-xs font-medium ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
               {recurringFullyComplete ? 'Completed' : `${recurringDone} out of ${recurringTotal} sessions completed`}
+              {!recurringFullyComplete && recurringDone > 0 && (
+                <span className="text-charcoal/30 ml-1">
+                  | {assignedSessionCount > 0 && `${assignedSessionCount} assigned`}{assignedSessionCount > 0 && shadowedSessionCount > 0 && ' / '}{shadowedSessionCount > 0 && `${shadowedSessionCount} shadowed`}
+                </span>
+              )}
               {!recurringFullyComplete && assignedDate && (
                 <span className="font-semibold text-charcoal/50 ml-1">{new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
               )}
