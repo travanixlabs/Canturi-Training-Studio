@@ -21,6 +21,12 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
   if (!menuItem || !profile) redirect('/trainee')
 
+  // Fetch sibling items in same course (category) to detect course completion
+  const [{ data: siblingItems }, { data: siblingCompletions }] = await Promise.all([
+    supabase.from('menu_items').select('id, status, is_recurring, recurring_amount').eq('category_id', menuItem.category_id).eq('status', 'active'),
+    supabase.from('completions').select('id, menu_item_id').eq('trainee_id', authUser.id),
+  ])
+
   return (
     <CourseDetail
       menuItem={menuItem}
@@ -30,6 +36,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
       plate={plate ?? null}
       currentUser={profile as User}
       recurringCompletions={recurringCompletions ?? []}
+      siblingItems={(siblingItems ?? []) as any}
+      siblingCompletions={(siblingCompletions ?? []) as any}
     />
   )
 }

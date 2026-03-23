@@ -17,9 +17,10 @@ interface Props {
   onClose: () => void
   onComplete?: () => void
   onReassign?: () => void
+  onCategoryCelebrationDone?: () => void
 }
 
-export function TaskModal({ item, plate, existingCompletion, currentUser, mode, onClose, onComplete, onReassign }: Props) {
+export function TaskModal({ item, plate, existingCompletion, currentUser, mode, onClose, onComplete, onReassign, onCategoryCelebrationDone }: Props) {
   const [traineeNotes, setTraineeNotes] = useState(existingCompletion?.trainee_notes ?? '')
   const [trainerNotes, setTrainerNotes] = useState(existingCompletion?.trainer_notes ?? '')
   const [traineeRating, setTraineeRating] = useState(existingCompletion?.trainee_rating ?? 0)
@@ -143,7 +144,11 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
         onContinue={() => {
           setCelebrating(false)
           onComplete?.()
-          onClose()
+          if (onCategoryCelebrationDone) {
+            onCategoryCelebrationDone()
+          } else {
+            onClose()
+          }
         }}
       />
     )

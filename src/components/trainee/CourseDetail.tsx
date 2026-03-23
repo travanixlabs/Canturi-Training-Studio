@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { ArrowLeft, Check, BookOpen } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { TaskModal } from '@/components/ui/TaskModal'
+import { CourseCelebrationScreen } from '@/components/ui/CourseCelebrationScreen'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { MenuItem, Module, ModuleCompletion, Completion, Plate, User, RecurringTaskCompletion } from '@/types'
@@ -16,9 +17,11 @@ interface Props {
   plate: Plate | null
   currentUser: User
   recurringCompletions?: RecurringTaskCompletion[]
+  siblingItems?: MenuItem[]
+  siblingCompletions?: Completion[]
 }
 
-export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, existingCompletion, plate, currentUser, recurringCompletions: initialRC = [] }: Props) {
+export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, existingCompletion, plate, currentUser, recurringCompletions: initialRC = [], siblingItems = [], siblingCompletions = [] }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -28,9 +31,16 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const [courseCompleted, setCourseCompleted] = useState(!!existingCompletion)
   const [recurringComps, setRecurringComps] = useState<RecurringTaskCompletion[]>(initialRC)
   const [markingRecurring, setMarkingRecurring] = useState(false)
+  const [showCourseCelebration, setShowCourseCelebration] = useState(false)
   const [viewingRecurringTask, setViewingRecurringTask] = useState(false)
 
   const hasModules = modules.length > 0
+
+  // Check if completing this category finishes the entire course
+  const otherSiblings = siblingItems.filter(s => s.id !== menuItem.id && s.status === 'active')
+  const otherSiblingsDone = otherSiblings.every(s => siblingCompletions.some(c => c.menu_item_id === s.id))
+  const willCompleteCourse = otherSiblings.length > 0 && otherSiblingsDone
+  const courseName = menuItem.category?.name ?? 'Course'
 
   // Recurring task state
   const isRecurringItem = menuItem.is_recurring && !!menuItem.recurring_amount
@@ -404,6 +414,21 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
             setCourseCompleted(true)
             setShowCompleteModal(false)
             router.refresh()
+          }}
+          onCategoryCelebrationDone={willCompleteCourse ? () => {
+            setShowCompleteModal(false)
+            setShowCourseCelebration(true)
+          } : undefined}
+        />
+      )}
+
+      {showCourseCelebration && (
+        <CourseCelebrationScreen
+          traineeName={currentUser.name}
+          courseTitle={courseName}
+          onContinue={() => {
+            setShowCourseCelebration(false)
+            router.push('/trainee/menu')
           }}
         />
       )}
