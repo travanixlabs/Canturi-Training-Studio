@@ -113,6 +113,8 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
     if (!error && data) {
       setRecurringComps(prev => [...prev, data as RecurringTaskCompletion])
       setSessionNotes('')
+    } else if (error) {
+      alert('Failed to save session: ' + error.message)
     }
     setMarkingRecurring(false)
   }
