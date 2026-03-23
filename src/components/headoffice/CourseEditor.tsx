@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, EyeOff } from 'lucide-react'
+import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Category, MenuItem, MenuItemStatus, TrainerType, DifficultyLevel } from '@/types'
@@ -923,7 +923,15 @@ function CourseRow({
         >
           <Pencil size={14} />
         </button>
-        {(item.status ?? 'active') !== 'hidden' && (
+        {(item.status ?? 'active') === 'hidden' ? (
+          <button
+            onClick={() => onChangeStatus('active')}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-green-600 hover:bg-green-50 transition-all"
+            title="Show category"
+          >
+            <Eye size={14} />
+          </button>
+        ) : (
           <button
             onClick={() => onChangeStatus('hidden')}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-charcoal/60 hover:bg-charcoal/5 transition-all"
