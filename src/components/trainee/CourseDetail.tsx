@@ -28,7 +28,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const [courseCompleted, setCourseCompleted] = useState(!!existingCompletion)
   const [recurringComps, setRecurringComps] = useState<RecurringTaskCompletion[]>(initialRC)
   const [markingRecurring, setMarkingRecurring] = useState(false)
-  const [showRecurringPage, setShowRecurringPage] = useState(false)
+  const [viewingRecurringTask, setViewingRecurringTask] = useState(false)
 
   const hasModules = modules.length > 0
 
@@ -79,10 +79,6 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   }
 
   function handleBack() {
-    if (showRecurringPage) {
-      setShowRecurringPage(false)
-      return
-    }
     if (window.history.length > 1) {
       router.back()
     } else {
@@ -133,11 +129,11 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
               <div className="lg:hidden px-4 py-3 flex gap-2 overflow-x-auto">
                 {modules.map((mod, i) => {
                   const done = isModuleComplete(mod.id)
-                  const active = activeModule?.id === mod.id
+                  const active = activeModule?.id === mod.id && !viewingRecurringTask
                   return (
                     <button
                       key={mod.id}
-                      onClick={() => setSelectedModuleId(mod.id)}
+                      onClick={() => { setSelectedModuleId(mod.id); setViewingRecurringTask(false) }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border transition-all ${
                         active
                           ? 'border-gold bg-gold/10 text-gold'
@@ -151,6 +147,21 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     </button>
                   )
                 })}
+                {isRecurringItem && (
+                  <button
+                    onClick={() => { if (allModulesComplete) { setViewingRecurringTask(true); setSelectedModuleId(null) } }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border transition-all ${
+                      viewingRecurringTask
+                        ? 'border-blue-300 bg-blue-50 text-blue-600'
+                        : allModulesComplete
+                        ? 'border-charcoal/10 text-charcoal/50'
+                        : 'border-charcoal/5 text-charcoal/20 cursor-not-allowed opacity-40'
+                    }`}
+                  >
+                    <span>↻</span>
+                    <span className="truncate max-w-[120px]">Recurring Task</span>
+                  </button>
+                )}
               </div>
 
               {/* Desktop: vertical list */}
@@ -161,11 +172,11 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                 <div className="space-y-1">
                   {modules.map((mod, i) => {
                     const done = isModuleComplete(mod.id)
-                    const active = activeModule?.id === mod.id
+                    const active = activeModule?.id === mod.id && !viewingRecurringTask
                     return (
                       <button
                         key={mod.id}
-                        onClick={() => setSelectedModuleId(mod.id)}
+                        onClick={() => { setSelectedModuleId(mod.id); setViewingRecurringTask(false) }}
                         className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
                           active
                             ? 'bg-gold/10 text-gold'
@@ -185,6 +196,29 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                       </button>
                     )
                   })}
+
+                  {/* Recurring Task sidebar item */}
+                  {isRecurringItem && (
+                    <>
+                      <div className="border-t border-black/5 my-2" />
+                      <button
+                        onClick={() => { if (allModulesComplete) { setViewingRecurringTask(true); setSelectedModuleId(null) } }}
+                        className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
+                          viewingRecurringTask
+                            ? 'bg-blue-50 text-blue-600'
+                            : allModulesComplete
+                            ? 'hover:bg-charcoal/3 text-charcoal/70'
+                            : 'text-charcoal/20 cursor-not-allowed'
+                        }`}
+                      >
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
+                          viewingRecurringTask ? 'bg-blue-500 text-white' : allModulesComplete ? 'bg-charcoal/8 text-charcoal/40' : 'bg-charcoal/5 text-charcoal/15'
+                        }`}>↻</span>
+                        <span className="text-sm">Recurring Task</span>
+                        {!allModulesComplete && <span className="text-[10px] text-charcoal/20 ml-auto">Complete modules first</span>}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -224,24 +258,15 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                   </button>
                 )}
 
-                {/* Show complete course button when all modules done */}
-                {!courseCompleted && allModulesComplete && (
+                {/* Show complete course button when all modules done (non-recurring only) */}
+                {!courseCompleted && allModulesComplete && !isRecurringItem && (
                   <div className="mt-8 pt-6 border-t border-black/5">
-                    {isRecurringItem ? (
-                      <button
-                        onClick={() => setShowRecurringPage(true)}
-                        className="btn-gold w-full"
-                      >
-                        Recurring Task Details
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setShowCompleteModal(true)}
-                        className="btn-gold w-full"
-                      >
-                        Mark as complete
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setShowCompleteModal(true)}
+                      className="btn-gold w-full"
+                    >
+                      Mark as complete
+                    </button>
                   </div>
                 )}
               </div>
@@ -260,28 +285,98 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                   </div>
                 )}
 
-                {!courseCompleted && (
-                  isRecurringItem ? (
-                    <button
-                      onClick={() => setShowRecurringPage(true)}
-                      className="btn-gold w-full"
-                    >
-                      Recurring Task Details
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setShowCompleteModal(true)}
-                      className="btn-gold w-full"
-                    >
-                      Mark as complete
-                    </button>
-                  )
+                {!courseCompleted && !isRecurringItem && (
+                  <button
+                    onClick={() => setShowCompleteModal(true)}
+                    className="btn-gold w-full"
+                  >
+                    Mark as complete
+                  </button>
+                )}
+                {!courseCompleted && isRecurringItem && !viewingRecurringTask && (
+                  <button
+                    onClick={() => setViewingRecurringTask(true)}
+                    className="btn-gold w-full"
+                  >
+                    Recurring Task Details
+                  </button>
                 )}
               </div>
             ) : null}
 
+            {/* Recurring Task Details — inline */}
+            {viewingRecurringTask && isRecurringItem && (
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-charcoal/30">↻</span>
+                  <p className="text-xs text-charcoal/40 uppercase tracking-wider">Recurring Task</p>
+                </div>
+                <h2 className="font-serif text-xl text-charcoal mb-4">Recurring Task Details</h2>
+
+                {menuItem.recurring_task_content && (
+                  <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap mb-6">
+                    {menuItem.recurring_task_content}
+                  </div>
+                )}
+
+                {/* Progress */}
+                <div className="card p-4 mb-6">
+                  <div className="flex justify-between text-sm mb-1.5">
+                    <span className="text-charcoal/60">Recurring task progress</span>
+                    <span className={`font-medium ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal'}`}>
+                      {recurringDone}/{recurringTotal}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${recurringFullyComplete ? 'bg-green-500' : 'bg-blue-500'}`}
+                      style={{ width: `${recurringTotal > 0 ? Math.min((recurringDone / recurringTotal) * 100, 100) : 0}%` }}
+                    />
+                  </div>
+                  <p className={`text-xs mt-2 ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
+                    {recurringDone} out of {recurringTotal} recurring tasks completed
+                  </p>
+                </div>
+
+                {!courseCompleted && !recurringFullyComplete && (
+                  <div className="mb-6">
+                    {doneToday ? (
+                      <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 px-4 py-3 rounded-xl">
+                        <Check size={16} />
+                        <span>Done for today. {recurringDone} of {recurringTotal} completed.</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={markRecurringTaskDone}
+                        disabled={markingRecurring}
+                        className="btn-gold w-full"
+                      >
+                        {markingRecurring ? 'Saving...' : 'Mark recurring task as done'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {!courseCompleted && recurringFullyComplete && (
+                  <button
+                    onClick={() => setShowCompleteModal(true)}
+                    className="btn-gold w-full"
+                  >
+                    Mark as complete
+                  </button>
+                )}
+
+                {courseCompleted && (
+                  <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-4 py-3 rounded-xl">
+                    <Check size={16} />
+                    <span>Completed {existingCompletion?.completed_date ?? 'today'}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Already completed */}
-            {courseCompleted && (
+            {courseCompleted && !viewingRecurringTask && (
               <div className={`${hasModules ? 'mt-8 pt-6 border-t border-black/5' : ''}`}>
                 <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-4 py-3 rounded-xl">
                   <Check size={16} />
@@ -293,88 +388,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
         </div>
       </div>
 
-      {/* Recurring Task Details page */}
-      {showRecurringPage && isRecurringItem && (
-        <div className="fixed inset-0 z-30 bg-ivory overflow-y-auto">
-          <div className="sticky top-0 z-20 bg-white border-b border-black/5 px-4 py-3 flex items-center gap-3">
-            <button onClick={handleBack} className="text-charcoal/50 hover:text-charcoal transition-colors">
-              <ArrowLeft size={20} />
-            </button>
-            <div className="flex-1 min-w-0">
-              {menuItem.category && (
-                <CategoryBadge categoryName={menuItem.category.name} icon={menuItem.category.icon} />
-              )}
-              <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">Recurring Task Details</h1>
-            </div>
-          </div>
-          <div className="px-5 py-6 max-w-3xl mx-auto">
-            <h2 className="font-serif text-xl text-charcoal mb-2">{menuItem.title}</h2>
-
-            {/* Recurring task content */}
-            {menuItem.recurring_task_content && (
-              <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap mb-6">
-                {menuItem.recurring_task_content}
-              </div>
-            )}
-
-            {/* Progress */}
-            <div className="card p-4 mb-6">
-              <div className="flex justify-between text-sm mb-1.5">
-                <span className="text-charcoal/60">Recurring task progress</span>
-                <span className={`font-medium ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal'}`}>
-                  {recurringDone}/{recurringTotal}
-                </span>
-              </div>
-              <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${recurringFullyComplete ? 'bg-green-500' : 'bg-blue-500'}`}
-                  style={{ width: `${recurringTotal > 0 ? Math.min((recurringDone / recurringTotal) * 100, 100) : 0}%` }}
-                />
-              </div>
-              <p className={`text-xs mt-2 ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
-                {recurringDone} out of {recurringTotal} recurring tasks completed
-              </p>
-            </div>
-
-            {/* Mark as done button / status */}
-            {!courseCompleted && !recurringFullyComplete && (
-              <div className="mb-6">
-                {doneToday ? (
-                  <div className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 px-4 py-3 rounded-xl">
-                    <Check size={16} />
-                    <span>Done for today. {recurringDone} of {recurringTotal} completed.</span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={markRecurringTaskDone}
-                    disabled={markingRecurring}
-                    className="btn-gold w-full"
-                  >
-                    {markingRecurring ? 'Saving...' : 'Mark recurring task as done'}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Final mark as complete — only when recurring threshold met */}
-            {!courseCompleted && recurringFullyComplete && (
-              <button
-                onClick={() => setShowCompleteModal(true)}
-                className="btn-gold w-full"
-              >
-                Mark as complete
-              </button>
-            )}
-
-            {courseCompleted && (
-              <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-4 py-3 rounded-xl">
-                <Check size={16} />
-                <span>Completed {existingCompletion?.completed_date ?? 'today'}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Recurring Task Details — inline in main content area is handled below */}
 
       {/* Completion popup */}
       {showCompleteModal && (
