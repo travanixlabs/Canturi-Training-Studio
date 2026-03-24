@@ -175,40 +175,74 @@ function WorkshopSection({
   section: 'remaining' | 'completed'
 }) {
   const [expanded, setExpanded] = useState(false)
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set())
   const totalItems = courseGroups.reduce((sum, g) => sum + g.items.length, 0)
   const completedItems = courseGroups.reduce((sum, g) => sum + g.items.filter(i => i.completed || i.completedOnOtherDate).length, 0)
+
+  const allCoursesExpanded = courseGroups.length > 0 && courseGroups.every(g => expandedCourses.has(g.category?.id ?? 'none'))
+
+  function toggleExpandAll(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (allCoursesExpanded) {
+      setExpandedCourses(new Set())
+    } else {
+      setExpandedCourses(new Set(courseGroups.map(g => g.category?.id ?? 'none')))
+    }
+  }
 
   return (
     <div className="card overflow-hidden">
       {/* Workshop header */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
-      >
-        <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
-          W
-        </span>
-        <div className="flex-1">
-          <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
-          <p className="text-xs text-charcoal/40 mt-0.5">
-            {section === 'completed' ? `${totalItems} completed` : `${totalItems - completedItems} remaining`} · {courseGroups.length} course{courseGroups.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
-      </button>
+      <div className="flex items-center">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex-1 px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
+        >
+          <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
+            W
+          </span>
+          <div className="flex-1">
+            <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
+            <p className="text-xs text-charcoal/40 mt-0.5">
+              {section === 'completed' ? `${totalItems} completed` : `${totalItems - completedItems} remaining`} · {courseGroups.length} course{courseGroups.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
+        </button>
+        {expanded && (
+          <button
+            onClick={toggleExpandAll}
+            className="mr-4 text-xs font-medium text-gold hover:text-gold/80 transition-colors whitespace-nowrap"
+          >
+            {allCoursesExpanded ? 'Collapse all' : 'Expand all'}
+          </button>
+        )}
+      </div>
 
       {/* Courses inside workshop */}
       {expanded && (
         <div className="border-t border-black/5">
-          {courseGroups.map(group => (
-            <CourseGroup
-              key={group.category?.id ?? 'none'}
-              category={group.category}
-              colour={group.colour}
-              items={group.items}
-              onItemClick={onItemClick}
-            />
-          ))}
+          {courseGroups.map(group => {
+            const courseId = group.category?.id ?? 'none'
+            return (
+              <CourseGroup
+                key={courseId}
+                category={group.category}
+                colour={group.colour}
+                items={group.items}
+                onItemClick={onItemClick}
+                forceExpanded={expandedCourses.has(courseId)}
+                onToggle={(isExpanded) => {
+                  setExpandedCourses(prev => {
+                    const next = new Set(prev)
+                    if (isExpanded) next.add(courseId)
+                    else next.delete(courseId)
+                    return next
+                  })
+                }}
+              />
+            )
+          })}
         </div>
       )}
     </div>
@@ -220,20 +254,31 @@ function CourseGroup({
   colour,
   items,
   onItemClick,
+  forceExpanded,
+  onToggle,
 }: {
   category: Category | null
   colour: string
   items: PlateItemInfo[]
   onItemClick: (itemId: string) => void
+  forceExpanded?: boolean
+  onToggle?: (expanded: boolean) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
+  const [localExpanded, setLocalExpanded] = useState(false)
+  const expanded = forceExpanded ?? localExpanded
+
+  function handleToggle() {
+    const next = !expanded
+    setLocalExpanded(next)
+    onToggle?.(next)
+  }
   const completedCount = items.filter(i => i.completed || i.completedOnOtherDate).length
 
   return (
     <div>
       {/* Course header */}
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={handleToggle}
         className="w-full pl-8 pr-5 py-3 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors border-b border-black/5"
       >
         <span
