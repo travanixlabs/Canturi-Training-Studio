@@ -154,25 +154,27 @@ export function useDatePlateView(
         // Non-recurring
         const comp = getCompletion(mi.id)
         const completedOnThisDate = comp?.completed_date === selectedDate
+        const completedBeforeAssigned = !!(comp && p.date_assigned && comp.completed_date <= p.date_assigned)
+        const isShadowedEarly = !!(comp && p.date_assigned && comp.completed_date < p.date_assigned)
+        const isShadowingMoment = comp?.is_shadowing_moment ?? false
 
-        if (completedOnThisDate) {
-          // Show in Completed with full formatting
-          const isShadowingMoment = comp.is_shadowing_moment
-          const isShadowedEarly = !!(comp && p.date_assigned && comp.completed_date < p.date_assigned)
+        if (completedOnThisDate || (comp && completedBeforeAssigned && selectedDate === p.date_assigned)) {
+          // Completed on this date OR viewing the assigned date and it was completed before/on it
+          // → show in Completed section with full formatting
           completed.push({
             id: mi.id,
             title: mi.title,
             timeNeeded: mi.time_needed ?? '',
             trainerType: mi.trainer_type ?? '',
             completed: true,
-            completedDate: comp.completed_date,
+            completedDate: comp!.completed_date,
             assignedDate: p.date_assigned,
             shadowedEarly: isShadowedEarly,
             shadowed: isShadowingMoment,
-            rating: comp.trainee_rating ?? undefined,
+            rating: comp!.trainee_rating ?? undefined,
           })
-        } else {
-          // Show in To Complete — if completed on another date, show text without formatting
+        } else if (comp && !completedBeforeAssigned) {
+          // Completed on a later date — show in To Complete with neutral text
           remaining.push({
             id: mi.id,
             title: mi.title,
@@ -180,8 +182,18 @@ export function useDatePlateView(
             trainerType: mi.trainer_type ?? '',
             completed: false,
             assignedDate: p.date_assigned,
-            completedOnOtherDate: comp ? comp.completed_date : undefined,
-            shadowed: comp ? comp.is_shadowing_moment : undefined,
+            completedOnOtherDate: comp.completed_date,
+            shadowed: isShadowingMoment,
+          })
+        } else {
+          // Not completed yet
+          remaining.push({
+            id: mi.id,
+            title: mi.title,
+            timeNeeded: mi.time_needed ?? '',
+            trainerType: mi.trainer_type ?? '',
+            completed: false,
+            assignedDate: p.date_assigned,
           })
         }
       }
