@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { User } from '@/types'
@@ -22,11 +23,18 @@ export function AppHeader({ user, title }: Props) {
 
   return (
     <header className="bg-charcoal text-white px-5 py-4 flex items-center justify-between sticky top-0 z-40">
-      <div className="flex items-center gap-3">
-        <div>
-          <p className="font-serif text-lg tracking-[0.12em] uppercase leading-none">Canturi</p>
-          {title && <p className="text-xs text-white/50 tracking-widest uppercase mt-0.5">{title}</p>}
-        </div>
+      <div className="flex items-center gap-4">
+        <Image
+          src="/canturi-logo-white.jpg"
+          alt="Canturi"
+          width={120}
+          height={32}
+          className="h-7 w-auto object-contain"
+          priority
+        />
+        {title && (
+          <span className="text-xs text-white/50 tracking-widest uppercase border-l border-white/20 pl-4">{title}</span>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
