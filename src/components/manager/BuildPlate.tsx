@@ -711,6 +711,7 @@ function MenuItemRow({
   const recurringTotal = item.recurring_amount ?? 0
   const recurringDone = recurringCount ?? 0
   const recurringFullyComplete = isRecurringItem && recurringDone >= recurringTotal
+  const isOverdue = !isRecurringItem && !completed && assignedDate && assignedDate < todayAEDT()
 
   // Compute assigned vs shadowed session counts
   const assignedSessionCount = isRecurringItem && recurringCompletionDates && assignedPlateDates
@@ -722,7 +723,7 @@ function MenuItemRow({
     <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${
       isRecurringItem
         ? (recurringFullyComplete ? 'bg-green-50/50' : recurringDone > 0 ? 'bg-blue-50/50' : '')
-        : (completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : '')
+        : (completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : isOverdue ? 'bg-yellow-50/50' : '')
     }`}>
       <div className="flex-1">
         {!compact && item.category && (
@@ -752,7 +753,9 @@ function MenuItemRow({
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-charcoal/35">
             {assignedDate && !completed && (
-              <span className="font-semibold text-charcoal/50">{new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
+              <span className={`font-semibold ${isOverdue ? 'text-yellow-600' : 'text-charcoal/50'}`}>
+                {isOverdue ? 'Overdue — ' : ''}{new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+              </span>
             )}
           </p>
           {completed && shadowedEarly && (

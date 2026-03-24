@@ -199,7 +199,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
 
                         const bgClass = isRec
                           ? (recFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : recInProgress && recDoneToday ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-charcoal/2')
-                          : (completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : isOverdue ? 'bg-red-50/50 hover:bg-red-50' : 'hover:bg-charcoal/2')
+                          : (completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
 
                         return (
                           <button
@@ -211,7 +211,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                               className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
                                 isRec
                                   ? (recFullyComplete ? 'border-transparent bg-green-500' : recInProgress ? 'border-transparent bg-blue-500' : 'border-charcoal/20')
-                                  : (completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : isOverdue ? 'border-red-300 bg-red-50' : 'border-charcoal/20')
+                                  : (completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
                               }`}
                             >
                               {(completed || recFullyComplete) && <span className="text-white text-[10px]">✓</span>}
@@ -251,7 +251,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                                 </p>
                               ) : assignedDate ? (
                                 <p className="text-xs mt-0.5">
-                                  <span className={`font-semibold ${isOverdue ? 'text-red-500' : 'text-charcoal/50'}`}>
+                                  <span className={`font-semibold ${isOverdue ? 'text-yellow-600' : 'text-charcoal/50'}`}>
                                     {isOverdue ? 'Overdue — ' : ''}{formatDate(assignedDate)}
                                   </span>
                                 </p>

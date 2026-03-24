@@ -347,7 +347,7 @@ function CategoryGroup({
             const recurringInProgress = item.isRecurring && (item.recurringDone ?? 0) > 0 && !recurringFullyComplete
             const bgClass = item.isRecurring
               ? (recurringFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : recurringInProgress && item.recurringDoneToday ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-charcoal/2')
-              : (item.completed ? (item.shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : item.isOverdue ? 'bg-red-50/50 hover:bg-red-50' : 'hover:bg-charcoal/2')
+              : (item.completed ? (item.shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : item.isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
 
             return (
               <button
@@ -359,7 +359,7 @@ function CategoryGroup({
                   className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
                     item.isRecurring
                       ? (recurringFullyComplete ? 'border-transparent bg-green-500' : recurringInProgress ? 'border-transparent bg-blue-500' : 'border-charcoal/20')
-                      : (item.completed ? (item.shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : item.isOverdue ? 'border-red-300 bg-red-50' : 'border-charcoal/20')
+                      : (item.completed ? (item.shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : item.isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
                   }`}
                 >
                   {(item.completed || recurringFullyComplete) && <span className="text-white text-[10px]">✓</span>}
@@ -395,7 +395,7 @@ function CategoryGroup({
                     </p>
                   ) : item.assignedDate ? (
                     <p className="text-xs mt-0.5">
-                      <span className={`font-semibold ${item.isOverdue ? 'text-red-500' : 'text-charcoal/50'}`}>
+                      <span className={`font-semibold ${item.isOverdue ? 'text-yellow-600' : 'text-charcoal/50'}`}>
                         {item.isOverdue ? 'Overdue — ' : ''}{new Date(item.assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
                       </span>
                     </p>
