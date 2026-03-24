@@ -42,12 +42,16 @@ export function TodaysPlate({ plates, overduePlates = [], completions, shadowedT
     recurringCompletions.some(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
 
   const isRecurring = (p: Plate) => p.menu_item?.is_recurring && !!p.menu_item?.recurring_amount
+  const isFullyComplete = (p: Plate) =>
+    isRecurring(p) && getRecurringCount(p.menu_item_id) >= (p.menu_item?.recurring_amount ?? 0)
 
   const completedPlates = plates.filter(p => !isRecurring(p) && getCompletion(p.menu_item_id))
-  const recurringDoneTodayPlates = plates.filter(p => isRecurring(p) && isDoneToday(p.menu_item_id))
+  const recurringDoneTodayPlates = plates.filter(p =>
+    isRecurring(p) && (isDoneToday(p.menu_item_id) || isFullyComplete(p))
+  )
   const remainingPlates = plates.filter(p =>
     isRecurring(p)
-      ? !isDoneToday(p.menu_item_id)
+      ? !isDoneToday(p.menu_item_id) && !isFullyComplete(p)
       : !getCompletion(p.menu_item_id)
   )
 
