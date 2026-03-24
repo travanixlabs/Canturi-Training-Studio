@@ -14,7 +14,7 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
     supabase.from('categories').select('*').order('sort_order'),
   ])
 
-  if (!menuItem) redirect('/head-office/courses')
+  if (!menuItem) redirect('/head-office/categories')
 
   return (
     <CourseContentEditor

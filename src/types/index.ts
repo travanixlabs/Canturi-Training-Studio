@@ -110,6 +110,22 @@ export interface RecurringTaskCompletion {
   created_at: string
 }
 
+export interface Workshop {
+  id: string
+  name: string
+  tags: string[]
+  status: 'active' | 'hidden'
+  created_at: string
+}
+
+export interface WorkshopMenuItem {
+  id: string
+  workshop_id: string
+  menu_item_id: string
+  created_at: string
+  menu_item?: MenuItem
+}
+
 export interface VisibleCategory {
   id: string
   user_id: string
