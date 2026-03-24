@@ -55,11 +55,30 @@ export function TodaysPlate({ plates, overduePlates = [], completions, shadowedT
       : !getCompletion(p.menu_item_id)
   )
 
-  // Overdue: past-date plates, non-recurring, not completed, not already in today's plates
+  // Overdue: past-date plates not completed, not already on today's plate
   const todayItemIds = new Set(plates.map(p => p.menu_item_id))
-  const overdueItems = overduePlates.filter(p =>
-    !getCompletion(p.menu_item_id) && !p.menu_item?.is_recurring && !todayItemIds.has(p.menu_item_id)
+
+  // Check if a recurring session was completed on a specific date
+  const wasSessionDoneOnDate = (menuItemId: string, date: string) =>
+    recurringCompletions.some(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id && rc.completed_date === date)
+
+  // Non-recurring overdue: not completed, not on today's plate
+  const overdueNonRecurring = overduePlates.filter(p =>
+    !p.menu_item?.is_recurring && !getCompletion(p.menu_item_id) && !todayItemIds.has(p.menu_item_id)
   )
+
+  // Recurring/session overdue: session was due on a past date but wasn't done that day,
+  // AND there's no session assigned for today, AND not fully complete
+  const overdueRecurring = overduePlates.filter(p => {
+    if (!p.menu_item?.is_recurring || !p.menu_item?.recurring_amount) return false
+    if (todayItemIds.has(p.menu_item_id)) return false // has a today assignment, not overdue
+    const fullyDone = getRecurringCount(p.menu_item_id) >= (p.menu_item.recurring_amount ?? 0)
+    if (fullyDone) return false
+    return !wasSessionDoneOnDate(p.menu_item_id, p.date_assigned) // session wasn't done on assigned date
+  })
+
+  const overdueItems = [...overdueNonRecurring, ...overdueRecurring]
+
   // Deduplicate by menu_item_id (keep earliest assigned date)
   const seenOverdue = new Set<string>()
   const uniqueOverdue = overdueItems.filter(p => {
