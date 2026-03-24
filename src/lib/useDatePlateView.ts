@@ -210,6 +210,11 @@ export function useDatePlateView(
       const mi = c.menu_item
       if (mi?.is_recurring && mi?.recurring_amount) continue
 
+      // Check if this item has an assigned date (plate on a different date) and was completed before it
+      const assignedPlate = allPlates.find(p => p.menu_item_id === c.menu_item_id)
+      const assignedDate = assignedPlate?.date_assigned
+      const isShadowedEarly = !!(assignedDate && c.completed_date < assignedDate)
+
       completed.push({
         id: c.menu_item_id,
         title: mi?.title ?? '',
@@ -217,7 +222,9 @@ export function useDatePlateView(
         trainerType: mi?.trainer_type ?? '',
         completed: true,
         shadowed: c.is_shadowing_moment,
+        shadowedEarly: isShadowedEarly,
         completedDate: c.completed_date,
+        assignedDate,
         rating: c.trainee_rating ?? undefined,
       })
     }
