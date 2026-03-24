@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { todayAEDT } from '@/lib/dates'
 import { redirect } from 'next/navigation'
 import { TodaysPlate } from '@/components/trainee/TodaysPlate'
 import type { User } from '@/types'
@@ -9,52 +8,29 @@ export default async function TraineePlatePage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const today = todayAEDT()
-
-  // Fetch today's plate items with their menu items and categories
-  const { data: plates } = await supabase
+  // Fetch ALL plates for this trainee (all dates)
+  const { data: allPlates } = await supabase
     .from('plates')
     .select(`
       *,
       menu_item:menu_items(*, category:categories(*))
     `)
     .eq('trainee_id', authUser.id)
-    .eq('date_assigned', today)
-    .order('created_at', { ascending: true })
-
-  // Fetch overdue plates (past dates, for non-recurring items)
-  const { data: overduePlates } = await supabase
-    .from('plates')
-    .select(`
-      *,
-      menu_item:menu_items(*, category:categories(*))
-    `)
-    .eq('trainee_id', authUser.id)
-    .lt('date_assigned', today)
     .order('date_assigned', { ascending: true })
 
-  // Fetch all completions for this trainee
-  const [{ data: completions }, { data: profile }, { data: todayCompletions }, { data: recurringCompletions }] = await Promise.all([
-    supabase.from('completions').select('*').eq('trainee_id', authUser.id),
+  // Fetch all completions with menu_item join, all recurring completions, and profile
+  const [{ data: allCompletions }, { data: profile }, { data: allRecurringCompletions }] = await Promise.all([
+    supabase.from('completions').select('*, menu_item:menu_items(*, category:categories(*))').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
-    supabase.from('completions').select('*, menu_item:menu_items(*, category:categories(*))').eq('trainee_id', authUser.id).eq('completed_date', today),
     supabase.from('recurring_task_completions').select('*').eq('trainee_id', authUser.id),
   ])
 
-  // Find shadowed completions today that aren't on a plate
-  const plateMenuItemIds = new Set((plates ?? []).map(p => p.menu_item_id))
-  const shadowedToday = (todayCompletions ?? []).filter(
-    c => c.is_shadowing_moment && !plateMenuItemIds.has(c.menu_item_id)
-  )
-
   return (
     <TodaysPlate
-      plates={plates ?? []}
-      overduePlates={overduePlates ?? []}
-      completions={completions ?? []}
-      shadowedToday={shadowedToday}
+      allPlates={allPlates ?? []}
+      allCompletions={allCompletions ?? []}
+      allRecurringCompletions={allRecurringCompletions ?? []}
       currentUser={profile as User}
-      recurringCompletions={recurringCompletions ?? []}
     />
   )
 }

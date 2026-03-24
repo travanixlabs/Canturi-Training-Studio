@@ -1,321 +1,121 @@
 'use client'
 
-import { useMemo } from 'react'
-import { CATEGORY_COLOURS } from '@/types'
-import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { Plate, Completion, User, Category, RecurringTaskCompletion } from '@/types'
 import { useRouter } from 'next/navigation'
-import { todayAEDT } from '@/lib/dates'
+import { todayAEDT, formatDateShort } from '@/lib/dates'
+import { useDatePlateView } from '@/lib/useDatePlateView'
+import type { PlateItemInfo, PlateGroup } from '@/lib/useDatePlateView'
+import { DateNavigation } from './DateNavigation'
 
 interface Props {
-  plates: Plate[]
-  overduePlates?: Plate[]
-  completions: Completion[]
-  shadowedToday?: Completion[]
+  allPlates: Plate[]
+  allCompletions: Completion[]
+  allRecurringCompletions: RecurringTaskCompletion[]
   currentUser: User
-  recurringCompletions?: RecurringTaskCompletion[]
 }
 
-export function TodaysPlate({ plates, overduePlates = [], completions, shadowedToday = [], currentUser, recurringCompletions = [] }: Props) {
+export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions, currentUser }: Props) {
   const router = useRouter()
+  const [selectedDate, setSelectedDate] = useState(todayAEDT())
 
-  const today = new Date().toLocaleDateString('en-AU', {
-    weekday: 'long', day: 'numeric', month: 'long'
-  })
+  const {
+    isToday,
+    remainingGroups,
+    completedGroups,
+    progress,
+    availableDates,
+    prevDate,
+    nextDate,
+    dateBounds,
+  } = useDatePlateView(allPlates, allCompletions, allRecurringCompletions, selectedDate, currentUser.id)
 
-  const getCompletion = (menuItemId: string) =>
-    completions.find(c => c.menu_item_id === menuItemId) ?? null
-
-  const getRecurringCount = (menuItemId: string) =>
-    recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id).length
-
-  const getRecurringBreakdown = (menuItemId: string) => {
-    const rcs = recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id)
-    const plateDates = plates.filter(p => p.menu_item_id === menuItemId && p.trainee_id === currentUser.id).map(p => p.date_assigned)
-    const assigned = rcs.filter(rc => plateDates.includes(rc.completed_date)).length
-    return { assigned, shadowed: rcs.length - assigned }
-  }
-
-  const todayStr = todayAEDT()
-  const isDoneToday = (menuItemId: string) =>
-    recurringCompletions.some(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
-
-  const isRecurring = (p: Plate) => p.menu_item?.is_recurring && !!p.menu_item?.recurring_amount
-  const isFullyComplete = (p: Plate) =>
-    isRecurring(p) && getRecurringCount(p.menu_item_id) >= (p.menu_item?.recurring_amount ?? 0)
-
-  const completedPlates = plates.filter(p => !isRecurring(p) && getCompletion(p.menu_item_id))
-  const recurringDoneTodayPlates = plates.filter(p =>
-    isRecurring(p) && (isDoneToday(p.menu_item_id) || isFullyComplete(p))
-  )
-  const remainingPlates = plates.filter(p =>
-    isRecurring(p)
-      ? !isDoneToday(p.menu_item_id) && !isFullyComplete(p)
-      : !getCompletion(p.menu_item_id)
-  )
-
-  // Overdue: past-date plates not completed, not already on today's plate
-  const todayItemIds = new Set(plates.map(p => p.menu_item_id))
-
-  // Check if a recurring session was completed on a specific date
-  const wasSessionDoneOnDate = (menuItemId: string, date: string) =>
-    recurringCompletions.some(rc => rc.menu_item_id === menuItemId && rc.trainee_id === currentUser.id && rc.completed_date === date)
-
-  // Non-recurring overdue: not completed, not on today's plate
-  const overdueNonRecurring = overduePlates.filter(p =>
-    !p.menu_item?.is_recurring && !getCompletion(p.menu_item_id) && !todayItemIds.has(p.menu_item_id)
-  )
-
-  // Recurring/session overdue: session was due on a past date but wasn't done that day,
-  // AND there's no session assigned for today, AND not fully complete
-  const overdueRecurring = overduePlates.filter(p => {
-    if (!p.menu_item?.is_recurring || !p.menu_item?.recurring_amount) return false
-    if (todayItemIds.has(p.menu_item_id)) return false // has a today assignment, not overdue
-    const fullyDone = getRecurringCount(p.menu_item_id) >= (p.menu_item.recurring_amount ?? 0)
-    if (fullyDone) return false
-    return !wasSessionDoneOnDate(p.menu_item_id, p.date_assigned) // session wasn't done on assigned date
-  })
-
-  const overdueItems = [...overdueNonRecurring, ...overdueRecurring]
-
-  // Deduplicate by menu_item_id (keep earliest assigned date)
-  const seenOverdue = new Set<string>()
-  const uniqueOverdue = overdueItems.filter(p => {
-    if (seenOverdue.has(p.menu_item_id)) return false
-    seenOverdue.add(p.menu_item_id)
-    return true
-  })
-
-  const totalItems = plates.length + shadowedToday.length
-  const totalCompleted = completedPlates.length + recurringDoneTodayPlates.length + shadowedToday.length
-
-  // Group plates by category
-  const groupByCategory = (items: Plate[]) => {
-    const groups: Record<string, { category: Category | null; colour: string; plates: Plate[] }> = {}
-    for (const p of items) {
-      const cat = p.menu_item?.category
-      const key = cat?.id ?? 'uncategorised'
-      if (!groups[key]) {
-        groups[key] = {
-          category: cat ?? null,
-          colour: cat ? CATEGORY_COLOURS[cat.name] ?? cat.colour_hex : '#C9A96E',
-          plates: [],
-        }
-      }
-      groups[key].plates.push(p)
-    }
-    // Sort by category sort_order
-    return Object.values(groups).sort((a, b) => (a.category?.sort_order ?? 99) - (b.category?.sort_order ?? 99))
-  }
-
-  // Group shadowed items by category
-  const shadowedByCategory = useMemo(() => {
-    const groups: Record<string, { category: Category | null; colour: string; completions: Completion[] }> = {}
-    for (const c of shadowedToday) {
-      const cat = c.menu_item?.category as Category | undefined
-      const key = cat?.id ?? 'uncategorised'
-      if (!groups[key]) {
-        groups[key] = {
-          category: cat ?? null,
-          colour: cat ? CATEGORY_COLOURS[cat.name] ?? cat.colour_hex : '#C9A96E',
-          completions: [],
-        }
-      }
-      groups[key].completions.push(c)
-    }
-    return Object.values(groups)
-  }, [shadowedToday])
-
-  // Merge overdue items into remaining for a single "To complete" section
-  const allRemaining = useMemo(() => {
-    // Build overdue plate items with isOverdue flag
-    const overdueWithFlag = uniqueOverdue.map(p => ({ ...p, _isOverdue: true as const }))
-    const remainingWithFlag = remainingPlates.map(p => ({ ...p, _isOverdue: false as const }))
-    return [...remainingWithFlag, ...overdueWithFlag]
-  }, [remainingPlates, uniqueOverdue])
-
-  const remainingGroups = useMemo(() => {
-    const groups: Record<string, { category: Category | null; colour: string; plates: (Plate & { _isOverdue: boolean })[] }> = {}
-    for (const p of allRemaining) {
-      const cat = p.menu_item?.category
-      const key = cat?.id ?? 'uncategorised'
-      if (!groups[key]) {
-        groups[key] = {
-          category: cat ?? null,
-          colour: cat ? CATEGORY_COLOURS[cat.name] ?? cat.colour_hex : '#C9A96E',
-          plates: [],
-        }
-      }
-      groups[key].plates.push(p)
-    }
-    return Object.values(groups).sort((a, b) => (a.category?.sort_order ?? 99) - (b.category?.sort_order ?? 99))
-  }, [allRemaining])
-
-  const completedGroups = useMemo(() => groupByCategory([...completedPlates, ...recurringDoneTodayPlates]), [completedPlates, recurringDoneTodayPlates])
-
-  if (plates.length === 0 && shadowedToday.length === 0) {
-    return (
-      <div className="px-5 py-8">
-        <div className="mb-6">
-          <h1 className="font-serif text-2xl text-charcoal">Day Plates</h1>
-          <p className="text-sm text-charcoal/40 mt-1">{today}</p>
-        </div>
-        <div className="card p-8 text-center">
-          <p className="text-4xl mb-4">◈</p>
-          <p className="font-serif text-lg text-charcoal/60">Your plate is empty today.</p>
-          <p className="text-sm text-charcoal/40 mt-2">Your manager hasn&apos;t assigned any training yet — or check the Menu to self-log a shadowing moment.</p>
-        </div>
-      </div>
-    )
-  }
+  const hasItems = remainingGroups.length > 0 || completedGroups.length > 0
 
   return (
     <div className="px-5 py-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="font-serif text-2xl text-charcoal">Day Plates</h1>
-        <p className="text-sm text-charcoal/40 mt-1">{today}</p>
-      </div>
+      {/* Header with date navigation */}
+      <DateNavigation
+        selectedDate={selectedDate}
+        onDateChange={setSelectedDate}
+        prevDate={prevDate}
+        nextDate={nextDate}
+        availableDates={availableDates}
+        dateBounds={dateBounds}
+      />
 
-      {/* Progress summary */}
-      <div className="card p-4 mb-6">
-        <div className="flex justify-between text-sm mb-1.5">
-          <span className="text-charcoal/60">Today&apos;s progress</span>
-          <span className="font-medium text-charcoal">{totalCompleted}/{totalItems}</span>
+      {!hasItems ? (
+        <div className="card p-8 text-center">
+          <p className="text-4xl mb-4">◈</p>
+          <p className="font-serif text-lg text-charcoal/60">
+            {isToday ? 'Your plate is empty today.' : 'No training items on this date.'}
+          </p>
+          {isToday && (
+            <p className="text-sm text-charcoal/40 mt-2">
+              Your manager hasn&apos;t assigned any training yet — or check the Menu to self-log a shadowing moment.
+            </p>
+          )}
         </div>
-        <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gold rounded-full transition-all duration-500"
-            style={{ width: `${totalItems > 0 ? (totalCompleted / totalItems) * 100 : 0}%` }}
-          />
-        </div>
-      </div>
-
-      {/* To complete — grouped by category */}
-      {remainingGroups.length > 0 && (
-        <div className="mb-5">
-          <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">To complete</h2>
-          <div className="space-y-3">
-            {remainingGroups.map(group => (
-              <CategoryGroup
-                key={group.category?.id ?? 'none'}
-                category={group.category}
-                colour={group.colour}
-                items={group.plates.map(p => {
-                  const mi = p.menu_item
-                  const isRec = mi?.is_recurring && !!mi?.recurring_amount
-                  return {
-                    id: p.menu_item_id,
-                    title: mi?.title ?? '',
-                    timeNeeded: mi?.time_needed ?? '',
-                    trainerType: mi?.trainer_type ?? '',
-                    completed: false,
-                    assignedDate: p.date_assigned,
-                    isOverdue: p._isOverdue,
-                    isRecurring: isRec,
-                    recurringDone: isRec ? getRecurringCount(p.menu_item_id) : undefined,
-                    recurringBreakdown: isRec ? getRecurringBreakdown(p.menu_item_id) : undefined,
-                    recurringTotal: isRec ? (mi?.recurring_amount ?? 0) : undefined,
-                    recurringDoneToday: isRec ? isDoneToday(p.menu_item_id) : undefined,
-                  }
-                })}
-                totalInCategory={group.plates.length}
-                completedInCategory={0}
-                onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
+      ) : (
+        <>
+          {/* Progress summary */}
+          <div className="card p-4 mb-6">
+            <div className="flex justify-between text-sm mb-1.5">
+              <span className="text-charcoal/60">{isToday ? "Today's Progress" : 'Day Progress'}</span>
+              <span className="font-medium text-charcoal">{progress.completed}/{progress.total}</span>
+            </div>
+            <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gold rounded-full transition-all duration-500"
+                style={{ width: `${progress.total > 0 ? (progress.completed / progress.total) * 100 : 0}%` }}
               />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Completed — grouped by category (merge plates + shadowed) */}
-      {(completedGroups.length > 0 || shadowedByCategory.length > 0) && (() => {
-        // Merge plate completions and shadowed into single category groups
-        const merged: Record<string, { category: Category | null; colour: string; items: ItemInfo[] }> = {}
-
-        for (const group of completedGroups) {
-          const key = group.category?.id ?? 'none'
-          if (!merged[key]) merged[key] = { category: group.category, colour: group.colour, items: [] }
-          merged[key].items.push(...group.plates.map(p => {
-            const mi = p.menu_item
-            const isRec = mi?.is_recurring && !!mi?.recurring_amount
-            const comp = getCompletion(p.menu_item_id)
-            const shadowedEarly = !!(comp && p.date_assigned && comp.completed_date < p.date_assigned)
-            return {
-              id: p.menu_item_id,
-              title: mi?.title ?? '',
-              timeNeeded: mi?.time_needed ?? '',
-              trainerType: mi?.trainer_type ?? '',
-              completed: true,
-              completedDate: comp?.completed_date,
-              assignedDate: p.date_assigned,
-              shadowedEarly,
-              rating: comp?.trainee_rating ?? undefined,
-              isRecurring: isRec,
-              recurringDone: isRec ? getRecurringCount(p.menu_item_id) : undefined,
-              recurringTotal: isRec ? (mi?.recurring_amount ?? 0) : undefined,
-              recurringDoneToday: isRec ? isDoneToday(p.menu_item_id) : undefined,
-            }
-          }))
-        }
-
-        for (const group of shadowedByCategory) {
-          const key = group.category?.id ?? 'none'
-          if (!merged[key]) merged[key] = { category: group.category, colour: group.colour, items: [] }
-          merged[key].items.push(...group.completions.map(c => ({
-            id: c.menu_item_id,
-            title: c.menu_item?.title ?? '',
-            timeNeeded: c.menu_item?.time_needed ?? '',
-            trainerType: c.menu_item?.trainer_type ?? '',
-            completed: true,
-            shadowed: true,
-            rating: c.trainee_rating ?? undefined,
-          })))
-        }
-
-        const mergedGroups = Object.values(merged).sort((a, b) => (a.category?.sort_order ?? 99) - (b.category?.sort_order ?? 99))
-
-        return (
-          <div>
-            <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">Completed</h2>
-            <div className="space-y-3 opacity-60">
-              {mergedGroups.map(group => (
-                <CategoryGroup
-                  key={group.category?.id ?? 'none'}
-                  category={group.category}
-                  colour={group.colour}
-                  items={group.items}
-                  totalInCategory={group.items.length}
-                  completedInCategory={group.items.length}
-                  onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
-                />
-              ))}
             </div>
           </div>
-        )
-      })()}
+
+          {/* To complete */}
+          {remainingGroups.length > 0 && (
+            <div className="mb-5">
+              <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">To complete</h2>
+              <div className="space-y-3">
+                {remainingGroups.map(group => (
+                  <CategoryGroup
+                    key={group.category?.id ?? 'none'}
+                    category={group.category}
+                    colour={group.colour}
+                    items={group.items}
+                    totalInCategory={group.items.length}
+                    completedInCategory={0}
+                    onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Completed */}
+          {completedGroups.length > 0 && (
+            <div>
+              <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">Completed</h2>
+              <div className="space-y-3 opacity-60">
+                {completedGroups.map(group => (
+                  <CategoryGroup
+                    key={group.category?.id ?? 'none'}
+                    category={group.category}
+                    colour={group.colour}
+                    items={group.items}
+                    totalInCategory={group.items.length}
+                    completedInCategory={group.items.length}
+                    onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
-}
-
-interface ItemInfo {
-  id: string
-  title: string
-  timeNeeded: string
-  trainerType: string
-  completed: boolean
-  shadowed?: boolean
-  shadowedEarly?: boolean
-  completedDate?: string
-  assignedDate?: string
-  isOverdue?: boolean
-  rating?: number
-  isRecurring?: boolean
-  recurringDone?: number
-  recurringTotal?: number
-  recurringDoneToday?: boolean
-  recurringBreakdown?: { assigned: number; shadowed: number }
 }
 
 function CategoryGroup({
@@ -328,7 +128,7 @@ function CategoryGroup({
 }: {
   category: Category | null
   colour: string
-  items: ItemInfo[]
+  items: PlateItemInfo[]
   totalInCategory: number
   completedInCategory: number
   onItemClick: (itemId: string) => void
@@ -369,10 +169,21 @@ function CategoryGroup({
         <div className="border-t border-black/5 divide-y divide-black/5">
           {items.map(item => {
             const recurringFullyComplete = item.isRecurring && (item.recurringDone ?? 0) >= (item.recurringTotal ?? 0)
-            const recurringInProgress = item.isRecurring && (item.recurringDone ?? 0) > 0 && !recurringFullyComplete
+
+            // Background: green only for completed items in Completed section, yellow for overdue
+            // completedOnOtherDate items stay in To Complete with NO formatting
             const bgClass = item.isRecurring
               ? (recurringFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
-              : (item.completed ? (item.shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : item.isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
+              : item.completedOnOtherDate
+                ? 'hover:bg-charcoal/2'
+                : (item.completed ? (item.shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : item.isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
+
+            // Circle: no green/blue for completedOnOtherDate
+            const circleClass = item.isRecurring
+              ? (recurringFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
+              : item.completedOnOtherDate
+                ? 'border-charcoal/20'
+                : (item.completed ? (item.shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : item.isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
 
             return (
               <button
@@ -380,20 +191,14 @@ function CategoryGroup({
                 onClick={() => onItemClick(item.id)}
                 className={`w-full px-5 py-3.5 flex items-center gap-3 text-left transition-colors ${bgClass}`}
               >
-                <span
-                  className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
-                    item.isRecurring
-                      ? (recurringFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
-                      : (item.completed ? (item.shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : item.isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
-                  }`}
-                >
-                  {(item.completed || recurringFullyComplete) && <span className="text-white text-[10px]">✓</span>}
+                <span className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${circleClass}`}>
+                  {(item.completed && !item.completedOnOtherDate) || recurringFullyComplete ? <span className="text-white text-[10px]">✓</span> : null}
                 </span>
                 <div className="flex-1">
                   <p className={`text-[14px] leading-snug ${
                     item.isRecurring
                       ? (recurringFullyComplete ? 'text-charcoal/40' : 'text-charcoal')
-                      : (item.completed ? 'text-charcoal/40' : 'text-charcoal')
+                      : (item.completed && !item.completedOnOtherDate ? 'text-charcoal/40' : 'text-charcoal')
                   }`}>
                     {item.title}
                   </p>
@@ -406,27 +211,33 @@ function CategoryGroup({
                         </span>
                       )}
                     </p>
+                  ) : item.completedOnOtherDate ? (
+                    <p className="text-xs mt-0.5 text-charcoal/50">
+                      Completed {formatDateShort(item.completedOnOtherDate)}
+                    </p>
                   ) : item.completed && item.completedDate ? (
                     <p className="text-xs mt-0.5">
                       {item.shadowedEarly ? (
                         <span className="text-blue-600 font-medium">
-                          Shadowed early on {new Date(item.completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+                          Shadowed early on {formatDateShort(item.completedDate)}
                         </span>
                       ) : (
                         <span className="text-green-600 font-medium">
-                          Completed {new Date(item.completedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+                          Completed {formatDateShort(item.completedDate)}
                         </span>
                       )}
                     </p>
                   ) : item.assignedDate ? (
                     <p className="text-xs mt-0.5">
                       <span className={`font-semibold ${item.isOverdue ? 'text-yellow-600' : 'text-charcoal/50'}`}>
-                        {item.isOverdue ? 'Overdue — ' : ''}{new Date(item.assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}
+                        {item.isOverdue ? 'Overdue — ' : ''}{formatDateShort(item.assignedDate)}
                       </span>
                     </p>
                   ) : null}
                 </div>
-                {!item.completed && !recurringFullyComplete && <span className="text-charcoal/20 text-lg">›</span>}
+                {!item.completed && !recurringFullyComplete && !item.completedOnOtherDate && (
+                  <span className="text-charcoal/20 text-lg">›</span>
+                )}
               </button>
             )
           })}
