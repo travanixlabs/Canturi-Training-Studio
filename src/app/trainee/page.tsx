@@ -18,11 +18,13 @@ export default async function TraineePlatePage() {
     .eq('trainee_id', authUser.id)
     .order('date_assigned', { ascending: true })
 
-  // Fetch all completions with menu_item join, all recurring completions, and profile
-  const [{ data: allCompletions }, { data: profile }, { data: allRecurringCompletions }] = await Promise.all([
+  // Fetch all completions with menu_item join, all recurring completions, profile, and workshops
+  const [{ data: allCompletions }, { data: profile }, { data: allRecurringCompletions }, { data: workshops }, { data: workshopMenuItems }] = await Promise.all([
     supabase.from('completions').select('*, menu_item:menu_items(*, category:categories(*))').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('recurring_task_completions').select('*').eq('trainee_id', authUser.id),
+    supabase.from('workshops').select('*').eq('status', 'active').order('name'),
+    supabase.from('workshop_menu_items').select('*'),
   ])
 
   return (
@@ -31,6 +33,8 @@ export default async function TraineePlatePage() {
       allCompletions={allCompletions ?? []}
       allRecurringCompletions={allRecurringCompletions ?? []}
       currentUser={profile as User}
+      workshops={workshops ?? []}
+      workshopMenuItems={workshopMenuItems ?? []}
     />
   )
 }

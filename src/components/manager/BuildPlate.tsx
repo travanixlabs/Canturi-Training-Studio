@@ -7,7 +7,7 @@ import { TaskModal } from '@/components/ui/TaskModal'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
-import type { User, Category, MenuItem, Plate, VisibleCategory, Completion, RecurringTaskCompletion } from '@/types'
+import type { User, Category, MenuItem, Plate, VisibleCategory, Completion, RecurringTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
 
 interface Props {
   manager: User
@@ -19,6 +19,8 @@ interface Props {
   completions?: Completion[]
   recurringCompletions?: RecurringTaskCompletion[]
   showBoutique?: boolean
+  workshops?: Workshop[]
+  workshopMenuItems?: WorkshopMenuItem[]
 }
 
 // Generate next 14 days for date picker
@@ -37,11 +39,12 @@ function getUpcomingDates() {
   return dates
 }
 
-export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, visibleCategories: initialVisible = [], completions: allCompletions = [], recurringCompletions: initialRecurring = [], showBoutique }: Props) {
+export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, visibleCategories: initialVisible = [], completions: allCompletions = [], recurringCompletions: initialRecurring = [], showBoutique, workshops = [], workshopMenuItems = [] }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
   const [search, setSearch] = useState('')
+  const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [plates, setPlates] = useState<Plate[]>(todayPlates)
   const [visibleCats, setVisibleCats] = useState<VisibleCategory[]>(initialVisible)
@@ -239,6 +242,62 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
       }
     }
   }
+
+  // Batch toggle: show/hide all menu items in a workshop
+  async function toggleWorkshopVisibility(workshopId: string) {
+    if (!selectedTrainee) return
+    const itemIds = workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id)
+    const categoryIds = [...new Set(menuItems.filter(mi => itemIds.includes(mi.id)).map(mi => mi.category_id))]
+    const allVisible = categoryIds.every(cid => isCategoryVisible(cid))
+
+    if (allVisible) {
+      // Hide all
+      const toRemove = visibleCats.filter(v => categoryIds.includes(v.category_id) && v.user_id === selectedTrainee.id)
+      setVisibleCats(prev => prev.filter(v => !toRemove.some(r => r.id === v.id)))
+      for (const v of toRemove) {
+        await supabase.from('visible_categories').delete().eq('id', v.id)
+      }
+    } else {
+      // Show all missing
+      const existing = new Set(visibleCats.filter(v => v.user_id === selectedTrainee.id).map(v => v.category_id))
+      const toAdd = categoryIds.filter(cid => !existing.has(cid))
+      for (const cid of toAdd) {
+        const { data, error } = await supabase.from('visible_categories').insert({
+          user_id: selectedTrainee.id,
+          category_id: cid,
+          enabled_by: manager.id,
+        }).select().single()
+        if (!error && data) {
+          setVisibleCats(prev => [...prev, data as VisibleCategory])
+        }
+      }
+    }
+  }
+
+  // Batch toggle: show/hide all menu items in a course (category)
+  async function toggleCourseVisibility(categoryId: string) {
+    await toggleCategoryVisibility(categoryId)
+  }
+
+  function toggleWorkshop(id: string) {
+    setExpandedWorkshops(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // Build workshop -> category hierarchy
+  const workshopHierarchy = useMemo(() => {
+    return workshops.map(ws => {
+      const itemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.menu_item_id))
+      const wsItems = menuItems.filter(mi => itemIds.has(mi.id))
+      const catIds = [...new Set(wsItems.map(mi => mi.category_id))]
+      const wsCats = categories.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
+      return { workshop: ws, categories: wsCats, menuItemIds: itemIds }
+    })
+  }, [workshops, workshopMenuItems, menuItems, categories])
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) return menuItems
@@ -458,69 +517,51 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
             </div>
           )}
 
-          {/* Category browse — each course expands to show Categories + Recurring sub-sections */}
+          {/* Workshop → Course → Category browse */}
           {!isSearching && (
-            <div className="space-y-2">
-              {categories.map(category => {
-                const allItems = menuItems.filter(i => i.category_id === category.id)
-                const nonRecurring = allItems.filter(i => !i.is_recurring)
-                const recurring = allItems.filter(i => i.is_recurring)
-                const expanded = expandedCategories.has(category.id)
-                const visible = isCategoryVisible(category.id)
-                const assignedCount = allItems.filter(i => isOnPlate(i.id)).length
-                const unassignedCount = allItems.length - assignedCount
+            <div className="space-y-3">
+              {workshopHierarchy.map(({ workshop, categories: wsCats, menuItemIds }) => {
+                const wsExpanded = expandedWorkshops.has(workshop.id)
+                const wsItems = menuItems.filter(mi => menuItemIds.has(mi.id))
+                const wsAssigned = wsItems.filter(i => isOnPlate(i.id)).length
+                const wsCatIds = wsCats.map(c => c.id)
+                const wsAllVisible = isEmployee ? wsCatIds.every(cid => isCategoryVisible(cid)) : true
+                const wsNoneVisible = isEmployee ? wsCatIds.every(cid => !isCategoryVisible(cid)) : false
 
                 return (
-                  <div key={category.id} className={`card overflow-hidden ${isEmployee && !visible ? 'opacity-40' : ''}`}>
+                  <div key={workshop.id} className="card overflow-hidden">
+                    {/* Workshop header */}
                     <div className="flex items-center">
                       <button
-                        onClick={() => toggleCategory(category.id)}
+                        onClick={() => toggleWorkshop(workshop.id)}
                         className="flex-1 px-5 py-4 flex items-center gap-3 text-left"
                       >
-                        <span
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0"
-                          style={{ backgroundColor: category.colour_hex + '20', color: category.colour_hex }}
-                        >
-                          {category.icon}
+                        <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
+                          W
                         </span>
                         <div className="flex-1">
-                          <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
-                          <div className="flex gap-3 mt-0.5">
-                            <p className="text-xs text-charcoal/40">
-                              {assignedCount} assigned
-                              {unassignedCount > 0 && <span className="text-charcoal/25"> · {unassignedCount} unassigned</span>}
-                            </p>
-                            {isEmployee && !visible && (
-                              <p className="text-xs text-charcoal/30">Hidden</p>
-                            )}
-                          </div>
+                          <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
+                          <p className="text-xs text-charcoal/40 mt-0.5">
+                            {wsCats.length} course{wsCats.length !== 1 ? 's' : ''} · {wsAssigned} assigned
+                          </p>
                         </div>
-                        {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
+                        {wsExpanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
                       </button>
 
-                      {/* Assign all categories in course */}
-                      {(!isEmployee || visible) && (
-                        <button
-                          onClick={() => requestAssign(allItems, `cat-${category.id}`)}
-                          className="mr-2 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border-2 border-charcoal/10 text-charcoal/30 hover:border-gold hover:text-gold transition-all"
-                          title={`Assign all ${category.name} categories`}
-                        >
-                          <Plus size={18} />
-                        </button>
-                      )}
-
-                      {/* Category visibility toggle — only for employees */}
+                      {/* Workshop visibility toggle */}
                       {isEmployee && (
                         <button
-                          onClick={() => toggleCategoryVisibility(category.id)}
+                          onClick={() => toggleWorkshopVisibility(workshop.id)}
                           className={`mr-4 w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all ${
-                            visible
+                            wsAllVisible
                               ? 'bg-gold/10 text-gold border-2 border-gold/30'
-                              : 'bg-charcoal/5 text-charcoal/25 border-2 border-charcoal/10'
+                              : wsNoneVisible
+                              ? 'bg-charcoal/5 text-charcoal/25 border-2 border-charcoal/10'
+                              : 'bg-yellow-50 text-yellow-500 border-2 border-yellow-300'
                           }`}
-                          title={visible ? 'Hide from employee' : 'Show to employee'}
+                          title={wsAllVisible ? 'Hide workshop from employee' : 'Show workshop to employee'}
                         >
-                          {visible ? (
+                          {wsAllVisible ? (
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                               <circle cx="12" cy="12" r="3"/>
@@ -537,86 +578,177 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                       )}
                     </div>
 
-                    {expanded && (!isEmployee || visible) && (
+                    {/* Expanded: courses inside this workshop */}
+                    {wsExpanded && (
                       <div className="border-t border-black/5">
-                        {/* Non-recurring sub-section */}
-                        {nonRecurring.length > 0 && (
-                          <div>
-                            {recurring.length > 0 && (
-                              <div className="px-5 pt-3 pb-1">
-                                <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Categories</p>
+                        {wsCats.map(category => {
+                          const catItems = wsItems.filter(i => i.category_id === category.id)
+                          const nonRecurring = catItems.filter(i => !i.is_recurring)
+                          const recurring = catItems.filter(i => i.is_recurring)
+                          const catExpanded = expandedCategories.has(`${workshop.id}-${category.id}`)
+                          const visible = isCategoryVisible(category.id)
+                          const assignedCount = catItems.filter(i => isOnPlate(i.id)).length
+                          const unassignedCount = catItems.length - assignedCount
+
+                          return (
+                            <div key={category.id} className={`${isEmployee && !visible ? 'opacity-40' : ''}`}>
+                              {/* Course header */}
+                              <div className="flex items-center border-b border-black/5">
+                                <button
+                                  onClick={() => {
+                                    const key = `${workshop.id}-${category.id}`
+                                    setExpandedCategories(prev => {
+                                      const next = new Set(prev)
+                                      if (next.has(key)) next.delete(key)
+                                      else next.add(key)
+                                      return next
+                                    })
+                                  }}
+                                  className="flex-1 pl-8 pr-5 py-3 flex items-center gap-3 text-left"
+                                >
+                                  <span
+                                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
+                                    style={{ backgroundColor: category.colour_hex + '20', color: category.colour_hex }}
+                                  >
+                                    {category.icon}
+                                  </span>
+                                  <div className="flex-1">
+                                    <p className="font-medium text-charcoal text-[14px]">{category.name}</p>
+                                    <div className="flex gap-3 mt-0.5">
+                                      <p className="text-xs text-charcoal/40">
+                                        {assignedCount} assigned
+                                        {unassignedCount > 0 && <span className="text-charcoal/25"> · {unassignedCount} unassigned</span>}
+                                      </p>
+                                      {isEmployee && !visible && (
+                                        <p className="text-xs text-charcoal/30">Hidden</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {catExpanded ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
+                                </button>
+
+                                {/* Assign all in course */}
+                                {(!isEmployee || visible) && (
+                                  <button
+                                    onClick={() => requestAssign(catItems, `cat-${category.id}`)}
+                                    className="mr-2 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border border-charcoal/10 text-charcoal/30 hover:border-gold hover:text-gold transition-all"
+                                    title={`Assign all ${category.name} categories`}
+                                  >
+                                    <Plus size={14} />
+                                  </button>
+                                )}
+
+                                {/* Course visibility toggle */}
+                                {isEmployee && (
+                                  <button
+                                    onClick={() => toggleCourseVisibility(category.id)}
+                                    className={`mr-3 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                                      visible
+                                        ? 'bg-gold/10 text-gold border border-gold/30'
+                                        : 'bg-charcoal/5 text-charcoal/25 border border-charcoal/10'
+                                    }`}
+                                    title={visible ? 'Hide course from employee' : 'Show course to employee'}
+                                  >
+                                    {visible ? (
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                      </svg>
+                                    ) : (
+                                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                                        <line x1="1" y1="1" x2="23" y2="23"/>
+                                        <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                                      </svg>
+                                    )}
+                                  </button>
+                                )}
                               </div>
-                            )}
-                            <div className="divide-y divide-black/5">
-                              {nonRecurring.map(item => (
-                                <MenuItemRow
-                                  key={item.id}
-                                  item={item}
-                                  onPlate={isOnPlate(item.id)}
-                                  completed={isCompleted(item.id)}
-                                  completedDate={getCompletion(item.id)?.completed_date}
-                                  assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
-                                  onAssign={() => requestAssign([item], item.id)}
-                                  onRemove={() => removeFromPlate(item)}
-                                  compact
-                                  onReassign={() => reassignItem(item)}
-                                  completion={getCompletion(item.id)}
-                                  currentUser={manager}
-                                  plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
-                  assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
-                  recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
 
-                        {/* Recurring sub-section */}
-                        {recurring.length > 0 && (
-                          <div className={nonRecurring.length > 0 ? 'border-t border-black/5' : ''}>
-                            <div className="px-5 pt-3 pb-1">
-                              <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Session Categories</p>
-                            </div>
-                            <div className="divide-y divide-black/5">
-                              {recurring.map(item => (
-                                <MenuItemRow
-                                  key={item.id}
-                                  item={item}
-                                  onPlate={isOnPlate(item.id)}
-                                  completed={isCompleted(item.id)}
-                                  completedDate={getCompletion(item.id)?.completed_date}
-                                  assignedDate={(() => {
-                                    const todayStr = todayAEDT()
-                                    const futureDates = plates
-                                      .filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.date_assigned >= todayStr)
-                                      .map(p => p.date_assigned)
-                                      .sort()
-                                    return futureDates[0] ?? plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned
-                                  })()}
-                                  onAssign={() => requestAssign([item], item.id)}
-                                  onRemove={() => removeFromPlate(item)}
-                                  compact
-                                  recurringCount={getRecurringCount(item.id)}
-                                  recurringDates={getRecurringDates(item.id)}
-                                  onReassign={() => reassignItem(item)}
-                                  completion={getCompletion(item.id)}
-                                  currentUser={manager}
-                                  plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
-                  assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
-                  recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                              {/* Expanded: categories (menu items) inside this course */}
+                              {catExpanded && (!isEmployee || visible) && (
+                                <div className="bg-charcoal/[0.01]">
+                                  {nonRecurring.length > 0 && (
+                                    <div>
+                                      {recurring.length > 0 && (
+                                        <div className="pl-12 pr-5 pt-2 pb-1">
+                                          <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Categories</p>
+                                        </div>
+                                      )}
+                                      <div className="divide-y divide-black/5">
+                                        {nonRecurring.map(item => (
+                                          <MenuItemRow
+                                            key={item.id}
+                                            item={item}
+                                            onPlate={isOnPlate(item.id)}
+                                            completed={isCompleted(item.id)}
+                                            completedDate={getCompletion(item.id)?.completed_date}
+                                            assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
+                                            onAssign={() => requestAssign([item], item.id)}
+                                            onRemove={() => removeFromPlate(item)}
+                                            compact
+                                            onReassign={() => reassignItem(item)}
+                                            completion={getCompletion(item.id)}
+                                            currentUser={manager}
+                                            plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
+                                            assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
+                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {recurring.length > 0 && (
+                                    <div className={nonRecurring.length > 0 ? 'border-t border-black/5' : ''}>
+                                      <div className="pl-12 pr-5 pt-2 pb-1">
+                                        <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Session Categories</p>
+                                      </div>
+                                      <div className="divide-y divide-black/5">
+                                        {recurring.map(item => (
+                                          <MenuItemRow
+                                            key={item.id}
+                                            item={item}
+                                            onPlate={isOnPlate(item.id)}
+                                            completed={isCompleted(item.id)}
+                                            completedDate={getCompletion(item.id)?.completed_date}
+                                            assignedDate={(() => {
+                                              const todayStr = todayAEDT()
+                                              const futureDates = plates
+                                                .filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.date_assigned >= todayStr)
+                                                .map(p => p.date_assigned)
+                                                .sort()
+                                              return futureDates[0] ?? plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned
+                                            })()}
+                                            onAssign={() => requestAssign([item], item.id)}
+                                            onRemove={() => removeFromPlate(item)}
+                                            compact
+                                            recurringCount={getRecurringCount(item.id)}
+                                            recurringDates={getRecurringDates(item.id)}
+                                            onReassign={() => reassignItem(item)}
+                                            completion={getCompletion(item.id)}
+                                            currentUser={manager}
+                                            plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
+                                            assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
+                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
 
-                    {expanded && isEmployee && !visible && (
-                      <div className="border-t border-black/5 px-5 py-4">
-                        <p className="text-sm text-charcoal/30 text-center">
-                          {allItems.length} categories — hidden from {selectedTrainee.name.split(' ')[0]}
-                        </p>
+                              {catExpanded && isEmployee && !visible && (
+                                <div className="pl-12 pr-5 py-3">
+                                  <p className="text-xs text-charcoal/30 text-center">
+                                    {catItems.length} categories — hidden from {selectedTrainee?.name.split(' ')[0]}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>

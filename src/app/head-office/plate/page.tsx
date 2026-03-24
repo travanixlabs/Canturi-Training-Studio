@@ -19,7 +19,7 @@ export default async function HeadOfficePlatePage() {
 
   const today = todayAEDT()
 
-  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: allPlates }, { data: visibleCats }, { data: completions }, { data: recurringCompletions }] = await Promise.all([
+  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: allPlates }, { data: visibleCats }, { data: completions }, { data: recurringCompletions }, { data: workshops }, { data: workshopMenuItems }] = await Promise.all([
     supabase.from('users').select('*, boutique:boutiques(*)').eq('role', 'trainee'),
     supabase.from('categories').select('*').eq('status', 'active').order('sort_order'),
     supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active').order('title'),
@@ -27,6 +27,8 @@ export default async function HeadOfficePlatePage() {
     supabase.from('visible_categories').select('*'),
     supabase.from('completions').select('*'),
     supabase.from('recurring_task_completions').select('*'),
+    supabase.from('workshops').select('*').eq('status', 'active').order('name'),
+    supabase.from('workshop_menu_items').select('*'),
   ])
 
   return (
@@ -39,6 +41,8 @@ export default async function HeadOfficePlatePage() {
       visibleCategories={visibleCats ?? []}
       completions={completions ?? []}
       recurringCompletions={recurringCompletions ?? []}
+      workshops={workshops ?? []}
+      workshopMenuItems={workshopMenuItems ?? []}
       showBoutique
     />
   )

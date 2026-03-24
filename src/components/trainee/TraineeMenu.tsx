@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { CATEGORY_COLOURS } from '@/types'
-import type { Category, MenuItem, Completion, User, RecurringTaskCompletion, Plate } from '@/types'
+import type { Category, MenuItem, Completion, User, RecurringTaskCompletion, Plate, Workshop, WorkshopMenuItem } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT } from '@/lib/dates'
 
@@ -15,10 +15,13 @@ interface Props {
   currentUser: User
   recurringCompletions?: RecurringTaskCompletion[]
   plates?: Plate[]
+  workshops?: Workshop[]
+  workshopMenuItems?: WorkshopMenuItem[]
 }
 
-export function TraineeMenu({ categories, menuItems, completions, currentUser, recurringCompletions = [], plates = [] }: Props) {
+export function TraineeMenu({ categories, menuItems, completions, currentUser, recurringCompletions = [], plates = [], workshops = [], workshopMenuItems = [] }: Props) {
   const [search, setSearch] = useState('')
+  const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const router = useRouter()
 
@@ -63,6 +66,15 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
 
   const isSearching = search.trim().length > 0
 
+  function toggleWorkshop(id: string) {
+    setExpandedWorkshops(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
   function toggleCategory(id: string) {
     setExpandedCategories(prev => {
       const next = new Set(prev)
@@ -71,6 +83,16 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
       return next
     })
   }
+
+  const workshopHierarchy = useMemo(() => {
+    return workshops.map(ws => {
+      const itemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.menu_item_id))
+      const wsItems = menuItems.filter(mi => itemIds.has(mi.id))
+      const catIds = [...new Set(wsItems.map(mi => mi.category_id))]
+      const wsCats = categories.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
+      return { workshop: ws, categories: wsCats, menuItemIds: itemIds }
+    })
+  }, [workshops, workshopMenuItems, menuItems, categories])
 
   function highlightText(text: string, query: string) {
     if (!query.trim()) return text
@@ -137,128 +159,161 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
           </div>
         )}
 
-        {/* Category browse (when not searching) */}
+        {/* Workshop → Course → Category browse (when not searching) */}
         {!isSearching && (
           <div className="space-y-3">
-            {categories.map(category => {
-              const items = menuItems.filter(i => i.category_id === category.id)
-              const expanded = expandedCategories.has(category.id)
-              const completedCount = items.filter(i => isCompleted(i.id)).length
+            {workshopHierarchy.map(({ workshop, categories: wsCats, menuItemIds }) => {
+              const wsExpanded = expandedWorkshops.has(workshop.id)
+              const wsItems = menuItems.filter(mi => menuItemIds.has(mi.id))
+              const wsCompleted = wsItems.filter(i => isCompleted(i.id)).length
 
               return (
-                <div key={category.id} className="card overflow-hidden">
-                  {/* Category header */}
+                <div key={workshop.id} className="card overflow-hidden">
+                  {/* Workshop header */}
                   <button
-                    onClick={() => toggleCategory(category.id)}
+                    onClick={() => toggleWorkshop(workshop.id)}
                     className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
                   >
-                    <span
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
-                      style={{
-                        backgroundColor: category.colour_hex + '20',
-                        color: category.colour_hex
-                      }}
-                    >
-                      {category.icon}
+                    <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
+                      W
                     </span>
                     <div className="flex-1">
-                      <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
-                      <p className="text-xs text-charcoal/40 mt-0.5">{completedCount}/{items.length} complete</p>
+                      <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
+                      <p className="text-xs text-charcoal/40 mt-0.5">{wsCompleted}/{wsItems.length} complete · {wsCats.length} course{wsCats.length !== 1 ? 's' : ''}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      {/* Mini progress */}
                       <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
                         <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${items.length > 0 ? (completedCount / items.length) * 100 : 0}%`,
-                            backgroundColor: category.colour_hex
-                          }}
+                          className="h-full bg-gold rounded-full"
+                          style={{ width: `${wsItems.length > 0 ? (wsCompleted / wsItems.length) * 100 : 0}%` }}
                         />
                       </div>
-                      {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
+                      {wsExpanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
                     </div>
                   </button>
 
-                  {/* Items */}
-                  {expanded && (
-                    <div className="border-t border-black/5 divide-y divide-black/5">
-                      {items.map(item => {
-                        const isRec = item.is_recurring && !!item.recurring_amount
-                        const recDone = isRec ? getRecurringCount(item.id) : 0
-                        const recTotal = item.recurring_amount ?? 0
-                        const recFullyComplete = isRec && recDone >= recTotal
-                        const recInProgress = isRec && recDone > 0 && !recFullyComplete
-                        const recDoneToday = isRec && isDoneToday(item.id)
-
-                        const completed = isCompleted(item.id)
-                        const comp = getCompletion(item.id)
-                        const shadowedEarly = isShadowedEarly(item.id)
-                        const assignedDate = getAssignedDate(item.id)
-                        const isOverdue = !isRec && !completed && assignedDate && assignedDate < todayStr
-
-                        const bgClass = isRec
-                          ? (recFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
-                          : (completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
+                  {/* Courses inside this workshop */}
+                  {wsExpanded && (
+                    <div className="border-t border-black/5">
+                      {wsCats.map(category => {
+                        const catItems = wsItems.filter(i => i.category_id === category.id)
+                        const catKey = `${workshop.id}-${category.id}`
+                        const catExpanded = expandedCategories.has(catKey)
+                        const completedCount = catItems.filter(i => isCompleted(i.id)).length
 
                         return (
-                          <button
-                            key={item.id}
-                            onClick={() => router.push(`/trainee/course/${item.id}`)}
-                            className={`w-full px-5 py-3.5 flex items-center gap-3 text-left transition-colors ${bgClass}`}
-                          >
-                            <span
-                              className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
-                                isRec
-                                  ? (recFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
-                                  : (completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
-                              }`}
+                          <div key={category.id}>
+                            {/* Course header */}
+                            <button
+                              onClick={() => toggleCategory(catKey)}
+                              className="w-full pl-8 pr-5 py-3 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors border-b border-black/5"
                             >
-                              {(completed || recFullyComplete) && <span className="text-white text-[10px]">✓</span>}
-                            </span>
-                            <div className="flex-1">
-                              <p className={`text-[14px] leading-snug ${
-                                isRec
-                                  ? (recFullyComplete ? 'text-charcoal/40' : 'text-charcoal')
-                                  : (completed ? 'text-charcoal/40' : 'text-charcoal')
-                              }`}>
-                                {item.title}
-                              </p>
-                              {isRec ? (
-                                <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
-                                  {recDone} out of {recTotal} sessions completed
-                                  {recDone > 0 && (() => {
-                                    const bd = getRecurringBreakdown(item.id)
-                                    return (
-                                      <span className="ml-1">
-                                        | {bd.shadowed > 0 && <span className="text-blue-600">{bd.shadowed} shadowed</span>}{bd.assigned > 0 && bd.shadowed > 0 && <span className="text-charcoal/30"> / </span>}{bd.assigned > 0 && <span className="text-green-600">{bd.assigned} completed</span>}
+                              <span
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
+                                style={{ backgroundColor: category.colour_hex + '20', color: category.colour_hex }}
+                              >
+                                {category.icon}
+                              </span>
+                              <div className="flex-1">
+                                <p className="font-medium text-charcoal text-[14px]">{category.name}</p>
+                                <p className="text-xs text-charcoal/40 mt-0.5">{completedCount}/{catItems.length} complete</p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-1 bg-charcoal/8 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full"
+                                    style={{
+                                      width: `${catItems.length > 0 ? (completedCount / catItems.length) * 100 : 0}%`,
+                                      backgroundColor: category.colour_hex
+                                    }}
+                                  />
+                                </div>
+                                {catExpanded ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
+                              </div>
+                            </button>
+
+                            {/* Categories (menu items) inside this course */}
+                            {catExpanded && (
+                              <div className="divide-y divide-black/5 bg-charcoal/[0.01]">
+                                {catItems.map(item => {
+                                  const isRec = item.is_recurring && !!item.recurring_amount
+                                  const recDone = isRec ? getRecurringCount(item.id) : 0
+                                  const recTotal = item.recurring_amount ?? 0
+                                  const recFullyComplete = isRec && recDone >= recTotal
+
+                                  const completed = isCompleted(item.id)
+                                  const comp = getCompletion(item.id)
+                                  const shadowedEarly = isShadowedEarly(item.id)
+                                  const assignedDate = getAssignedDate(item.id)
+                                  const isOverdue = !isRec && !completed && assignedDate && assignedDate < todayStr
+
+                                  const bgClass = isRec
+                                    ? (recFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
+                                    : (completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
+
+                                  return (
+                                    <button
+                                      key={item.id}
+                                      onClick={() => router.push(`/trainee/course/${item.id}`)}
+                                      className={`w-full pl-12 pr-5 py-3.5 flex items-center gap-3 text-left transition-colors ${bgClass}`}
+                                    >
+                                      <span
+                                        className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
+                                          isRec
+                                            ? (recFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
+                                            : (completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
+                                        }`}
+                                      >
+                                        {(completed || recFullyComplete) && <span className="text-white text-[10px]">✓</span>}
                                       </span>
-                                    )
-                                  })()}
-                                </p>
-                              ) : completed ? (
-                                <p className="text-xs mt-0.5">
-                                  {shadowedEarly ? (
-                                    <span className="text-blue-600 font-medium">Shadowed early on {formatDate(comp!.completed_date)}</span>
-                                  ) : (
-                                    <>
-                                      <span className="text-green-600 font-medium">Completed {formatDate(comp!.completed_date)}</span>
-                                      {assignedDate && (
-                                        <span className="font-semibold text-charcoal/50 ml-1">{formatDate(assignedDate)}</span>
-                                      )}
-                                    </>
-                                  )}
-                                </p>
-                              ) : assignedDate ? (
-                                <p className="text-xs mt-0.5">
-                                  <span className={`font-semibold ${isOverdue ? 'text-yellow-600' : 'text-charcoal/50'}`}>
-                                    {isOverdue ? 'Overdue — ' : ''}{formatDate(assignedDate)}
-                                  </span>
-                                </p>
-                              ) : null}
-                            </div>
-                            <span className="text-charcoal/20 text-lg">›</span>
-                          </button>
+                                      <div className="flex-1">
+                                        <p className={`text-[14px] leading-snug ${
+                                          isRec
+                                            ? (recFullyComplete ? 'text-charcoal/40' : 'text-charcoal')
+                                            : (completed ? 'text-charcoal/40' : 'text-charcoal')
+                                        }`}>
+                                          {item.title}
+                                        </p>
+                                        {isRec ? (
+                                          <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
+                                            {recDone} out of {recTotal} sessions completed
+                                            {recDone > 0 && (() => {
+                                              const bd = getRecurringBreakdown(item.id)
+                                              return (
+                                                <span className="ml-1">
+                                                  | {bd.shadowed > 0 && <span className="text-blue-600">{bd.shadowed} shadowed</span>}{bd.assigned > 0 && bd.shadowed > 0 && <span className="text-charcoal/30"> / </span>}{bd.assigned > 0 && <span className="text-green-600">{bd.assigned} completed</span>}
+                                                </span>
+                                              )
+                                            })()}
+                                          </p>
+                                        ) : completed ? (
+                                          <p className="text-xs mt-0.5">
+                                            {shadowedEarly ? (
+                                              <span className="text-blue-600 font-medium">Shadowed early on {formatDate(comp!.completed_date)}</span>
+                                            ) : (
+                                              <>
+                                                <span className="text-green-600 font-medium">Completed {formatDate(comp!.completed_date)}</span>
+                                                {assignedDate && (
+                                                  <span className="font-semibold text-charcoal/50 ml-1">{formatDate(assignedDate)}</span>
+                                                )}
+                                              </>
+                                            )}
+                                          </p>
+                                        ) : assignedDate ? (
+                                          <p className="text-xs mt-0.5">
+                                            <span className={`font-semibold ${isOverdue ? 'text-yellow-600' : 'text-charcoal/50'}`}>
+                                              {isOverdue ? 'Overdue — ' : ''}{formatDate(assignedDate)}
+                                            </span>
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                      <span className="text-charcoal/20 text-lg">›</span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
                         )
                       })}
                     </div>

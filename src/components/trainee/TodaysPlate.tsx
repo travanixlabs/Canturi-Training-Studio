@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import type { Plate, Completion, User, Category, RecurringTaskCompletion } from '@/types'
+import type { Plate, Completion, User, Category, RecurringTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, formatDateShort } from '@/lib/dates'
 import { useDatePlateView } from '@/lib/useDatePlateView'
@@ -14,9 +14,11 @@ interface Props {
   allCompletions: Completion[]
   allRecurringCompletions: RecurringTaskCompletion[]
   currentUser: User
+  workshops?: Workshop[]
+  workshopMenuItems?: WorkshopMenuItem[]
 }
 
-export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions, currentUser }: Props) {
+export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions, currentUser, workshops = [], workshopMenuItems = [] }: Props) {
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(todayAEDT())
 
