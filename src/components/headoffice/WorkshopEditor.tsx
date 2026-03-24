@@ -39,7 +39,8 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
     return menuItems.filter(item =>
       item.title.toLowerCase().includes(q) ||
       item.description.toLowerCase().includes(q) ||
-      item.tags?.some(t => t.toLowerCase().includes(q))
+      item.tags?.some(t => t.toLowerCase().includes(q)) ||
+      item.category?.name.toLowerCase().includes(q)
     )
   }, [menuItems, search])
 
