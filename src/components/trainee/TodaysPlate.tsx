@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { CATEGORY_COLOURS } from '@/types'
 import type { Plate, Completion, User, Category, RecurringTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, formatDateShort } from '@/lib/dates'
@@ -18,6 +19,11 @@ interface Props {
   workshopMenuItems?: WorkshopMenuItem[]
 }
 
+interface WorkshopPlateGroup {
+  workshop: Workshop
+  courseGroups: PlateGroup[]
+}
+
 export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions, currentUser, workshops = [], workshopMenuItems = [] }: Props) {
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(todayAEDT())
@@ -32,6 +38,47 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
     nextDate,
     dateBounds,
   } = useDatePlateView(allPlates, allCompletions, allRecurringCompletions, selectedDate, currentUser.id)
+
+  // Build lookup: menu_item_id -> workshop_id
+  const itemToWorkshop = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const wmi of workshopMenuItems) {
+      map.set(wmi.menu_item_id, wmi.workshop_id)
+    }
+    return map
+  }, [workshopMenuItems])
+
+  const workshopMap = useMemo(() => {
+    const map = new Map<string, Workshop>()
+    for (const ws of workshops) map.set(ws.id, ws)
+    return map
+  }, [workshops])
+
+  // Group PlateGroups into Workshop -> Course hierarchy
+  function groupByWorkshop(groups: PlateGroup[]): WorkshopPlateGroup[] {
+    const wsMap = new Map<string, PlateGroup[]>()
+
+    for (const group of groups) {
+      // Find which workshop this category belongs to by checking items
+      const firstItem = group.items[0]
+      if (!firstItem) continue
+      const wsId = itemToWorkshop.get(firstItem.id)
+      if (!wsId) continue
+
+      if (!wsMap.has(wsId)) wsMap.set(wsId, [])
+      wsMap.get(wsId)!.push(group)
+    }
+
+    return Array.from(wsMap.entries())
+      .map(([wsId, courseGroups]) => ({
+        workshop: workshopMap.get(wsId)!,
+        courseGroups,
+      }))
+      .filter(g => g.workshop)
+  }
+
+  const remainingWorkshopGroups = useMemo(() => groupByWorkshop(remainingGroups), [remainingGroups, itemToWorkshop, workshopMap])
+  const completedWorkshopGroups = useMemo(() => groupByWorkshop(completedGroups), [completedGroups, itemToWorkshop, workshopMap])
 
   const hasItems = remainingGroups.length > 0 || completedGroups.length > 0
 
@@ -76,19 +123,17 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
           </div>
 
           {/* To complete */}
-          {remainingGroups.length > 0 && (
+          {remainingWorkshopGroups.length > 0 && (
             <div className="mb-5">
               <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">To complete</h2>
               <div className="space-y-3">
-                {remainingGroups.map(group => (
-                  <CategoryGroup
-                    key={group.category?.id ?? 'none'}
-                    category={group.category}
-                    colour={group.colour}
-                    items={group.items}
-                    totalInCategory={group.items.length}
-                    completedInCategory={0}
+                {remainingWorkshopGroups.map(wsGroup => (
+                  <WorkshopSection
+                    key={wsGroup.workshop.id}
+                    workshop={wsGroup.workshop}
+                    courseGroups={wsGroup.courseGroups}
                     onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
+                    section="remaining"
                   />
                 ))}
               </div>
@@ -96,19 +141,17 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
           )}
 
           {/* Completed */}
-          {completedGroups.length > 0 && (
+          {completedWorkshopGroups.length > 0 && (
             <div>
               <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">Completed</h2>
               <div className="space-y-3 opacity-60">
-                {completedGroups.map(group => (
-                  <CategoryGroup
-                    key={group.category?.id ?? 'none'}
-                    category={group.category}
-                    colour={group.colour}
-                    items={group.items}
-                    totalInCategory={group.items.length}
-                    completedInCategory={group.items.length}
+                {completedWorkshopGroups.map(wsGroup => (
+                  <WorkshopSection
+                    key={wsGroup.workshop.id}
+                    workshop={wsGroup.workshop}
+                    courseGroups={wsGroup.courseGroups}
                     onItemClick={(itemId) => router.push(`/trainee/course/${itemId}`)}
+                    section="completed"
                   />
                 ))}
               </div>
@@ -120,69 +163,116 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
   )
 }
 
-function CategoryGroup({
+function WorkshopSection({
+  workshop,
+  courseGroups,
+  onItemClick,
+  section,
+}: {
+  workshop: Workshop
+  courseGroups: PlateGroup[]
+  onItemClick: (itemId: string) => void
+  section: 'remaining' | 'completed'
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const totalItems = courseGroups.reduce((sum, g) => sum + g.items.length, 0)
+  const completedItems = courseGroups.reduce((sum, g) => sum + g.items.filter(i => i.completed || i.completedOnOtherDate).length, 0)
+
+  return (
+    <div className="card overflow-hidden">
+      {/* Workshop header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
+      >
+        <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
+          W
+        </span>
+        <div className="flex-1">
+          <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
+          <p className="text-xs text-charcoal/40 mt-0.5">
+            {section === 'completed' ? `${totalItems} completed` : `${totalItems - completedItems} remaining`} · {courseGroups.length} course{courseGroups.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
+      </button>
+
+      {/* Courses inside workshop */}
+      {expanded && (
+        <div className="border-t border-black/5">
+          {courseGroups.map(group => (
+            <CourseGroup
+              key={group.category?.id ?? 'none'}
+              category={group.category}
+              colour={group.colour}
+              items={group.items}
+              onItemClick={onItemClick}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CourseGroup({
   category,
   colour,
   items,
-  totalInCategory,
-  completedInCategory,
   onItemClick,
 }: {
   category: Category | null
   colour: string
   items: PlateItemInfo[]
-  totalInCategory: number
-  completedInCategory: number
   onItemClick: (itemId: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
+  const completedCount = items.filter(i => i.completed || i.completedOnOtherDate).length
 
   return (
-    <div className="card overflow-hidden">
+    <div>
+      {/* Course header */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
+        className="w-full pl-8 pr-5 py-3 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors border-b border-black/5"
       >
         <span
-          className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+          className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
           style={{ backgroundColor: colour + '20', color: colour }}
         >
           {category?.icon ?? '◈'}
         </span>
         <div className="flex-1">
-          <p className="font-medium text-charcoal text-[15px]">{category?.name ?? 'Other'}</p>
-          <p className="text-xs text-charcoal/40 mt-0.5">{completedInCategory}/{totalInCategory} complete</p>
+          <p className="font-medium text-charcoal text-[14px]">{category?.name ?? 'Other'}</p>
+          <p className="text-xs text-charcoal/40 mt-0.5">{completedCount}/{items.length} complete</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
+          <div className="w-12 h-1 bg-charcoal/8 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full"
               style={{
-                width: `${totalInCategory > 0 ? (completedInCategory / totalInCategory) * 100 : 0}%`,
+                width: `${items.length > 0 ? (completedCount / items.length) * 100 : 0}%`,
                 backgroundColor: colour,
               }}
             />
           </div>
-          {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
+          {expanded ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
         </div>
       </button>
 
+      {/* Categories (menu items) */}
       {expanded && (
-        <div className="border-t border-black/5 divide-y divide-black/5">
+        <div className="divide-y divide-black/5 bg-charcoal/[0.01]">
           {items.map(item => {
             const recurringFullyComplete = item.isRecurring && (item.recurringDone ?? 0) >= (item.recurringTotal ?? 0)
-
             const isShadowed = item.shadowedEarly || item.shadowed
 
-            // Background: blue for shadowed, green for completed, yellow for overdue
-            // completedOnOtherDate items stay in To Complete with NO formatting
             const bgClass = item.isRecurring
               ? (recurringFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
               : item.completedOnOtherDate
                 ? 'hover:bg-charcoal/2'
                 : (item.completed ? (isShadowed ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : item.isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
 
-            // Circle: blue for shadowed, green for completed
             const circleClass = item.isRecurring
               ? (recurringFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
               : item.completedOnOtherDate
@@ -193,7 +283,7 @@ function CategoryGroup({
               <button
                 key={item.id}
                 onClick={() => onItemClick(item.id)}
-                className={`w-full px-5 py-3.5 flex items-center gap-3 text-left transition-colors ${bgClass}`}
+                className={`w-full pl-12 pr-5 py-3.5 flex items-center gap-3 text-left transition-colors ${bgClass}`}
               >
                 <span className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${circleClass}`}>
                   {(item.completed && !item.completedOnOtherDate) || recurringFullyComplete ? <span className="text-white text-[10px]">✓</span> : null}
