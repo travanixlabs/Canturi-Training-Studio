@@ -172,20 +172,22 @@ function CategoryGroup({
           {items.map(item => {
             const recurringFullyComplete = item.isRecurring && (item.recurringDone ?? 0) >= (item.recurringTotal ?? 0)
 
-            // Background: green only for completed items in Completed section, yellow for overdue
+            const isShadowed = item.shadowedEarly || item.shadowed
+
+            // Background: blue for shadowed, green for completed, yellow for overdue
             // completedOnOtherDate items stay in To Complete with NO formatting
             const bgClass = item.isRecurring
               ? (recurringFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
               : item.completedOnOtherDate
                 ? 'hover:bg-charcoal/2'
-                : (item.completed ? (item.shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : item.isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
+                : (item.completed ? (isShadowed ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : item.isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
 
-            // Circle: no green/blue for completedOnOtherDate
+            // Circle: blue for shadowed, green for completed
             const circleClass = item.isRecurring
               ? (recurringFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
               : item.completedOnOtherDate
                 ? 'border-charcoal/20'
-                : (item.completed ? (item.shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : item.isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
+                : (item.completed ? (isShadowed ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : item.isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
 
             return (
               <button
@@ -219,9 +221,9 @@ function CategoryGroup({
                     </p>
                   ) : item.completed && item.completedDate ? (
                     <p className="text-xs mt-0.5">
-                      {item.shadowedEarly ? (
+                      {isShadowed ? (
                         <span className="text-blue-600 font-medium">
-                          Shadowed early on {formatDateShort(item.completedDate)}
+                          {item.shadowedEarly ? 'Shadowed early on' : 'Shadowed on'} {formatDateShort(item.completedDate)}
                         </span>
                       ) : (
                         <span className="text-green-600 font-medium">
