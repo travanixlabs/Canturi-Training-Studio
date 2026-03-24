@@ -59,6 +59,7 @@ export interface Plate {
   assigned_by: string
   date_assigned: string
   boutique_id: string
+  workshop_id: string | null
   menu_item?: MenuItem
   trainee?: User
   assigned_by_user?: User
@@ -77,6 +78,7 @@ export interface Completion {
   completed_date: string
   is_shadowing_moment: boolean
   created_at: string
+  workshop_id: string | null
   menu_item?: MenuItem
   trainee?: User
 }
@@ -99,6 +101,7 @@ export interface ModuleCompletion {
   module_id: string
   trainee_id: string
   completed_at: string
+  workshop_id: string | null
 }
 
 export interface RecurringTaskCompletion {
@@ -108,6 +111,7 @@ export interface RecurringTaskCompletion {
   completed_date: string
   notes: string | null
   created_at: string
+  workshop_id: string | null
 }
 
 export interface Workshop {
@@ -132,6 +136,7 @@ export interface VisibleCategory {
   category_id: string
   enabled_by: string
   created_at: string
+  workshop_id: string | null
 }
 
 // Category colour mapping

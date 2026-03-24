@@ -49,8 +49,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   const [plates, setPlates] = useState<Plate[]>(todayPlates)
   const [visibleCats, setVisibleCats] = useState<VisibleCategory[]>(initialVisible)
   const [isPending, startTransition] = useTransition()
-  const [datePicker, setDatePicker] = useState<{ items: MenuItem[]; anchorId: string } | null>(null)
-  const [multiDatePicker, setMultiDatePicker] = useState<{ item: MenuItem; anchorId: string } | null>(null)
+  const [datePicker, setDatePicker] = useState<{ items: MenuItem[]; anchorId: string; workshopId: string } | null>(null)
+  const [multiDatePicker, setMultiDatePicker] = useState<{ item: MenuItem; anchorId: string; workshopId: string } | null>(null)
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
   const [recurringCompletions, setRecurringCompletions] = useState<RecurringTaskCompletion[]>(initialRecurring)
   const router = useRouter()
@@ -63,33 +63,33 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     weekday: 'long', day: 'numeric', month: 'long'
   })
 
-  const isCategoryVisible = (categoryId: string) => {
-    return visibleCats.some(v => v.category_id === categoryId && v.user_id === selectedTrainee?.id)
+  const isCategoryVisible = (categoryId: string, workshopId: string) => {
+    return visibleCats.some(v => v.category_id === categoryId && v.user_id === selectedTrainee?.id && v.workshop_id === workshopId)
   }
 
-  const isOnPlate = (menuItemId: string, traineeId?: string) => {
+  const isOnPlate = (menuItemId: string, workshopId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
-    return plates.some(p => p.menu_item_id === menuItemId && p.trainee_id === tid)
+    return plates.some(p => p.menu_item_id === menuItemId && p.trainee_id === tid && p.workshop_id === workshopId)
   }
 
-  const isCompleted = (menuItemId: string, traineeId?: string) => {
+  const isCompleted = (menuItemId: string, workshopId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
-    return allCompletions.some(c => c.menu_item_id === menuItemId && c.trainee_id === tid)
+    return allCompletions.some(c => c.menu_item_id === menuItemId && c.trainee_id === tid && c.workshop_id === workshopId)
   }
 
-  const getCompletion = (menuItemId: string) => {
-    return allCompletions.find(c => c.menu_item_id === menuItemId && c.trainee_id === selectedTrainee?.id)
+  const getCompletion = (menuItemId: string, workshopId: string) => {
+    return allCompletions.find(c => c.menu_item_id === menuItemId && c.trainee_id === selectedTrainee?.id && c.workshop_id === workshopId)
   }
 
-  const getRecurringCount = (menuItemId: string, traineeId?: string) => {
+  const getRecurringCount = (menuItemId: string, workshopId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
-    return recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === tid).length
+    return recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === tid && rc.workshop_id === workshopId).length
   }
 
-  const getRecurringDates = (menuItemId: string, traineeId?: string) => {
+  const getRecurringDates = (menuItemId: string, workshopId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
     return recurringCompletions
-      .filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === tid)
+      .filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === tid && rc.workshop_id === workshopId)
       .map(rc => rc.completed_date)
       .sort()
   }
@@ -98,15 +98,15 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     plates.filter(p => p.trainee_id === traineeId).length
 
   // Show date picker for a single item or multiple items (category)
-  function requestAssign(items: MenuItem[], anchorId: string) {
+  function requestAssign(items: MenuItem[], anchorId: string, workshopId: string) {
     if (!selectedTrainee) return
     // For a single recurring item, show multi-date picker
     if (items.length === 1 && items[0].is_recurring) {
-      setMultiDatePicker({ item: items[0], anchorId })
+      setMultiDatePicker({ item: items[0], anchorId, workshopId })
       setSelectedDates(new Set())
       return
     }
-    setDatePicker({ items, anchorId })
+    setDatePicker({ items, anchorId, workshopId })
   }
 
   async function assignToDate(date: string) {
@@ -114,9 +114,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
     const newPlates: Plate[] = []
     for (const item of datePicker.items) {
-      // Remove existing plate for this item+trainee (allows re-assignment to new date)
+      // Remove existing plate for this item+trainee+workshop (allows re-assignment to new date)
       const existing = plates.find(
-        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id
+        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === datePicker.workshopId
       )
       if (existing) {
         setPlates(prev => prev.filter(p => p.id !== existing.id))
@@ -129,6 +129,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
         assigned_by: manager.id,
         date_assigned: date,
         boutique_id: selectedTrainee.boutique_id || manager.boutique_id,
+        workshop_id: datePicker.workshopId,
       }).select().single()
 
       if (!error && data) {
@@ -149,9 +150,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
     const newPlates: Plate[] = []
     for (const date of Array.from(selectedDates).sort()) {
-      // Skip if already has a plate for this item+trainee+date
+      // Skip if already has a plate for this item+trainee+date+workshop
       const alreadyExists = plates.some(
-        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.date_assigned === date
+        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.date_assigned === date && p.workshop_id === multiDatePicker.workshopId
       )
       if (alreadyExists) continue
 
@@ -161,6 +162,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
         assigned_by: manager.id,
         date_assigned: date,
         boutique_id: selectedTrainee.boutique_id || manager.boutique_id,
+        workshop_id: multiDatePicker.workshopId,
       }).select().single()
 
       if (!error && data) {
@@ -176,18 +178,18 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     startTransition(() => router.refresh())
   }
 
-  async function removeFromPlate(item: MenuItem) {
+  async function removeFromPlate(item: MenuItem, workshopId: string) {
     if (!selectedTrainee) return
 
     if (item.is_recurring) {
       // For recurring items, only remove plates where there is NO recurring_task_completion for that date
       const traineeRecurringDates = new Set(
         recurringCompletions
-          .filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee.id)
+          .filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee.id && rc.workshop_id === workshopId)
           .map(rc => rc.completed_date)
       )
       const removable = plates.filter(
-        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && !traineeRecurringDates.has(p.date_assigned)
+        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId && !traineeRecurringDates.has(p.date_assigned)
       )
       if (removable.length === 0) return
       const removeIds = removable.map(p => p.id)
@@ -200,7 +202,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     }
 
     const existing = plates.find(
-      p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id
+      p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId
     )
     if (existing) {
       setPlates(prev => prev.filter(p => p.id !== existing.id))
@@ -209,32 +211,59 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     }
   }
 
-  async function reassignItem(item: MenuItem) {
+  async function reassignItem(item: MenuItem, workshopId: string) {
     if (!selectedTrainee) return
-    // Delete the completion record
+    // Delete the completion record for this workshop
     await supabase.from('completions').delete()
       .eq('menu_item_id', item.id)
       .eq('trainee_id', selectedTrainee.id)
+      .eq('workshop_id', workshopId)
     // Show date picker to reassign
-    requestAssign([item], `reassign-${item.id}`)
+    requestAssign([item], `reassign-${item.id}`, workshopId)
     startTransition(() => router.refresh())
   }
 
-  async function toggleCategoryVisibility(categoryId: string) {
+  async function toggleCategoryVisibility(categoryId: string, workshopId: string) {
     if (!selectedTrainee) return
 
     const existing = visibleCats.find(
-      v => v.category_id === categoryId && v.user_id === selectedTrainee.id
+      v => v.category_id === categoryId && v.user_id === selectedTrainee.id && v.workshop_id === workshopId
     )
 
     if (existing) {
+      // Hiding: also delete plates and completions for this category+workshop
       setVisibleCats(prev => prev.filter(v => v.id !== existing.id))
       await supabase.from('visible_categories').delete().eq('id', existing.id)
+
+      // Delete plates for this category's items in this workshop
+      const catItemIds = menuItems.filter(mi => mi.category_id === categoryId).map(mi => mi.id)
+      const platesToDelete = plates.filter(p =>
+        catItemIds.includes(p.menu_item_id) && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId
+      )
+      setPlates(prev => prev.filter(p => !platesToDelete.some(d => d.id === p.id)))
+      for (const p of platesToDelete) {
+        await supabase.from('plates').delete().eq('id', p.id)
+      }
+
+      // Delete completions for this category's items in this workshop
+      await supabase.from('completions').delete()
+        .in('menu_item_id', catItemIds)
+        .eq('trainee_id', selectedTrainee.id)
+        .eq('workshop_id', workshopId)
+
+      // Delete recurring completions for this category's items in this workshop
+      await supabase.from('recurring_task_completions').delete()
+        .in('menu_item_id', catItemIds)
+        .eq('trainee_id', selectedTrainee.id)
+        .eq('workshop_id', workshopId)
+
+      startTransition(() => router.refresh())
     } else {
       const { data, error } = await supabase.from('visible_categories').insert({
         user_id: selectedTrainee.id,
         category_id: categoryId,
         enabled_by: manager.id,
+        workshop_id: workshopId,
       }).select().single()
 
       if (!error && data) {
@@ -243,29 +272,28 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     }
   }
 
-  // Batch toggle: show/hide all menu items in a workshop
+  // Batch toggle: show/hide all courses in a workshop
   async function toggleWorkshopVisibility(workshopId: string) {
     if (!selectedTrainee) return
     const itemIds = workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id)
     const categoryIds = [...new Set(menuItems.filter(mi => itemIds.includes(mi.id)).map(mi => mi.category_id))]
-    const allVisible = categoryIds.every(cid => isCategoryVisible(cid))
+    const allVisible = categoryIds.every(cid => isCategoryVisible(cid, workshopId))
 
     if (allVisible) {
-      // Hide all
-      const toRemove = visibleCats.filter(v => categoryIds.includes(v.category_id) && v.user_id === selectedTrainee.id)
-      setVisibleCats(prev => prev.filter(v => !toRemove.some(r => r.id === v.id)))
-      for (const v of toRemove) {
-        await supabase.from('visible_categories').delete().eq('id', v.id)
+      // Hide all — delete visible_categories, plates, completions for this workshop
+      for (const cid of categoryIds) {
+        await toggleCategoryVisibility(cid, workshopId)
       }
     } else {
       // Show all missing
-      const existing = new Set(visibleCats.filter(v => v.user_id === selectedTrainee.id).map(v => v.category_id))
+      const existing = new Set(visibleCats.filter(v => v.user_id === selectedTrainee.id && v.workshop_id === workshopId).map(v => v.category_id))
       const toAdd = categoryIds.filter(cid => !existing.has(cid))
       for (const cid of toAdd) {
         const { data, error } = await supabase.from('visible_categories').insert({
           user_id: selectedTrainee.id,
           category_id: cid,
           enabled_by: manager.id,
+          workshop_id: workshopId,
         }).select().single()
         if (!error && data) {
           setVisibleCats(prev => [...prev, data as VisibleCategory])
@@ -274,9 +302,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     }
   }
 
-  // Batch toggle: show/hide all menu items in a course (category)
-  async function toggleCourseVisibility(categoryId: string) {
-    await toggleCategoryVisibility(categoryId)
+  // Batch toggle: show/hide all categories in a course within a workshop
+  async function toggleCourseVisibility(categoryId: string, workshopId: string) {
+    await toggleCategoryVisibility(categoryId, workshopId)
   }
 
   function toggleWorkshop(id: string) {
@@ -491,42 +519,16 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
             )}
           </div>
 
-          {/* Search results */}
-          {isSearching && (
-            <div className="space-y-2">
-              {filteredItems.map(item => (
-                <MenuItemRow
-                  key={item.id}
-                  item={item}
-                  onPlate={isOnPlate(item.id)}
-                  completed={isCompleted(item.id)}
-                  completedDate={getCompletion(item.id)?.completed_date}
-                  assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
-                  onAssign={() => requestAssign([item], item.id)}
-                  onRemove={() => removeFromPlate(item)}
-                  recurringCount={item.is_recurring ? getRecurringCount(item.id) : undefined}
-                  recurringDates={item.is_recurring ? getRecurringDates(item.id) : undefined}
-                  onReassign={() => reassignItem(item)}
-                  completion={getCompletion(item.id)}
-                  currentUser={manager}
-                  plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
-                  assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
-                  recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
-                />
-              ))}
-            </div>
-          )}
-
           {/* Workshop → Course → Category browse */}
-          {!isSearching && (
+          {(
             <div className="space-y-3">
               {workshopHierarchy.map(({ workshop, categories: wsCats, menuItemIds }) => {
                 const wsExpanded = expandedWorkshops.has(workshop.id)
                 const wsItems = menuItems.filter(mi => menuItemIds.has(mi.id))
-                const wsAssigned = wsItems.filter(i => isOnPlate(i.id)).length
+                const wsAssigned = wsItems.filter(i => isOnPlate(i.id, workshop.id)).length
                 const wsCatIds = wsCats.map(c => c.id)
-                const wsAllVisible = isEmployee ? wsCatIds.every(cid => isCategoryVisible(cid)) : true
-                const wsNoneVisible = isEmployee ? wsCatIds.every(cid => !isCategoryVisible(cid)) : false
+                const wsAllVisible = isEmployee ? wsCatIds.every(cid => isCategoryVisible(cid, workshop.id)) : true
+                const wsNoneVisible = isEmployee ? wsCatIds.every(cid => !isCategoryVisible(cid, workshop.id)) : false
 
                 return (
                   <div key={workshop.id} className="card overflow-hidden">
@@ -586,8 +588,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                           const nonRecurring = catItems.filter(i => !i.is_recurring)
                           const recurring = catItems.filter(i => i.is_recurring)
                           const catExpanded = expandedCategories.has(`${workshop.id}-${category.id}`)
-                          const visible = isCategoryVisible(category.id)
-                          const assignedCount = catItems.filter(i => isOnPlate(i.id)).length
+                          const visible = isCategoryVisible(category.id, workshop.id)
+                          const assignedCount = catItems.filter(i => isOnPlate(i.id, workshop.id)).length
                           const unassignedCount = catItems.length - assignedCount
 
                           return (
@@ -630,7 +632,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                 {/* Assign all in course */}
                                 {(!isEmployee || visible) && (
                                   <button
-                                    onClick={() => requestAssign(catItems, `cat-${category.id}`)}
+                                    onClick={() => requestAssign(catItems, `cat-${category.id}`, workshop.id)}
                                     className="mr-2 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border border-charcoal/10 text-charcoal/30 hover:border-gold hover:text-gold transition-all"
                                     title={`Assign all ${category.name} categories`}
                                   >
@@ -641,7 +643,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                 {/* Course visibility toggle */}
                                 {isEmployee && (
                                   <button
-                                    onClick={() => toggleCourseVisibility(category.id)}
+                                    onClick={() => toggleCourseVisibility(category.id, workshop.id)}
                                     className={`mr-3 w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
                                       visible
                                         ? 'bg-gold/10 text-gold border border-gold/30'
@@ -681,19 +683,19 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                           <MenuItemRow
                                             key={item.id}
                                             item={item}
-                                            onPlate={isOnPlate(item.id)}
-                                            completed={isCompleted(item.id)}
-                                            completedDate={getCompletion(item.id)?.completed_date}
-                                            assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned}
-                                            onAssign={() => requestAssign([item], item.id)}
-                                            onRemove={() => removeFromPlate(item)}
+                                            onPlate={isOnPlate(item.id, workshop.id)}
+                                            completed={isCompleted(item.id, workshop.id)}
+                                            completedDate={getCompletion(item.id, workshop.id)?.completed_date}
+                                            assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id)?.date_assigned}
+                                            onAssign={() => requestAssign([item], item.id, workshop.id)}
+                                            onRemove={() => removeFromPlate(item, workshop.id)}
                                             compact
-                                            onReassign={() => reassignItem(item)}
-                                            completion={getCompletion(item.id)}
+                                            onReassign={() => reassignItem(item, workshop.id)}
+                                            completion={getCompletion(item.id, workshop.id)}
                                             currentUser={manager}
-                                            plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
-                                            assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
-                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
+                                            plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id) ?? null}
+                                            assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id).map(p => p.date_assigned)}
+                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id && rc.workshop_id === workshop.id).map(rc => rc.completed_date)}
                                           />
                                         ))}
                                       </div>
@@ -709,28 +711,28 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                           <MenuItemRow
                                             key={item.id}
                                             item={item}
-                                            onPlate={isOnPlate(item.id)}
-                                            completed={isCompleted(item.id)}
-                                            completedDate={getCompletion(item.id)?.completed_date}
+                                            onPlate={isOnPlate(item.id, workshop.id)}
+                                            completed={isCompleted(item.id, workshop.id)}
+                                            completedDate={getCompletion(item.id, workshop.id)?.completed_date}
                                             assignedDate={(() => {
                                               const todayStr = todayAEDT()
                                               const futureDates = plates
-                                                .filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.date_assigned >= todayStr)
+                                                .filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id && p.date_assigned >= todayStr)
                                                 .map(p => p.date_assigned)
                                                 .sort()
-                                              return futureDates[0] ?? plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id)?.date_assigned
+                                              return futureDates[0] ?? plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id)?.date_assigned
                                             })()}
-                                            onAssign={() => requestAssign([item], item.id)}
-                                            onRemove={() => removeFromPlate(item)}
+                                            onAssign={() => requestAssign([item], item.id, workshop.id)}
+                                            onRemove={() => removeFromPlate(item, workshop.id)}
                                             compact
-                                            recurringCount={getRecurringCount(item.id)}
-                                            recurringDates={getRecurringDates(item.id)}
-                                            onReassign={() => reassignItem(item)}
-                                            completion={getCompletion(item.id)}
+                                            recurringCount={getRecurringCount(item.id, workshop.id)}
+                                            recurringDates={getRecurringDates(item.id, workshop.id)}
+                                            onReassign={() => reassignItem(item, workshop.id)}
+                                            completion={getCompletion(item.id, workshop.id)}
                                             currentUser={manager}
-                                            plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id) ?? null}
-                                            assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id).map(p => p.date_assigned)}
-                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id).map(rc => rc.completed_date)}
+                                            plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id) ?? null}
+                                            assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id).map(p => p.date_assigned)}
+                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id && rc.workshop_id === workshop.id).map(rc => rc.completed_date)}
                                           />
                                         ))}
                                       </div>

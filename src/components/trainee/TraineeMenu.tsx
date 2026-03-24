@@ -91,7 +91,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
       const catIds = [...new Set(wsItems.map(mi => mi.category_id))]
       const wsCats = categories.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
       return { workshop: ws, categories: wsCats, menuItemIds: itemIds }
-    })
+    }).filter(ws => ws.categories.length > 0)
   }, [workshops, workshopMenuItems, menuItems, categories])
 
   function highlightText(text: string, query: string) {
