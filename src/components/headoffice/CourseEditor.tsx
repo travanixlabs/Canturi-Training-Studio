@@ -451,7 +451,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                         key={item.id}
                         item={item}
                         statusChanging={statusChanging === item.id}
-                        onEdit={() => router.push(`/head-office/categories/${item.id}`)}
+                        onEdit={() => router.push(`/head-office/courses/${item.id}`)}
                         onDelete={() => setDeleteTarget(item)}
                         onChangeStatus={(status) => changeStatus(item, status)}
                       />

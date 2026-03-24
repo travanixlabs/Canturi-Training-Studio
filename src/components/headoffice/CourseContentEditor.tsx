@@ -161,7 +161,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
   }
 
   function handleBack() {
-    router.push('/head-office/categories')
+    router.push('/head-office/courses')
   }
 
   const category = categories.find(c => c.id === categoryId)
