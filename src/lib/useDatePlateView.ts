@@ -157,6 +157,8 @@ export function useDatePlateView(
 
         if (completedOnThisDate) {
           // Show in Completed with full formatting
+          const isShadowingMoment = comp.is_shadowing_moment
+          const isShadowedEarly = !!(comp && p.date_assigned && comp.completed_date < p.date_assigned)
           completed.push({
             id: mi.id,
             title: mi.title,
@@ -165,7 +167,8 @@ export function useDatePlateView(
             completed: true,
             completedDate: comp.completed_date,
             assignedDate: p.date_assigned,
-            shadowedEarly: !!(comp && p.date_assigned && comp.completed_date < p.date_assigned),
+            shadowedEarly: isShadowedEarly,
+            shadowed: isShadowingMoment,
             rating: comp.trainee_rating ?? undefined,
           })
         } else {
@@ -178,6 +181,7 @@ export function useDatePlateView(
             completed: false,
             assignedDate: p.date_assigned,
             completedOnOtherDate: comp ? comp.completed_date : undefined,
+            shadowed: comp ? comp.is_shadowing_moment : undefined,
           })
         }
       }
