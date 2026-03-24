@@ -31,18 +31,28 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
   const [togglingAll, setTogglingAll] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<'all' | 'assigned' | 'unassigned'>('all')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
+  const applyFilter = (items: MenuItem[]) => {
+    if (filter === 'assigned') return items.filter(i => assignedIds.has(i.id))
+    if (filter === 'unassigned') return items.filter(i => !assignedIds.has(i.id))
+    return items
+  }
+
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return menuItems
-    const q = search.toLowerCase()
-    return menuItems.filter(item =>
-      item.title.toLowerCase().includes(q) ||
-      item.description.toLowerCase().includes(q) ||
-      item.tags?.some(t => t.toLowerCase().includes(q)) ||
-      item.category?.name.toLowerCase().includes(q)
-    )
-  }, [menuItems, search])
+    let items = menuItems
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      items = items.filter(item =>
+        item.title.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q) ||
+        item.tags?.some(t => t.toLowerCase().includes(q)) ||
+        item.category?.name.toLowerCase().includes(q)
+      )
+    }
+    return applyFilter(items)
+  }, [menuItems, search, filter, assignedIds])
 
   const assignedCount = assignedIds.size
 
@@ -197,7 +207,7 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
       </div>
 
       {/* Search */}
-      <div className="relative mb-5">
+      <div className="relative mb-3">
         <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal/30" />
         <input
           type="search"
@@ -215,6 +225,23 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
             <X size={16} />
           </button>
         )}
+      </div>
+
+      {/* Filter toggle */}
+      <div className="flex gap-1 mb-5">
+        {(['all', 'assigned', 'unassigned'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              filter === f
+                ? 'bg-gold text-white'
+                : 'bg-charcoal/5 text-charcoal/50 hover:text-charcoal/70'
+            }`}
+          >
+            {f === 'all' ? 'All' : f === 'assigned' ? 'Assigned' : 'Unassigned'}
+          </button>
+        ))}
       </div>
 
       {/* Search results (flat list) */}
@@ -242,10 +269,12 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
       {!search.trim() && (
         <div className="space-y-3">
           {categories.map(category => {
-            const items = menuItems.filter(i => i.category_id === category.id)
-            if (items.length === 0) return null
+            const allItems = menuItems.filter(i => i.category_id === category.id)
+            const items = applyFilter(allItems)
+            if (allItems.length === 0) return null
+            if (items.length === 0 && filter !== 'all') return null
             const expanded = expandedCategories.has(category.id)
-            const assignedInCat = items.filter(i => assignedIds.has(i.id)).length
+            const assignedInCat = allItems.filter(i => assignedIds.has(i.id)).length
 
             return (
               <div key={category.id} className="card overflow-hidden">
@@ -261,14 +290,14 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
                   </span>
                   <div className="flex-1">
                     <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
-                    <p className="text-xs text-charcoal/40 mt-0.5">{assignedInCat}/{items.length} assigned</p>
+                    <p className="text-xs text-charcoal/40 mt-0.5">{assignedInCat}/{allItems.length} assigned</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{
-                          width: `${items.length > 0 ? (assignedInCat / items.length) * 100 : 0}%`,
+                          width: `${allItems.length > 0 ? (assignedInCat / allItems.length) * 100 : 0}%`,
                           backgroundColor: category.colour_hex,
                         }}
                       />
