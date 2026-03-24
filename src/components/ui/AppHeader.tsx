@@ -27,9 +27,9 @@ export function AppHeader({ user, title }: Props) {
         <Image
           src="/canturi-logo-white.jpg"
           alt="Canturi"
-          width={120}
-          height={32}
-          className="h-7 w-auto object-contain"
+          width={180}
+          height={60}
+          className="h-full max-h-[60px] -my-4 w-auto object-contain"
           priority
         />
         {title && (
