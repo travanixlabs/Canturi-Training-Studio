@@ -28,6 +28,7 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
     new Set(initialWMI.map(wmi => wmi.menu_item_id))
   )
   const [toggling, setToggling] = useState<string | null>(null)
+  const [togglingAll, setTogglingAll] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
@@ -85,6 +86,48 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
       }
     }
     setToggling(null)
+  }
+
+  async function toggleAllInCategory(categoryId: string) {
+    const items = menuItems.filter(i => i.category_id === categoryId)
+    const allAssigned = items.every(i => assignedIds.has(i.id))
+    setTogglingAll(categoryId)
+
+    if (allAssigned) {
+      // Deselect all
+      const itemIds = items.map(i => i.id)
+      const { error } = await supabase
+        .from('workshop_menu_items')
+        .delete()
+        .eq('workshop_id', workshop.id)
+        .in('menu_item_id', itemIds)
+      if (!error) {
+        setAssignedIds(prev => {
+          const next = new Set(prev)
+          for (const id of itemIds) next.delete(id)
+          return next
+        })
+      }
+    } else {
+      // Select all unassigned
+      const toAdd = items.filter(i => !assignedIds.has(i.id)).map(i => ({
+        workshop_id: workshop.id,
+        menu_item_id: i.id,
+      }))
+      if (toAdd.length > 0) {
+        const { error } = await supabase
+          .from('workshop_menu_items')
+          .insert(toAdd)
+        if (!error) {
+          setAssignedIds(prev => {
+            const next = new Set(prev)
+            for (const row of toAdd) next.add(row.menu_item_id)
+            return next
+          })
+        }
+      }
+    }
+    setTogglingAll(null)
   }
 
   function toggleCategory(id: string) {
@@ -233,8 +276,20 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
                   </div>
                 </button>
 
-                {expanded && (
-                  <div className="border-t border-black/5 divide-y divide-black/5">
+                {expanded && (() => {
+                  const allAssigned = items.every(i => assignedIds.has(i.id))
+                  return (
+                  <div className="border-t border-black/5">
+                    <div className="px-5 py-2 flex justify-end">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleAllInCategory(category.id) }}
+                        disabled={togglingAll === category.id}
+                        className="text-xs font-medium text-gold hover:text-gold/80 transition-colors"
+                      >
+                        {togglingAll === category.id ? '…' : allAssigned ? 'Deselect all' : 'Select all'}
+                      </button>
+                    </div>
+                    <div className="divide-y divide-black/5">
                     {items.map(item => (
                       <CourseToggleRow
                         key={item.id}
@@ -244,8 +299,10 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
                         onToggle={() => toggleCourse(item.id)}
                       />
                     ))}
+                    </div>
                   </div>
-                )}
+                  )
+                })()}
               </div>
             )
           })}
