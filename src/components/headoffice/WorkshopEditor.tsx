@@ -280,7 +280,7 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
                   const allAssigned = items.every(i => assignedIds.has(i.id))
                   return (
                   <div className="border-t border-black/5">
-                    <div className="px-5 py-2 flex justify-end">
+                    <div className="px-5 py-2 flex justify-start">
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleAllInCategory(category.id) }}
                         disabled={togglingAll === category.id}
