@@ -18,7 +18,7 @@ interface Props {
 
 export function ManagerTrainees({ trainees, categories, menuItems, completions, plates = [], visibleCategories = [], workshops = [], workshopMenuItems = [] }: Props) {
   const [selected, setSelected] = useState<User | null>(trainees[0] ?? null)
-  const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
+  const [expandedProgress, setExpandedProgress] = useState<Set<string>>(new Set())
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set())
 
   // Build workshop hierarchy
@@ -56,7 +56,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
   }
 
   function toggleWorkshop(id: string) {
-    setExpandedWorkshops(prev => {
+    setExpandedProgress(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -78,7 +78,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
   if (trainees.length === 0) {
     return (
       <div className="px-5 py-6">
-        <h1 className="font-serif text-2xl text-charcoal mb-4">Workshops</h1>
+        <h1 className="font-serif text-2xl text-charcoal mb-4">Progress</h1>
         <div className="card p-6 text-center">
           <p className="text-charcoal/40 text-sm">No active employees in your boutique.</p>
         </div>
@@ -89,7 +89,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
   return (
     <div className="px-5 py-6">
       <div className="mb-5">
-        <h1 className="font-serif text-2xl text-charcoal">Workshops</h1>
+        <h1 className="font-serif text-2xl text-charcoal">Progress</h1>
       </div>
 
       {/* Trainee tabs */}
@@ -97,7 +97,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
         {trainees.map(trainee => (
           <button
             key={trainee.id}
-            onClick={() => { setSelected(trainee); setExpandedWorkshops(new Set()); setExpandedCourses(new Set()) }}
+            onClick={() => { setSelected(trainee); setExpandedProgress(new Set()); setExpandedCourses(new Set()) }}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium flex-shrink-0 transition-all ${
               selected?.id === trainee.id
                 ? 'border-gold bg-gold/10 text-gold'
@@ -145,7 +145,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
             <h2 className="text-xs font-medium text-charcoal/40 uppercase tracking-widest mb-3">By workshop</h2>
             <div className="space-y-3">
               {workshopHierarchy.map(({ workshop, categories: wsCats, items: wsItems }) => {
-                const wsExpanded = expandedWorkshops.has(workshop.id)
+                const wsExpanded = expandedProgress.has(workshop.id)
                 const wsDone = getWorkshopCompletions(selected.id, workshop.id).length
                 const wsTotal = wsItems.length
                 const wsPct = wsTotal > 0 ? Math.round((wsDone / wsTotal) * 100) : 0
