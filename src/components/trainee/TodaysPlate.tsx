@@ -158,7 +158,7 @@ export function TodaysPlate({ plates, overduePlates = [], completions, shadowedT
     return (
       <div className="px-5 py-8">
         <div className="mb-6">
-          <h1 className="font-serif text-2xl text-charcoal">Today&apos;s Plate</h1>
+          <h1 className="font-serif text-2xl text-charcoal">Day Plates</h1>
           <p className="text-sm text-charcoal/40 mt-1">{today}</p>
         </div>
         <div className="card p-8 text-center">
@@ -174,7 +174,7 @@ export function TodaysPlate({ plates, overduePlates = [], completions, shadowedT
     <div className="px-5 py-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="font-serif text-2xl text-charcoal">Today&apos;s Plate</h1>
+        <h1 className="font-serif text-2xl text-charcoal">Day Plates</h1>
         <p className="text-sm text-charcoal/40 mt-1">{today}</p>
       </div>
 
