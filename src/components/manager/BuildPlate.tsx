@@ -530,6 +530,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                 const wsAllVisible = isEmployee ? wsCatIds.every(cid => isCategoryVisible(cid, workshop.id)) : true
                 const wsNoneVisible = isEmployee ? wsCatIds.every(cid => !isCategoryVisible(cid, workshop.id)) : false
 
+                const allCourseKeys = wsCats.map(c => `${workshop.id}-${c.id}`)
+                const allCoursesExpanded = allCourseKeys.length > 0 && allCourseKeys.every(k => expandedCategories.has(k))
+
                 return (
                   <div key={workshop.id} className="card overflow-hidden">
                     {/* Workshop header */}
@@ -546,6 +549,33 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                           <p className="text-xs text-charcoal/40 mt-0.5">
                             {wsCats.length} course{wsCats.length !== 1 ? 's' : ''} · {wsAssigned} assigned
                           </p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (allCoursesExpanded) {
+                                setExpandedCategories(prev => {
+                                  const next = new Set(prev)
+                                  for (const k of allCourseKeys) next.delete(k)
+                                  return next
+                                })
+                                setExpandedWorkshops(prev => {
+                                  const next = new Set(prev)
+                                  next.delete(workshop.id)
+                                  return next
+                                })
+                              } else {
+                                setExpandedCategories(prev => {
+                                  const next = new Set(prev)
+                                  for (const k of allCourseKeys) next.add(k)
+                                  return next
+                                })
+                                setExpandedWorkshops(prev => new Set(prev).add(workshop.id))
+                              }
+                            }}
+                            className="text-xs font-medium text-gold hover:text-gold/80 transition-colors mt-1"
+                          >
+                            {allCoursesExpanded ? 'Collapse all' : 'Expand all'}
+                          </button>
                         </div>
                         {wsExpanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
                       </button>
