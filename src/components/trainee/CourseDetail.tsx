@@ -363,11 +363,11 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                       style={{ width: `${recurringTotal > 0 ? Math.min((recurringDone / recurringTotal) * 100, 100) : 0}%` }}
                     />
                   </div>
-                  <p className={`text-xs mt-2 ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
+                  <p className={`text-xs mt-2 ${recurringFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
                     {recurringDone} out of {recurringTotal} sessions completed
                     {recurringDone > 0 && (
-                      <span className="text-charcoal/30 ml-1">
-                        | {assignedSessionCount > 0 && `${assignedSessionCount} assigned`}{assignedSessionCount > 0 && shadowedSessionCount > 0 && ' / '}{shadowedSessionCount > 0 && `${shadowedSessionCount} shadowed`}
+                      <span className="ml-1">
+                        | {shadowedSessionCount > 0 && <span className="text-blue-600">{shadowedSessionCount} shadowed</span>}{assignedSessionCount > 0 && shadowedSessionCount > 0 && <span className="text-charcoal/30"> / </span>}{assignedSessionCount > 0 && <span className="text-green-600">{assignedSessionCount} completed</span>}
                       </span>
                     )}
                   </p>

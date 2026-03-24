@@ -263,7 +263,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   return (
     <div className="px-5 py-6">
       <div className="mb-5">
-        <h1 className="font-serif text-2xl text-charcoal">Build Today&apos;s Plate</h1>
+        <h1 className="font-serif text-2xl text-charcoal">Build Plate for Trainee</h1>
         <p className="text-sm text-charcoal/40 mt-1">{today}</p>
       </div>
 
@@ -722,7 +722,7 @@ function MenuItemRow({
   return (
     <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${
       isRecurringItem
-        ? (recurringFullyComplete ? 'bg-green-50/50' : recurringDone > 0 ? 'bg-blue-50/50' : '')
+        ? (recurringFullyComplete ? 'bg-green-50/50' : '')
         : (completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : isOverdue ? 'bg-yellow-50/50' : '')
     }`}>
       <div className="flex-1">
@@ -732,11 +732,11 @@ function MenuItemRow({
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
         {isRecurringItem ? (
           <div className="mt-0.5">
-            <p className={`text-xs font-medium ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal/40'}`}>
+            <p className={`text-xs font-medium ${recurringFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
               {recurringFullyComplete ? 'Completed' : `${recurringDone} out of ${recurringTotal} sessions completed`}
               {!recurringFullyComplete && recurringDone > 0 && (
-                <span className="text-charcoal/30 ml-1">
-                  | {assignedSessionCount > 0 && `${assignedSessionCount} assigned`}{assignedSessionCount > 0 && shadowedSessionCount > 0 && ' / '}{shadowedSessionCount > 0 && `${shadowedSessionCount} shadowed`}
+                <span className="ml-1">
+                  | {shadowedSessionCount > 0 && <span className="text-blue-600">{shadowedSessionCount} shadowed</span>}{assignedSessionCount > 0 && shadowedSessionCount > 0 && <span className="text-charcoal/30"> / </span>}{assignedSessionCount > 0 && <span className="text-green-600">{assignedSessionCount} completed</span>}
                 </span>
               )}
               {!recurringFullyComplete && assignedDate && (

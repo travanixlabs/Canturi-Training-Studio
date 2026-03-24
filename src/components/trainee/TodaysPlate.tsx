@@ -346,7 +346,7 @@ function CategoryGroup({
             const recurringFullyComplete = item.isRecurring && (item.recurringDone ?? 0) >= (item.recurringTotal ?? 0)
             const recurringInProgress = item.isRecurring && (item.recurringDone ?? 0) > 0 && !recurringFullyComplete
             const bgClass = item.isRecurring
-              ? (recurringFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : recurringInProgress && item.recurringDoneToday ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-charcoal/2')
+              ? (recurringFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
               : (item.completed ? (item.shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : item.isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
 
             return (
@@ -358,7 +358,7 @@ function CategoryGroup({
                 <span
                   className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
                     item.isRecurring
-                      ? (recurringFullyComplete ? 'border-transparent bg-green-500' : recurringInProgress ? 'border-transparent bg-blue-500' : 'border-charcoal/20')
+                      ? (recurringFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
                       : (item.completed ? (item.shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : item.isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
                   }`}
                 >
@@ -373,11 +373,11 @@ function CategoryGroup({
                     {item.title}
                   </p>
                   {item.isRecurring ? (
-                    <p className={`text-xs font-medium mt-0.5 ${recurringFullyComplete ? 'text-green-600' : recurringInProgress ? 'text-blue-600' : 'text-charcoal/40'}`}>
+                    <p className={`text-xs font-medium mt-0.5 ${recurringFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
                       {item.recurringDone} out of {item.recurringTotal} sessions completed
                       {(item.recurringDone ?? 0) > 0 && item.recurringBreakdown && (
-                        <span className="text-charcoal/30 ml-1">
-                          | {item.recurringBreakdown.assigned > 0 && `${item.recurringBreakdown.assigned} assigned`}{item.recurringBreakdown.assigned > 0 && item.recurringBreakdown.shadowed > 0 && ' / '}{item.recurringBreakdown.shadowed > 0 && `${item.recurringBreakdown.shadowed} shadowed`}
+                        <span className="ml-1">
+                          | {item.recurringBreakdown.shadowed > 0 && <span className="text-blue-600">{item.recurringBreakdown.shadowed} shadowed</span>}{item.recurringBreakdown.assigned > 0 && item.recurringBreakdown.shadowed > 0 && <span className="text-charcoal/30"> / </span>}{item.recurringBreakdown.assigned > 0 && <span className="text-green-600">{item.recurringBreakdown.assigned} completed</span>}
                         </span>
                       )}
                     </p>

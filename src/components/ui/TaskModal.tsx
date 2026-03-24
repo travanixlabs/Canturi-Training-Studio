@@ -193,7 +193,7 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
               {item.trainer_type}
             </span>
             {isShadowing && (
-              <span className="text-gold text-xs font-medium bg-gold/10 px-2 py-0.5 rounded-full">
+              <span className="text-blue-600 text-xs font-medium bg-blue-50 px-2 py-0.5 rounded-full">
                 Shadowing moment
               </span>
             )}
@@ -297,7 +297,7 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
 
                   <div>
                     <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
-                      Your notes (not visible to trainee)
+                      Manager notes (not visible to trainee)
                     </label>
                     <textarea
                       className="textarea"
@@ -310,7 +310,7 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
 
                   <div>
                     <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
-                      Your assessment (not visible to trainee)
+                      Manager assessment (not visible to trainee)
                     </label>
                     <StarRating value={trainerRating} onChange={setTrainerRating} size="md" />
                   </div>

@@ -198,7 +198,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                         const isOverdue = !isRec && !completed && assignedDate && assignedDate < todayStr
 
                         const bgClass = isRec
-                          ? (recFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : recInProgress && recDoneToday ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-charcoal/2')
+                          ? (recFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
                           : (completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
 
                         return (
@@ -210,7 +210,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                             <span
                               className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
                                 isRec
-                                  ? (recFullyComplete ? 'border-transparent bg-green-500' : recInProgress ? 'border-transparent bg-blue-500' : 'border-charcoal/20')
+                                  ? (recFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
                                   : (completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
                               }`}
                             >
@@ -225,13 +225,13 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                                 {item.title}
                               </p>
                               {isRec ? (
-                                <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : recInProgress ? 'text-blue-600' : 'text-charcoal/40'}`}>
+                                <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
                                   {recDone} out of {recTotal} sessions completed
                                   {recDone > 0 && (() => {
                                     const bd = getRecurringBreakdown(item.id)
                                     return (
-                                      <span className="text-charcoal/30 ml-1">
-                                        | {bd.assigned > 0 && `${bd.assigned} assigned`}{bd.assigned > 0 && bd.shadowed > 0 && ' / '}{bd.shadowed > 0 && `${bd.shadowed} shadowed`}
+                                      <span className="ml-1">
+                                        | {bd.shadowed > 0 && <span className="text-blue-600">{bd.shadowed} shadowed</span>}{bd.assigned > 0 && bd.shadowed > 0 && <span className="text-charcoal/30"> / </span>}{bd.assigned > 0 && <span className="text-green-600">{bd.assigned} completed</span>}
                                       </span>
                                     )
                                   })()}
