@@ -290,7 +290,9 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
                   </span>
                   <div className="flex-1">
                     <p className="font-medium text-charcoal text-[15px]">{category.name}</p>
-                    <p className="text-xs text-charcoal/40 mt-0.5">{assignedInCat}/{allItems.length} assigned</p>
+                    <p className={`text-xs font-medium mt-0.5 ${
+                      assignedInCat === allItems.length ? 'text-green-600' : assignedInCat > 0 ? 'text-yellow-600' : 'text-red-500'
+                    }`}>{assignedInCat}/{allItems.length} assigned</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
