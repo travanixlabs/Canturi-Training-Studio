@@ -185,39 +185,37 @@ function WorkshopSection({
     e.stopPropagation()
     if (allCoursesExpanded) {
       setExpandedCourses(new Set())
+      setExpanded(false)
     } else {
       setExpandedCourses(new Set(courseGroups.map(g => g.category?.id ?? 'none')))
+      setExpanded(true)
     }
   }
 
   return (
     <div className="card overflow-hidden">
       {/* Workshop header */}
-      <div className="flex items-center">
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex-1 px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
-        >
-          <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
-            W
-          </span>
-          <div className="flex-1">
-            <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
-            <p className="text-xs text-charcoal/40 mt-0.5">
-              {section === 'completed' ? `${totalItems} completed` : `${totalItems - completedItems} remaining`} · {courseGroups.length} course{courseGroups.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
-        </button>
-        {expanded && (
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
+      >
+        <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
+          W
+        </span>
+        <div className="flex-1">
+          <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
+          <p className="text-xs text-charcoal/40 mt-0.5">
+            {section === 'completed' ? `${totalItems} completed` : `${totalItems - completedItems} remaining`} · {courseGroups.length} course{courseGroups.length !== 1 ? 's' : ''}
+          </p>
           <button
             onClick={toggleExpandAll}
-            className="mr-4 text-xs font-medium text-gold hover:text-gold/80 transition-colors whitespace-nowrap"
+            className="text-xs font-medium text-gold hover:text-gold/80 transition-colors mt-1"
           >
             {allCoursesExpanded ? 'Collapse all' : 'Expand all'}
           </button>
-        )}
-      </div>
+        </div>
+        {expanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
+      </button>
 
       {/* Courses inside workshop */}
       {expanded && (

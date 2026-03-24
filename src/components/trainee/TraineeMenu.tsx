@@ -173,48 +173,54 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
               return (
                 <div key={workshop.id} className="card overflow-hidden">
                   {/* Workshop header */}
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => toggleWorkshop(workshop.id)}
-                      className="flex-1 px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
-                    >
-                      <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
-                        W
-                      </span>
-                      <div className="flex-1">
-                        <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
-                        <p className="text-xs text-charcoal/40 mt-0.5">{wsCompleted}/{wsItems.length} complete · {wsCats.length} course{wsCats.length !== 1 ? 's' : ''}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gold rounded-full"
-                            style={{ width: `${wsItems.length > 0 ? (wsCompleted / wsItems.length) * 100 : 0}%` }}
-                          />
-                        </div>
-                        {wsExpanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
-                      </div>
-                    </button>
-                    {wsExpanded && (
+                  <button
+                    onClick={() => toggleWorkshop(workshop.id)}
+                    className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
+                  >
+                    <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
+                      W
+                    </span>
+                    <div className="flex-1">
+                      <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
+                      <p className="text-xs text-charcoal/40 mt-0.5">{wsCompleted}/{wsItems.length} complete · {wsCats.length} course{wsCats.length !== 1 ? 's' : ''}</p>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setExpandedCategories(prev => {
-                            const next = new Set(prev)
-                            if (allCoursesExpanded) {
+                          if (allCoursesExpanded) {
+                            setExpandedCategories(prev => {
+                              const next = new Set(prev)
                               for (const k of allCourseKeys) next.delete(k)
-                            } else {
+                              return next
+                            })
+                            setExpandedWorkshops(prev => {
+                              const next = new Set(prev)
+                              next.delete(workshop.id)
+                              return next
+                            })
+                          } else {
+                            setExpandedCategories(prev => {
+                              const next = new Set(prev)
                               for (const k of allCourseKeys) next.add(k)
-                            }
-                            return next
-                          })
+                              return next
+                            })
+                            setExpandedWorkshops(prev => new Set(prev).add(workshop.id))
+                          }
                         }}
-                        className="mr-4 text-xs font-medium text-gold hover:text-gold/80 transition-colors whitespace-nowrap"
+                        className="text-xs font-medium text-gold hover:text-gold/80 transition-colors mt-1"
                       >
                         {allCoursesExpanded ? 'Collapse all' : 'Expand all'}
                       </button>
-                    )}
-                  </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gold rounded-full"
+                          style={{ width: `${wsItems.length > 0 ? (wsCompleted / wsItems.length) * 100 : 0}%` }}
+                        />
+                      </div>
+                      {wsExpanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
+                    </div>
+                  </button>
 
                   {/* Courses inside this workshop */}
                   {wsExpanded && (
