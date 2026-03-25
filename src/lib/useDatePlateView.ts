@@ -175,7 +175,7 @@ export function useDatePlateView(
             completedDate: comp!.completed_date,
             assignedDate: p.date_assigned,
             shadowedEarly: isShadowedEarly,
-            shadowed: isShadowingMoment,
+            shadowed: isShadowingMoment || isShadowedEarly,
             rating: comp!.trainee_rating ?? undefined,
           })
         } else if (comp && !completedBeforeAssigned) {
