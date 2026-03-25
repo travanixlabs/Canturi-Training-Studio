@@ -117,12 +117,17 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
             let shadowedCount = 0
             let remainingCount = 0
 
-            // Non-recurring completed items
             for (const i of allCompletedItems) {
               if (i.isRecurring) {
-                // Recurring: use the breakdown
-                completedCount += i.recurringBreakdown?.assigned ?? 0
-                shadowedCount += i.recurringBreakdown?.shadowed ?? 0
+                // Recurring completed: session was done on this date
+                // Was this date an assigned plate date? If yes = completed, if no = shadowed
+                if (i.recurringDoneToday) {
+                  if (i.assignedDate === selectedDate) {
+                    completedCount++
+                  } else {
+                    shadowedCount++
+                  }
+                }
               } else {
                 if (i.shadowed || i.shadowedEarly) {
                   shadowedCount++
@@ -132,16 +137,12 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
               }
             }
 
-            // Non-recurring remaining items
             for (const i of allRemainingItems) {
               if (i.isRecurring) {
-                // Recurring remaining: total sessions minus what's done
-                const done = (i.recurringBreakdown?.assigned ?? 0) + (i.recurringBreakdown?.shadowed ?? 0)
-                const total = i.recurringTotal ?? 0
-                remainingCount += Math.max(0, total - done)
-                // Also count completed/shadowed sessions from remaining items
-                completedCount += i.recurringBreakdown?.assigned ?? 0
-                shadowedCount += i.recurringBreakdown?.shadowed ?? 0
+                // Recurring remaining: session assigned today but not done yet = 1 remaining
+                if (i.assignedDate === selectedDate) {
+                  remainingCount++
+                }
               } else {
                 remainingCount++
               }
