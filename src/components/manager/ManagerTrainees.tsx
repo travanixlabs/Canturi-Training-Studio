@@ -227,58 +227,30 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
                             {wsExpanded && (
                               <div className="bg-charcoal/[0.01]">
                                 {wsCats.map(cat => {
-                                  const courseKey = `${trainee.id}-${workshop.id}-${cat.id}`
-                                  const courseExpanded = expandedLevel3.has(courseKey)
-                                  const colour = CATEGORY_COLOURS[cat.name] ?? cat.colour_hex
+                                  const colour = cat.colour_hex ?? CATEGORY_COLOURS[cat.name] ?? '#C9A96E'
                                   const catItemsInWs = wsItems.filter(mi => mi.category_id === cat.id)
                                   const catDone = getCourseCompletions(trainee.id, workshop.id, cat.id).length
                                   const catTotal = catItemsInWs.length
                                   const catPct = catTotal > 0 ? Math.round((catDone / catTotal) * 100) : 0
 
                                   return (
-                                    <div key={cat.id}>
-                                      <button
-                                        onClick={() => toggle(3, courseKey)}
-                                        className="w-full pl-14 pr-4 py-3 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors border-b border-black/5"
+                                    <div key={cat.id} className="pl-14 pr-4 py-3 flex items-center gap-3 border-b border-black/5">
+                                      <span
+                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
+                                        style={{ backgroundColor: colour + '20', color: colour }}
                                       >
-                                        <span
-                                          className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
-                                          style={{ backgroundColor: colour + '20', color: colour }}
-                                        >
-                                          {cat.icon}
-                                        </span>
-                                        <div className="flex-1">
-                                          <div className="flex justify-between items-baseline">
-                                            <p className="text-[13px] text-charcoal">{cat.name}</p>
-                                            <p className="text-xs font-medium" style={{ color: colour }}>{catPct}%</p>
-                                          </div>
-                                          <p className="text-xs text-charcoal/40">{catDone} of {catTotal}</p>
+                                        {cat.icon}
+                                      </span>
+                                      <div className="flex-1">
+                                        <div className="flex justify-between items-baseline">
+                                          <p className="text-[13px] text-charcoal">{cat.name}</p>
+                                          <p className="text-xs font-medium" style={{ color: colour }}>{catPct}%</p>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                          <div className="w-10 h-1 bg-charcoal/8 rounded-full overflow-hidden">
-                                            <div className="h-full rounded-full transition-all" style={{ width: `${catPct}%`, backgroundColor: colour }} />
-                                          </div>
-                                          {courseExpanded ? <ChevronUp size={12} className="text-charcoal/30" /> : <ChevronDown size={12} className="text-charcoal/30" />}
-                                        </div>
-                                      </button>
-
-                                      {courseExpanded && (
-                                        <div className="divide-y divide-black/5">
-                                          {catItemsInWs.map(item => {
-                                            const isCompleted = completions.some(
-                                              c => c.menu_item_id === item.id && c.trainee_id === trainee.id && c.workshop_id === workshop.id
-                                            )
-                                            return (
-                                              <div key={item.id} className={`pl-20 pr-4 py-2.5 flex items-center gap-3 ${isCompleted ? 'bg-green-50/30' : ''}`}>
-                                                <span className={`w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center text-[8px] ${isCompleted ? 'border-transparent bg-green-500' : 'border-charcoal/20'}`}>
-                                                  {isCompleted && <span className="text-white">✓</span>}
-                                                </span>
-                                                <p className={`text-[12px] ${isCompleted ? 'text-charcoal/40' : 'text-charcoal'}`}>{item.title}</p>
-                                              </div>
-                                            )
-                                          })}
-                                        </div>
-                                      )}
+                                        <p className="text-xs text-charcoal/40">{catDone} of {catTotal}</p>
+                                      </div>
+                                      <div className="w-10 h-1 bg-charcoal/8 rounded-full overflow-hidden">
+                                        <div className="h-full rounded-full transition-all" style={{ width: `${catPct}%`, backgroundColor: colour }} />
+                                      </div>
                                     </div>
                                   )
                                 })}
@@ -337,58 +309,30 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
                     {wsExpanded && (
                       <div className="border-t border-black/5">
                         {wsCats.map(cat => {
-                          const courseKey = `${workshop.id}-${cat.id}`
-                          const courseExpanded = expandedLevel2.has(courseKey)
-                          const colour = CATEGORY_COLOURS[cat.name] ?? cat.colour_hex
+                          const colour = cat.colour_hex ?? CATEGORY_COLOURS[cat.name] ?? '#C9A96E'
                           const catItemsInWs = wsItems.filter(mi => mi.category_id === cat.id)
                           const catDone = getCourseCompletions(trainee.id, workshop.id, cat.id).length
                           const catTotal = catItemsInWs.length
                           const catPct = catTotal > 0 ? Math.round((catDone / catTotal) * 100) : 0
 
                           return (
-                            <div key={cat.id}>
-                              <button
-                                onClick={() => toggle(2, courseKey)}
-                                className="w-full pl-8 pr-4 py-3 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors border-b border-black/5"
+                            <div key={cat.id} className="pl-8 pr-4 py-3 flex items-center gap-3 border-b border-black/5">
+                              <span
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
+                                style={{ backgroundColor: colour + '20', color: colour }}
                               >
-                                <span
-                                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
-                                  style={{ backgroundColor: colour + '20', color: colour }}
-                                >
-                                  {cat.icon}
-                                </span>
-                                <div className="flex-1">
-                                  <div className="flex justify-between items-baseline">
-                                    <p className="font-medium text-charcoal text-[14px]">{cat.name}</p>
-                                    <p className="text-sm font-medium" style={{ color: colour }}>{catPct}%</p>
-                                  </div>
-                                  <p className="text-xs text-charcoal/40 mt-0.5">{catDone} of {catTotal}</p>
+                                {cat.icon}
+                              </span>
+                              <div className="flex-1">
+                                <div className="flex justify-between items-baseline">
+                                  <p className="font-medium text-charcoal text-[14px]">{cat.name}</p>
+                                  <p className="text-sm font-medium" style={{ color: colour }}>{catPct}%</p>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="w-12 h-1 bg-charcoal/8 rounded-full overflow-hidden">
-                                    <div className="h-full rounded-full transition-all" style={{ width: `${catPct}%`, backgroundColor: colour }} />
-                                  </div>
-                                  {courseExpanded ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
-                                </div>
-                              </button>
-
-                              {courseExpanded && (
-                                <div className="divide-y divide-black/5 bg-charcoal/[0.01]">
-                                  {catItemsInWs.map(item => {
-                                    const isCompleted = completions.some(
-                                      c => c.menu_item_id === item.id && c.trainee_id === trainee.id && c.workshop_id === workshop.id
-                                    )
-                                    return (
-                                      <div key={item.id} className={`pl-14 pr-4 py-3 flex items-center gap-3 ${isCompleted ? 'bg-green-50/30' : ''}`}>
-                                        <span className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${isCompleted ? 'border-transparent bg-green-500' : 'border-charcoal/20'}`}>
-                                          {isCompleted && <span className="text-white text-[10px]">✓</span>}
-                                        </span>
-                                        <p className={`text-[13px] ${isCompleted ? 'text-charcoal/40' : 'text-charcoal'}`}>{item.title}</p>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              )}
+                                <p className="text-xs text-charcoal/40 mt-0.5">{catDone} of {catTotal}</p>
+                              </div>
+                              <div className="w-12 h-1 bg-charcoal/8 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all" style={{ width: `${catPct}%`, backgroundColor: colour }} />
+                              </div>
                             </div>
                           )
                         })}
