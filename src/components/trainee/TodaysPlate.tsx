@@ -112,13 +112,38 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
           <div className="card p-4 mb-6">
             <div className="flex justify-between text-sm mb-1.5">
               <span className="text-charcoal/60">{isToday ? "Today's Progress" : 'Day Progress'}</span>
-              <span className="font-medium text-charcoal">{progress.completed}/{progress.total}</span>
+              <span className="font-medium text-charcoal">
+                {progress.completed > 0 && <span className="text-green-600">{progress.completed} Completed</span>}
+                {progress.completed > 0 && progress.shadowed > 0 && <span className="text-charcoal/30"> + </span>}
+                {progress.shadowed > 0 && <span className="text-blue-600">{progress.shadowed} Shadowed</span>}
+                {(progress.completed > 0 || progress.shadowed > 0) && progress.remaining > 0 && <span className="text-charcoal/30"> + </span>}
+                {progress.remaining > 0 && <span className="text-charcoal/40">{progress.remaining} Remaining</span>}
+                {progress.total === 0 && <span className="text-charcoal/40">0</span>}
+              </span>
             </div>
-            <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gold rounded-full transition-all duration-500"
-                style={{ width: `${progress.total > 0 ? (progress.completed / progress.total) * 100 : 0}%` }}
-              />
+            <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden flex">
+              {progress.total > 0 && (
+                <>
+                  {progress.completed > 0 && (
+                    <div
+                      className="h-full bg-green-500 transition-all duration-500"
+                      style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+                    />
+                  )}
+                  {progress.remaining > 0 && (
+                    <div
+                      className="h-full bg-red-400 transition-all duration-500"
+                      style={{ width: `${(progress.remaining / progress.total) * 100}%` }}
+                    />
+                  )}
+                  {progress.shadowed > 0 && (
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-500"
+                      style={{ width: `${(progress.shadowed / progress.total) * 100}%` }}
+                    />
+                  )}
+                </>
+              )}
             </div>
           </div>
 

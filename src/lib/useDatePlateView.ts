@@ -35,7 +35,7 @@ export interface DatePlateView {
   selectedDate: string
   remainingGroups: PlateGroup[]
   completedGroups: PlateGroup[]
-  progress: { completed: number; total: number }
+  progress: { completed: number; shadowed: number; remaining: number; total: number }
   availableDates: string[]
   prevDate: string | null
   nextDate: string | null
@@ -374,12 +374,14 @@ export function useDatePlateView(
     }
 
     const totalItems = dedupRemaining.length + dedupCompleted.length
-    const totalCompleted = dedupCompleted.length
+    const shadowedCount = dedupCompleted.filter(i => i.shadowed || i.shadowedEarly).length
+    const completedCount = dedupCompleted.length - shadowedCount
+    const remainingCount = dedupRemaining.length
 
     return {
       remainingGroups: groupItems(dedupRemaining),
       completedGroups: groupItems(dedupCompleted),
-      progress: { completed: totalCompleted, total: totalItems },
+      progress: { completed: completedCount, shadowed: shadowedCount, remaining: remainingCount, total: totalItems },
     }
   }, [allPlates, allCompletions, allRecurringCompletions, selectedDate, userId, isToday, today])
 
