@@ -146,7 +146,10 @@ export function useDatePlateView(
         }
 
         if (doneOnThisDate || fullyComplete) {
-          completed.push({ ...item, completed: true })
+          // Check if the session done on this date was shadowed (not on an assigned plate date)
+          const assignedDates = new Set(allPlates.filter(pp => pp.menu_item_id === mi.id && pp.trainee_id === userId).map(pp => pp.date_assigned))
+          const sessionShadowed = doneOnThisDate && !assignedDates.has(selectedDate)
+          completed.push({ ...item, completed: true, shadowed: sessionShadowed })
         } else {
           remaining.push(item)
         }
