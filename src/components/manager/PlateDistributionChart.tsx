@@ -144,7 +144,7 @@ export function PlateDistributionChart({
             >
               {/* Item count on top */}
               {total > 0 && (
-                <p className={`text-[8px] mb-0.5 ${isSelected ? 'text-charcoal/60' : 'text-charcoal/25'}`}>
+                <p className={`text-[8px] mb-0.5 text-charcoal/60`}>
                   {total}
                 </p>
               )}
@@ -166,13 +166,17 @@ export function PlateDistributionChart({
                     return (
                       <div
                         key={course.id}
+                        className="w-full transition-opacity flex items-center justify-center relative"
                         style={{
                           height: `${pct}%`,
                           backgroundColor: colour,
                           opacity: isCourseGreyed ? 0.15 : 1,
                         }}
-                        className="w-full transition-opacity"
-                      />
+                      >
+                        {count > 0 && pct >= 15 && (
+                          <span className="text-white text-[7px] font-semibold leading-none">{count}</span>
+                        )}
+                      </div>
                     )
                   })
                 ) : (
