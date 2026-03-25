@@ -283,16 +283,16 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
                                           </div>
                                           <p className="text-[11px] text-charcoal/40 mt-0.5">
                                             {bd.categories.completed + bd.categories.shadowed} of {bd.categories.total} Categories
-                                            {bd.categories.completed > 0 && <span className="text-green-600"> | {bd.categories.completed} Completed</span>}
-                                            {bd.categories.shadowed > 0 && <span className="text-blue-600"> | {bd.categories.shadowed} Shadowed</span>}
-                                            {bd.categories.toDo > 0 && <span> | {bd.categories.toDo} To Do</span>}
+                                            {bd.categories.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{bd.categories.completed} Completed</span></>}
+                                            {bd.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.categories.shadowed} Shadowed</span></>}
+                                            {bd.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.categories.toDo} To Do</span></>}
                                           </p>
                                           {bd.hasRecurring && (
                                             <p className="text-[11px] text-charcoal/40 mt-0.5">
                                               {bd.sessions.completed + bd.sessions.shadowed} of {bd.sessions.total} Sessions
-                                              {bd.sessions.completed > 0 && <span className="text-green-600"> | {bd.sessions.completed} Completed</span>}
-                                              {bd.sessions.shadowed > 0 && <span className="text-blue-600"> | {bd.sessions.shadowed} Shadowed</span>}
-                                              {bd.sessions.toDo > 0 && <span> | {bd.sessions.toDo} To Do</span>}
+                                              {bd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{bd.sessions.completed} Completed</span></>}
+                                              {bd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.sessions.shadowed} Shadowed</span></>}
+                                              {bd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.sessions.toDo} To Do</span></>}
                                             </p>
                                           )}
                                           {(avgTrainee || avgTrainer) && (
