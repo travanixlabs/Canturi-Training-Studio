@@ -108,44 +108,54 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
         </div>
       ) : (
         <>
-          {/* Progress summary */}
-          <div className="card p-4 mb-6">
-            <div className="flex justify-between text-sm mb-1.5">
-              <span className="text-charcoal/60">{isToday ? "Today's Progress" : 'Day Progress'}</span>
-              <span className="font-medium text-charcoal">
-                {progress.completed > 0 && <span className="text-green-600">{progress.completed} Completed</span>}
-                {progress.completed > 0 && progress.shadowed > 0 && <span className="text-charcoal/30"> + </span>}
-                {progress.shadowed > 0 && <span className="text-blue-600">{progress.shadowed} Shadowed</span>}
-                {(progress.completed > 0 || progress.shadowed > 0) && progress.remaining > 0 && <span className="text-charcoal/30"> + </span>}
-                {progress.remaining > 0 && <span className="text-yellow-500">{progress.remaining} Remaining</span>}
-                {progress.total === 0 && <span className="text-charcoal/40">0</span>}
-              </span>
-            </div>
-            <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden flex">
-              {progress.total > 0 && (
-                <>
-                  {progress.completed > 0 && (
-                    <div
-                      className="h-full bg-green-500 transition-all duration-500"
-                      style={{ width: `${(progress.completed / progress.total) * 100}%` }}
-                    />
+          {/* Progress summary — count directly from the rendered groups */}
+          {(() => {
+            const allCompletedItems = completedGroups.flatMap(g => g.items)
+            const shadowedCount = allCompletedItems.filter(i => i.shadowed || i.shadowedEarly).length
+            const completedCount = allCompletedItems.length - shadowedCount
+            const remainingCount = remainingGroups.reduce((sum, g) => sum + g.items.length, 0)
+            const total = completedCount + shadowedCount + remainingCount
+
+            return (
+              <div className="card p-4 mb-6">
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-charcoal/60">{isToday ? "Today's Progress" : 'Day Progress'}</span>
+                  <span className="font-medium text-charcoal">
+                    {completedCount > 0 && <span className="text-green-600">{completedCount} Completed</span>}
+                    {completedCount > 0 && shadowedCount > 0 && <span className="text-charcoal/30"> + </span>}
+                    {shadowedCount > 0 && <span className="text-blue-600">{shadowedCount} Shadowed</span>}
+                    {(completedCount > 0 || shadowedCount > 0) && remainingCount > 0 && <span className="text-charcoal/30"> + </span>}
+                    {remainingCount > 0 && <span className="text-yellow-500">{remainingCount} Remaining</span>}
+                    {total === 0 && <span className="text-charcoal/40">0</span>}
+                  </span>
+                </div>
+                <div className="h-2 bg-charcoal/8 rounded-full overflow-hidden flex">
+                  {total > 0 && (
+                    <>
+                      {completedCount > 0 && (
+                        <div
+                          className="h-full bg-green-500 transition-all duration-500"
+                          style={{ width: `${(completedCount / total) * 100}%` }}
+                        />
+                      )}
+                      {shadowedCount > 0 && (
+                        <div
+                          className="h-full bg-blue-500 transition-all duration-500"
+                          style={{ width: `${(shadowedCount / total) * 100}%` }}
+                        />
+                      )}
+                      {remainingCount > 0 && (
+                        <div
+                          className="h-full bg-yellow-400 transition-all duration-500"
+                          style={{ width: `${(remainingCount / total) * 100}%` }}
+                        />
+                      )}
+                    </>
                   )}
-                  {progress.shadowed > 0 && (
-                    <div
-                      className="h-full bg-blue-500 transition-all duration-500"
-                      style={{ width: `${(progress.shadowed / progress.total) * 100}%` }}
-                    />
-                  )}
-                  {progress.remaining > 0 && (
-                    <div
-                      className="h-full bg-yellow-400 transition-all duration-500"
-                      style={{ width: `${(progress.remaining / progress.total) * 100}%` }}
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* To complete */}
           {remainingWorkshopGroups.length > 0 && (
