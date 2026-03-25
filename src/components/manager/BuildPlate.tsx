@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
 import type { User, Category, MenuItem, Plate, VisibleCategory, Completion, RecurringTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
+import { PlateDistributionChart } from './PlateDistributionChart'
 
 interface Props {
   manager: User
@@ -53,6 +54,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   const [multiDatePicker, setMultiDatePicker] = useState<{ item: MenuItem; anchorId: string; workshopId: string } | null>(null)
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
   const [recurringCompletions, setRecurringCompletions] = useState<RecurringTaskCompletion[]>(initialRecurring)
+  const [chartFilter, setChartFilter] = useState<{ dates: Set<string>; courseIds: Set<string> }>({ dates: new Set(), courseIds: new Set() })
   const router = useRouter()
   const supabase = createClient()
 
@@ -347,11 +349,60 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
   const isSearching = search.trim().length > 0
 
+  // Chart filter: determine which items to show
+  const hasChartFilter = chartFilter.dates.size > 0 || chartFilter.courseIds.size > 0
+  const isItemVisibleByChart = (menuItemId: string, workshopId: string) => {
+    if (!hasChartFilter) return true
+    const mi = menuItems.find(m => m.id === menuItemId)
+    if (!mi) return true
+
+    // Course filter
+    if (chartFilter.courseIds.size > 0 && !chartFilter.courseIds.has(mi.category_id)) return false
+
+    // Date filter: check if item is assigned on any of the selected dates
+    if (chartFilter.dates.size > 0) {
+      const itemPlates = plates.filter(p => p.menu_item_id === menuItemId && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshopId)
+      const hasMatchingDate = itemPlates.some(p => chartFilter.dates.has(p.date_assigned))
+      if (!hasMatchingDate) return false
+    }
+
+    return true
+  }
+
+  const isCourseVisibleByChart = (categoryId: string) => {
+    if (!hasChartFilter) return true
+    if (chartFilter.courseIds.size > 0) return chartFilter.courseIds.has(categoryId)
+    // If only date filter, check if any items in this course are assigned on selected dates
+    if (chartFilter.dates.size > 0) {
+      const courseItems = menuItems.filter(mi => mi.category_id === categoryId)
+      return courseItems.some(mi => {
+        const itemPlates = plates.filter(p => p.menu_item_id === mi.id && p.trainee_id === selectedTrainee?.id)
+        return itemPlates.some(p => chartFilter.dates.has(p.date_assigned))
+      })
+    }
+    return true
+  }
+
   return (
     <div className="px-5 py-6">
-      <div className="mb-5">
-        <h1 className="font-serif text-2xl text-charcoal">Build Plate for Trainee</h1>
-        <p className="text-sm text-charcoal/40 mt-1">{today}</p>
+      <div className="mb-5 flex gap-6 items-start">
+        <div className="flex-shrink-0">
+          <h1 className="font-serif text-2xl text-charcoal">Build Plate for Trainee</h1>
+          <p className="text-sm text-charcoal/40 mt-1">{today}</p>
+        </div>
+        {selectedTrainee && (
+          <div className="flex-1 min-w-0">
+            <PlateDistributionChart
+              plates={plates}
+              categories={categories}
+              menuItems={menuItems}
+              workshops={workshops}
+              workshopMenuItems={workshopMenuItems}
+              traineeId={selectedTrainee.id}
+              onFilterChange={setChartFilter}
+            />
+          </div>
+        )}
       </div>
 
       {/* Date picker modal */}
@@ -613,8 +664,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                     {/* Expanded: courses inside this workshop */}
                     {wsExpanded && (
                       <div className="border-t border-black/5">
-                        {wsCats.map(category => {
-                          const catItems = wsItems.filter(i => i.category_id === category.id)
+                        {wsCats.filter(c => isCourseVisibleByChart(c.id)).map(category => {
+                          const catItems = wsItems.filter(i => i.category_id === category.id && isItemVisibleByChart(i.id, workshop.id))
                           const nonRecurring = catItems.filter(i => !i.is_recurring)
                           const recurring = catItems.filter(i => i.is_recurring)
                           const catExpanded = expandedCategories.has(`${workshop.id}-${category.id}`)
