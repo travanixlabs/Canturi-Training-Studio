@@ -117,7 +117,7 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
                 {progress.completed > 0 && progress.shadowed > 0 && <span className="text-charcoal/30"> + </span>}
                 {progress.shadowed > 0 && <span className="text-blue-600">{progress.shadowed} Shadowed</span>}
                 {(progress.completed > 0 || progress.shadowed > 0) && progress.remaining > 0 && <span className="text-charcoal/30"> + </span>}
-                {progress.remaining > 0 && <span className="text-red-400">{progress.remaining} Remaining</span>}
+                {progress.remaining > 0 && <span className="text-yellow-500">{progress.remaining} Remaining</span>}
                 {progress.total === 0 && <span className="text-charcoal/40">0</span>}
               </span>
             </div>
@@ -138,7 +138,7 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
                   )}
                   {progress.remaining > 0 && (
                     <div
-                      className="h-full bg-red-400 transition-all duration-500"
+                      className="h-full bg-yellow-400 transition-all duration-500"
                       style={{ width: `${(progress.remaining / progress.total) * 100}%` }}
                     />
                   )}
