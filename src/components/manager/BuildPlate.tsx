@@ -935,7 +935,7 @@ function MenuItemRow({
   const shadowedSessionCount = recurringDone - assignedSessionCount
 
   return (
-    <div className={`flex items-center gap-3 ${compact ? 'px-5 py-3' : 'card px-4 py-3'} ${
+    <div className={`flex items-center gap-3 ${compact ? 'pl-14 pr-5 py-3' : 'card px-4 py-3'} ${
       isRecurringItem
         ? (recurringFullyComplete ? 'bg-green-50/50' : '')
         : (completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : isOverdue ? 'bg-yellow-50/50' : '')
