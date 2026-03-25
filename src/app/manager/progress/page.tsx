@@ -14,7 +14,7 @@ export default async function TraineesPage() {
     await supabase.from('users').select('id').eq('boutique_id', manager.boutique_id).eq('role', 'trainee')
   ).data?.map(u => u.id) ?? []
 
-  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: completions }, { data: plates }, { data: visibleCats }, { data: workshops }, { data: workshopMenuItems }] = await Promise.all([
+  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: completions }, { data: plates }, { data: visibleCats }, { data: workshops }, { data: workshopMenuItems }, { data: recurringCompletions }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
     supabase.from('categories').select('*').order('sort_order'),
     supabase.from('menu_items').select('*').eq('status', 'active'),
@@ -27,6 +27,9 @@ export default async function TraineesPage() {
     supabase.from('visible_categories').select('*'),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
     supabase.from('workshop_menu_items').select('*'),
+    traineeIds.length > 0
+      ? supabase.from('recurring_task_completions').select('*').in('trainee_id', traineeIds)
+      : Promise.resolve({ data: [] }),
   ])
 
   return (
@@ -39,6 +42,7 @@ export default async function TraineesPage() {
       visibleCategories={visibleCats ?? []}
       workshops={workshops ?? []}
       workshopMenuItems={workshopMenuItems ?? []}
+      recurringCompletions={recurringCompletions ?? []}
     />
   )
 }

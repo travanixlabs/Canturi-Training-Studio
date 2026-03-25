@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { CATEGORY_COLOURS } from '@/types'
-import type { User, Category, MenuItem, Completion, Plate, VisibleCategory, Workshop, WorkshopMenuItem } from '@/types'
+import type { User, Category, MenuItem, Completion, Plate, VisibleCategory, Workshop, WorkshopMenuItem, RecurringTaskCompletion } from '@/types'
 
 interface Props {
   trainees: User[]
@@ -14,9 +14,10 @@ interface Props {
   visibleCategories?: VisibleCategory[]
   workshops?: Workshop[]
   workshopMenuItems?: WorkshopMenuItem[]
+  recurringCompletions?: RecurringTaskCompletion[]
 }
 
-export function ManagerTrainees({ trainees, categories, menuItems, completions, plates = [], visibleCategories = [], workshops = [], workshopMenuItems = [] }: Props) {
+export function ManagerTrainees({ trainees, categories, menuItems, completions, plates = [], visibleCategories = [], workshops = [], workshopMenuItems = [], recurringCompletions = [] }: Props) {
   const [selected, setSelected] = useState<User | 'all'>('all')
   const [expandedLevel1, setExpandedLevel1] = useState<Set<string>>(new Set())
   const [expandedLevel2, setExpandedLevel2] = useState<Set<string>>(new Set())
@@ -41,6 +42,36 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
     const wsItemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id))
     const catItems = menuItems.filter(mi => wsItemIds.has(mi.id) && mi.category_id === categoryId)
     return catItems.filter(mi => completions.some(c => c.menu_item_id === mi.id && c.trainee_id === traineeId && c.workshop_id === workshopId))
+  }
+
+  // Detailed course breakdown: categories (non-recurring) + sessions (recurring)
+  const getCourseBreakdown = (traineeId: string, workshopId: string, categoryId: string) => {
+    const wsItemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id))
+    const catItems = menuItems.filter(mi => wsItemIds.has(mi.id) && mi.category_id === categoryId)
+    const nonRecurring = catItems.filter(mi => !mi.is_recurring)
+    const recurring = catItems.filter(mi => mi.is_recurring && mi.recurring_amount)
+
+    // Non-recurring: completed vs shadowed
+    const nonRecComps = completions.filter(c => c.trainee_id === traineeId && c.workshop_id === workshopId && nonRecurring.some(mi => mi.id === c.menu_item_id))
+    const nrCompleted = nonRecComps.filter(c => !c.is_shadowing_moment).length
+    const nrShadowed = nonRecComps.filter(c => c.is_shadowing_moment).length
+    const nrTotal = nonRecurring.length
+    const nrToDo = nrTotal - nrCompleted - nrShadowed
+
+    // Recurring: session counts
+    const sessionTotal = recurring.reduce((sum, mi) => sum + (mi.recurring_amount ?? 0), 0)
+    const sessionRcs = recurringCompletions.filter(rc => rc.trainee_id === traineeId && rc.workshop_id === workshopId && recurring.some(mi => mi.id === rc.menu_item_id))
+    // Determine which sessions were assigned (matched plate dates) vs shadowed
+    const plateDates = plates.filter(p => p.trainee_id === traineeId && p.workshop_id === workshopId && recurring.some(mi => mi.id === p.menu_item_id)).map(p => p.date_assigned)
+    const sessionCompleted = sessionRcs.filter(rc => plateDates.includes(rc.completed_date)).length
+    const sessionShadowed = sessionRcs.length - sessionCompleted
+    const sessionToDo = Math.max(0, sessionTotal - sessionRcs.length)
+
+    return {
+      categories: { total: nrTotal, completed: nrCompleted, shadowed: nrShadowed, toDo: nrToDo },
+      sessions: { total: sessionTotal, completed: sessionCompleted, shadowed: sessionShadowed, toDo: sessionToDo },
+      hasRecurring: recurring.length > 0,
+    }
   }
 
   const overallStats = (traineeId: string) => {
@@ -228,28 +259,53 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
                               <div className="bg-charcoal/[0.01]">
                                 {wsCats.map(cat => {
                                   const colour = cat.colour_hex ?? CATEGORY_COLOURS[cat.name] ?? '#C9A96E'
-                                  const catItemsInWs = wsItems.filter(mi => mi.category_id === cat.id)
-                                  const catDone = getCourseCompletions(trainee.id, workshop.id, cat.id).length
-                                  const catTotal = catItemsInWs.length
-                                  const catPct = catTotal > 0 ? Math.round((catDone / catTotal) * 100) : 0
+                                  const bd = getCourseBreakdown(trainee.id, workshop.id, cat.id)
+                                  const catPct = bd.categories.total > 0 ? Math.round(((bd.categories.completed + bd.categories.shadowed) / bd.categories.total) * 100) : 0
+                                  const courseComps = completions.filter(c => c.trainee_id === trainee.id && c.workshop_id === workshop.id && menuItems.some(mi => mi.id === c.menu_item_id && mi.category_id === cat.id))
+                                  const traineeRatings = courseComps.map(c => c.trainee_rating).filter((r): r is number => r != null)
+                                  const trainerRatings = courseComps.map(c => c.trainer_rating).filter((r): r is number => r != null)
+                                  const avgTrainee = traineeRatings.length > 0 ? (traineeRatings.reduce((a, b) => a + b, 0) / traineeRatings.length).toFixed(1) : null
+                                  const avgTrainer = trainerRatings.length > 0 ? (trainerRatings.reduce((a, b) => a + b, 0) / trainerRatings.length).toFixed(1) : null
 
                                   return (
-                                    <div key={cat.id} className="pl-14 pr-4 py-3 flex items-center gap-3 border-b border-black/5">
-                                      <span
-                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
-                                        style={{ backgroundColor: colour + '20', color: colour }}
-                                      >
-                                        {cat.icon}
-                                      </span>
-                                      <div className="flex-1">
-                                        <div className="flex justify-between items-baseline">
-                                          <p className="text-[13px] text-charcoal">{cat.name}</p>
-                                          <p className="text-xs font-medium" style={{ color: colour }}>{catPct}%</p>
+                                    <div key={cat.id} className="pl-14 pr-4 py-3 border-b border-black/5">
+                                      <div className="flex items-center gap-3">
+                                        <span
+                                          className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
+                                          style={{ backgroundColor: colour + '20', color: colour }}
+                                        >
+                                          {cat.icon}
+                                        </span>
+                                        <div className="flex-1">
+                                          <div className="flex justify-between items-baseline">
+                                            <p className="text-[13px] text-charcoal">{cat.name}</p>
+                                            <p className="text-xs font-medium" style={{ color: colour }}>{catPct}%</p>
+                                          </div>
+                                          <p className="text-[11px] text-charcoal/40 mt-0.5">
+                                            {bd.categories.completed + bd.categories.shadowed} of {bd.categories.total} Categories
+                                            {bd.categories.completed > 0 && <span className="text-green-600"> | {bd.categories.completed} Completed</span>}
+                                            {bd.categories.shadowed > 0 && <span className="text-blue-600"> | {bd.categories.shadowed} Shadowed</span>}
+                                            {bd.categories.toDo > 0 && <span> | {bd.categories.toDo} To Do</span>}
+                                          </p>
+                                          {bd.hasRecurring && (
+                                            <p className="text-[11px] text-charcoal/40 mt-0.5">
+                                              {bd.sessions.completed + bd.sessions.shadowed} of {bd.sessions.total} Sessions
+                                              {bd.sessions.completed > 0 && <span className="text-green-600"> | {bd.sessions.completed} Completed</span>}
+                                              {bd.sessions.shadowed > 0 && <span className="text-blue-600"> | {bd.sessions.shadowed} Shadowed</span>}
+                                              {bd.sessions.toDo > 0 && <span> | {bd.sessions.toDo} To Do</span>}
+                                            </p>
+                                          )}
+                                          {(avgTrainee || avgTrainer) && (
+                                            <p className="text-[11px] text-charcoal/30 mt-0.5">
+                                              {avgTrainee && <span>Trainee Rating {avgTrainee}</span>}
+                                              {avgTrainee && avgTrainer && <span> | </span>}
+                                              {avgTrainer && <span>Manager Rating {avgTrainer}</span>}
+                                            </p>
+                                          )}
                                         </div>
-                                        <p className="text-xs text-charcoal/40">{catDone} of {catTotal}</p>
-                                      </div>
-                                      <div className="w-10 h-1 bg-charcoal/8 rounded-full overflow-hidden">
-                                        <div className="h-full rounded-full transition-all" style={{ width: `${catPct}%`, backgroundColor: colour }} />
+                                        <div className="w-10 h-1 bg-charcoal/8 rounded-full overflow-hidden flex-shrink-0">
+                                          <div className="h-full rounded-full transition-all" style={{ width: `${catPct}%`, backgroundColor: colour }} />
+                                        </div>
                                       </div>
                                     </div>
                                   )
@@ -310,28 +366,53 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
                       <div className="border-t border-black/5">
                         {wsCats.map(cat => {
                           const colour = cat.colour_hex ?? CATEGORY_COLOURS[cat.name] ?? '#C9A96E'
-                          const catItemsInWs = wsItems.filter(mi => mi.category_id === cat.id)
-                          const catDone = getCourseCompletions(trainee.id, workshop.id, cat.id).length
-                          const catTotal = catItemsInWs.length
-                          const catPct = catTotal > 0 ? Math.round((catDone / catTotal) * 100) : 0
+                          const bd = getCourseBreakdown(trainee.id, workshop.id, cat.id)
+                          const catPct = bd.categories.total > 0 ? Math.round(((bd.categories.completed + bd.categories.shadowed) / bd.categories.total) * 100) : 0
+                          const courseComps = completions.filter(c => c.trainee_id === trainee.id && c.workshop_id === workshop.id && menuItems.some(mi => mi.id === c.menu_item_id && mi.category_id === cat.id))
+                          const traineeRatings = courseComps.map(c => c.trainee_rating).filter((r): r is number => r != null)
+                          const trainerRatings = courseComps.map(c => c.trainer_rating).filter((r): r is number => r != null)
+                          const avgTrainee = traineeRatings.length > 0 ? (traineeRatings.reduce((a, b) => a + b, 0) / traineeRatings.length).toFixed(1) : null
+                          const avgTrainer = trainerRatings.length > 0 ? (trainerRatings.reduce((a, b) => a + b, 0) / trainerRatings.length).toFixed(1) : null
 
                           return (
-                            <div key={cat.id} className="pl-8 pr-4 py-3 flex items-center gap-3 border-b border-black/5">
-                              <span
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
-                                style={{ backgroundColor: colour + '20', color: colour }}
-                              >
-                                {cat.icon}
-                              </span>
-                              <div className="flex-1">
-                                <div className="flex justify-between items-baseline">
-                                  <p className="font-medium text-charcoal text-[14px]">{cat.name}</p>
-                                  <p className="text-sm font-medium" style={{ color: colour }}>{catPct}%</p>
+                            <div key={cat.id} className="pl-8 pr-4 py-3 border-b border-black/5">
+                              <div className="flex items-center gap-3">
+                                <span
+                                  className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
+                                  style={{ backgroundColor: colour + '20', color: colour }}
+                                >
+                                  {cat.icon}
+                                </span>
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-baseline">
+                                    <p className="font-medium text-charcoal text-[14px]">{cat.name}</p>
+                                    <p className="text-sm font-medium" style={{ color: colour }}>{catPct}%</p>
+                                  </div>
+                                  <p className="text-[11px] text-charcoal/40 mt-0.5">
+                                    {bd.categories.completed + bd.categories.shadowed} of {bd.categories.total} Categories
+                                    {bd.categories.completed > 0 && <span className="text-green-600"> | {bd.categories.completed} Completed</span>}
+                                    {bd.categories.shadowed > 0 && <span className="text-blue-600"> | {bd.categories.shadowed} Shadowed</span>}
+                                    {bd.categories.toDo > 0 && <span> | {bd.categories.toDo} To Do</span>}
+                                  </p>
+                                  {bd.hasRecurring && (
+                                    <p className="text-[11px] text-charcoal/40 mt-0.5">
+                                      {bd.sessions.completed + bd.sessions.shadowed} of {bd.sessions.total} Sessions
+                                      {bd.sessions.completed > 0 && <span className="text-green-600"> | {bd.sessions.completed} Completed</span>}
+                                      {bd.sessions.shadowed > 0 && <span className="text-blue-600"> | {bd.sessions.shadowed} Shadowed</span>}
+                                      {bd.sessions.toDo > 0 && <span> | {bd.sessions.toDo} To Do</span>}
+                                    </p>
+                                  )}
+                                  {(avgTrainee || avgTrainer) && (
+                                    <p className="text-[11px] text-charcoal/30 mt-0.5">
+                                      {avgTrainee && <span>Trainee Rating {avgTrainee}</span>}
+                                      {avgTrainee && avgTrainer && <span> | </span>}
+                                      {avgTrainer && <span>Manager Rating {avgTrainer}</span>}
+                                    </p>
+                                  )}
                                 </div>
-                                <p className="text-xs text-charcoal/40 mt-0.5">{catDone} of {catTotal}</p>
-                              </div>
-                              <div className="w-12 h-1 bg-charcoal/8 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full transition-all" style={{ width: `${catPct}%`, backgroundColor: colour }} />
+                                <div className="w-12 h-1 bg-charcoal/8 rounded-full overflow-hidden flex-shrink-0">
+                                  <div className="h-full rounded-full transition-all" style={{ width: `${catPct}%`, backgroundColor: colour }} />
+                                </div>
                               </div>
                             </div>
                           )
