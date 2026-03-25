@@ -158,7 +158,13 @@ export function useDatePlateView(
         const comp = getCompletion(mi.id)
         const completedOnThisDate = comp?.completed_date === selectedDate
         const completedBeforeAssigned = !!(comp && p.date_assigned && comp.completed_date <= p.date_assigned)
-        const isShadowedEarly = !!(comp && p.date_assigned && comp.completed_date < p.date_assigned)
+        // Check if completed before the latest assigned date for this item (not just this plate's date)
+        const latestAssignedDate = allPlates
+          .filter(pp => pp.menu_item_id === mi.id && pp.trainee_id === userId)
+          .map(pp => pp.date_assigned)
+          .sort()
+          .pop()
+        const isShadowedEarly = !!(comp && latestAssignedDate && comp.completed_date < latestAssignedDate)
         const isShadowingMoment = comp?.is_shadowing_moment ?? false
 
         if (completedOnThisDate || (comp && completedBeforeAssigned && selectedDate === p.date_assigned)) {
