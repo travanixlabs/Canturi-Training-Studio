@@ -142,6 +142,12 @@ export function PlateDistributionChart({
               className="flex-1 flex flex-col items-center cursor-pointer group"
               onClick={(e) => handleDateClick(date, e)}
             >
+              {/* Item count on top */}
+              {total > 0 && (
+                <p className={`text-[8px] mb-0.5 ${isSelected ? 'text-charcoal/60' : 'text-charcoal/25'}`}>
+                  {total}
+                </p>
+              )}
               {/* Stacked bar */}
               <div
                 className={`w-full rounded-t-sm overflow-hidden flex flex-col-reverse transition-opacity ${
