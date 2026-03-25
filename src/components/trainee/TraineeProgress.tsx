@@ -56,6 +56,41 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
     }
   }
 
+  const getWorkshopBreakdown = (workshopId: string, wsCats: Category[], wsItems: MenuItem[]) => {
+    let nrTotal = 0, nrCompleted = 0, nrShadowed = 0
+    let sTotal = 0, sCompleted = 0, sShadowed = 0
+    let coursesCompleted = 0
+    const allTraineeRatings: number[] = []
+
+    for (const cat of wsCats) {
+      const bd = getCourseBreakdown(workshopId, cat.id)
+      nrTotal += bd.categories.total
+      nrCompleted += bd.categories.completed
+      nrShadowed += bd.categories.shadowed
+      sTotal += bd.sessions.total
+      sCompleted += bd.sessions.completed
+      sShadowed += bd.sessions.shadowed
+
+      const catDone = bd.categories.completed + bd.categories.shadowed >= bd.categories.total
+      const sesDone = !bd.hasRecurring || (bd.sessions.completed + bd.sessions.shadowed >= bd.sessions.total)
+      if (catDone && sesDone && bd.categories.total > 0) coursesCompleted++
+
+      const courseComps = completions.filter(c => c.workshop_id === workshopId && wsItems.some(mi => mi.id === c.menu_item_id && mi.category_id === cat.id))
+      for (const c of courseComps) {
+        if (c.trainee_rating != null) allTraineeRatings.push(c.trainee_rating)
+      }
+    }
+
+    return {
+      coursesCompleted,
+      coursesTotal: wsCats.length,
+      categories: { total: nrTotal, completed: nrCompleted, shadowed: nrShadowed, toDo: nrTotal - nrCompleted - nrShadowed },
+      sessions: { total: sTotal, completed: sCompleted, shadowed: sShadowed, toDo: Math.max(0, sTotal - sCompleted - sShadowed) },
+      hasSessions: sTotal > 0,
+      avgTrainee: allTraineeRatings.length > 0 ? (allTraineeRatings.reduce((a, b) => a + b, 0) / allTraineeRatings.length).toFixed(1) : null,
+    }
+  }
+
   // Overall stats
   const overallStats = useMemo(() => {
     let total = 0
@@ -104,9 +139,8 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
       <div className="space-y-3">
         {workshopHierarchy.map(({ workshop, categories: wsCats, items: wsItems }) => {
           const wsExpanded = expandedWorkshops.has(workshop.id)
-          const wsDone = wsItems.filter(mi => completions.some(c => c.menu_item_id === mi.id && c.workshop_id === workshop.id)).length
-          const wsTotal = wsItems.length
-          const wsPct = wsTotal > 0 ? Math.round((wsDone / wsTotal) * 100) : 0
+          const wsBd = getWorkshopBreakdown(workshop.id, wsCats, wsItems)
+          const wsPct = wsBd.categories.total > 0 ? Math.round(((wsBd.categories.completed + wsBd.categories.shadowed) / wsBd.categories.total) * 100) : 0
 
           return (
             <div key={workshop.id} className="card overflow-hidden">
@@ -122,7 +156,24 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
                     <p className="font-serif font-medium text-charcoal text-[15px]">{workshop.name}</p>
                     <p className="text-sm font-medium text-gold">{wsPct}%</p>
                   </div>
-                  <p className="text-xs text-charcoal/40 mt-0.5">{wsDone} of {wsTotal} · {wsCats.length} course{wsCats.length !== 1 ? 's' : ''}</p>
+                  <p className="text-[11px] text-charcoal/40 mt-0.5">{wsBd.coursesCompleted} / {wsBd.coursesTotal} courses</p>
+                  <p className="text-[11px] text-charcoal/40">
+                    {wsBd.categories.completed + wsBd.categories.shadowed} of {wsBd.categories.total} Categories
+                    {wsBd.categories.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{wsBd.categories.completed} Completed</span></>}
+                    {wsBd.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{wsBd.categories.shadowed} Shadowed</span></>}
+                    {wsBd.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{wsBd.categories.toDo} To Do</span></>}
+                  </p>
+                  {wsBd.hasSessions && (
+                    <p className="text-[11px] text-charcoal/40">
+                      {wsBd.sessions.completed + wsBd.sessions.shadowed} of {wsBd.sessions.total} Sessions
+                      {wsBd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{wsBd.sessions.completed} Completed</span></>}
+                      {wsBd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{wsBd.sessions.shadowed} Shadowed</span></>}
+                      {wsBd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{wsBd.sessions.toDo} To Do</span></>}
+                    </p>
+                  )}
+                  {wsBd.avgTrainee && (
+                    <p className="text-[11px] text-charcoal/30">My Confidence {wsBd.avgTrainee}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
