@@ -158,14 +158,12 @@ export function useDatePlateView(
         const comp = getCompletion(mi.id)
         const completedOnThisDate = comp?.completed_date === selectedDate
         const completedBeforeAssigned = !!(comp && p.date_assigned && comp.completed_date <= p.date_assigned)
-        // Shadowed = completed on a date that is NOT an assigned plate date for this item
-        const assignedDatesForItem = new Set(allPlates.filter(pp => pp.menu_item_id === mi.id && pp.trainee_id === userId).map(pp => pp.date_assigned))
-        const isShadowedEarly = !!(comp && !assignedDatesForItem.has(comp.completed_date))
-        const isShadowingMoment = comp?.is_shadowing_moment ?? false
+        // Non-recurring: shadowed = completed BEFORE the assigned date (early)
+        // Completed on or after assigned date = completed (even if late)
+        const isShadowedEarly = !!(comp && p.date_assigned && comp.completed_date < p.date_assigned)
 
         if (completedOnThisDate || (comp && completedBeforeAssigned && selectedDate === p.date_assigned)) {
           // Completed on this date OR viewing the assigned date and it was completed before/on it
-          // → show in Completed section with full formatting
           completed.push({
             id: mi.id,
             title: mi.title,
@@ -175,7 +173,7 @@ export function useDatePlateView(
             completedDate: comp!.completed_date,
             assignedDate: p.date_assigned,
             shadowedEarly: isShadowedEarly,
-            shadowed: isShadowingMoment || isShadowedEarly,
+            shadowed: isShadowedEarly,
             rating: comp!.trainee_rating ?? undefined,
           })
         } else if (comp && !completedBeforeAssigned) {
@@ -188,7 +186,7 @@ export function useDatePlateView(
             completed: false,
             assignedDate: p.date_assigned,
             completedOnOtherDate: comp.completed_date,
-            shadowed: isShadowingMoment,
+            shadowed: comp.is_shadowing_moment,
           })
         } else {
           // Not completed yet
@@ -215,11 +213,10 @@ export function useDatePlateView(
       const mi = c.menu_item
       if (mi?.is_recurring && mi?.recurring_amount) continue
 
-      // Shadowed = completed on a date that is NOT an assigned plate date for this item
-      const assignedDatesForItem = new Set(allPlates.filter(pp => pp.menu_item_id === c.menu_item_id && pp.trainee_id === userId).map(pp => pp.date_assigned))
+      // Non-recurring: shadowed = completed BEFORE the assigned date
       const assignedPlate = allPlates.find(p => p.menu_item_id === c.menu_item_id && p.trainee_id === userId)
       const assignedDate = assignedPlate?.date_assigned
-      const isShadowed = !assignedDatesForItem.has(c.completed_date)
+      const isShadowedEarly = !!(assignedDate && c.completed_date < assignedDate)
 
       completed.push({
         id: c.menu_item_id,
@@ -227,8 +224,8 @@ export function useDatePlateView(
         timeNeeded: mi?.time_needed ?? '',
         trainerType: mi?.trainer_type ?? '',
         completed: true,
-        shadowed: c.is_shadowing_moment || isShadowed,
-        shadowedEarly: isShadowed,
+        shadowed: isShadowedEarly,
+        shadowedEarly: isShadowedEarly,
         completedDate: c.completed_date,
         assignedDate,
         rating: c.trainee_rating ?? undefined,

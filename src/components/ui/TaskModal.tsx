@@ -98,6 +98,7 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
       trainee_rating: traineeRating,
       completed_date: todayAEDT(),
       is_shadowing_moment: isShadowing,
+      workshop_id: plate?.workshop_id ?? null,
     }
 
     const { error } = existingCompletion

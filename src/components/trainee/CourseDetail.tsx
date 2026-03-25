@@ -82,6 +82,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
       const { data, error } = await supabase.from('module_completions').insert({
         module_id: moduleId,
         trainee_id: currentUser.id,
+        workshop_id: plate?.workshop_id ?? null,
       }).select().single()
 
       if (!error && data) {
@@ -110,6 +111,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
       menu_item_id: menuItem.id,
       completed_date: todayStr,
       notes: sessionNotes.trim(),
+      workshop_id: plate?.workshop_id ?? null,
     }).select().single()
     if (!error && data) {
       setRecurringComps(prev => [...prev, data as RecurringTaskCompletion])
