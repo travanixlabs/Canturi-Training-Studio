@@ -160,7 +160,7 @@ export function PlateDistributionChart({
                     const count = courseCounts[course.id] ?? 0
                     if (count === 0) return null
                     const pct = (count / total) * 100
-                    const colour = CATEGORY_COLOURS[course.name] ?? course.colour_hex
+                    const colour = course.colour_hex ?? CATEGORY_COLOURS[course.name] ?? '#C9A96E'
                     const isCourseGreyed = hasCourseFilter && !selectedCourses.has(course.id)
 
                     return (
@@ -199,7 +199,7 @@ export function PlateDistributionChart({
       {/* Legend */}
       <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-3">
         {activeCourses.map(course => {
-          const colour = CATEGORY_COLOURS[course.name] ?? course.colour_hex
+          const colour = course.colour_hex ?? CATEGORY_COLOURS[course.name] ?? '#C9A96E'
           const isSelected = selectedCourses.has(course.id)
           const isGreyed = hasCourseFilter && !isSelected
 
