@@ -193,7 +193,7 @@ export function PlateDistributionChart({
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
+      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-3">
         {activeCourses.map(course => {
           const colour = CATEGORY_COLOURS[course.name] ?? course.colour_hex
           const isSelected = selectedCourses.has(course.id)
