@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { CATEGORY_COLOURS } from '@/types'
-import type { Category, MenuItem, Completion, Workshop, WorkshopMenuItem } from '@/types'
+import type { Category, MenuItem, Completion, Workshop, WorkshopMenuItem, RecurringTaskCompletion, Plate } from '@/types'
 
 interface Props {
   categories: Category[]
@@ -11,13 +11,13 @@ interface Props {
   completions: Completion[]
   workshops?: Workshop[]
   workshopMenuItems?: WorkshopMenuItem[]
+  recurringCompletions?: RecurringTaskCompletion[]
+  plates?: Plate[]
 }
 
-export function TraineeProgress({ categories, menuItems, completions, workshops = [], workshopMenuItems = [] }: Props) {
+export function TraineeProgress({ categories, menuItems, completions, workshops = [], workshopMenuItems = [], recurringCompletions = [], plates = [] }: Props) {
   const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
-  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set())
 
-  // Build workshop hierarchy (filtered to visible items only)
   const workshopHierarchy = useMemo(() => {
     return workshops.map(ws => {
       const itemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.menu_item_id))
@@ -28,30 +28,50 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
     }).filter(ws => ws.items.length > 0)
   }, [workshops, workshopMenuItems, menuItems, categories])
 
-  // Overall stats across all visible workshops
-  const totalItems = workshopHierarchy.reduce((sum, ws) => sum + ws.items.length, 0)
-  const totalCompleted = workshopHierarchy.reduce((sum, { workshop, items }) => {
-    return sum + items.filter(mi => completions.some(c => c.menu_item_id === mi.id && c.workshop_id === workshop.id)).length
-  }, 0)
-  const overallPercent = totalItems > 0 ? Math.round((totalCompleted / totalItems) * 100) : 0
+  const getCourseBreakdown = (workshopId: string, categoryId: string) => {
+    const wsItemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id))
+    const catItems = menuItems.filter(mi => wsItemIds.has(mi.id) && mi.category_id === categoryId)
+    const nonRecurring = catItems.filter(mi => !mi.is_recurring)
+    const recurring = catItems.filter(mi => mi.is_recurring && mi.recurring_amount)
 
-  const shadowingCount = completions.filter(c => c.is_shadowing_moment).length
+    // Non-recurring
+    const nonRecComps = completions.filter(c => c.workshop_id === workshopId && nonRecurring.some(mi => mi.id === c.menu_item_id))
+    const nrCompleted = nonRecComps.filter(c => !c.is_shadowing_moment).length
+    const nrShadowed = nonRecComps.filter(c => c.is_shadowing_moment).length
+    const nrTotal = nonRecurring.length
+    const nrToDo = nrTotal - nrCompleted - nrShadowed
+
+    // Recurring — separate logic
+    const sessionTotal = recurring.reduce((sum, mi) => sum + (mi.recurring_amount ?? 0), 0)
+    const sessionRcs = recurringCompletions.filter(rc => rc.workshop_id === workshopId && recurring.some(mi => mi.id === rc.menu_item_id))
+    const plateDates = plates.filter(p => p.workshop_id === workshopId && recurring.some(mi => mi.id === p.menu_item_id)).map(p => p.date_assigned)
+    const sessionCompleted = sessionRcs.filter(rc => plateDates.includes(rc.completed_date)).length
+    const sessionShadowed = sessionRcs.length - sessionCompleted
+    const sessionToDo = Math.max(0, sessionTotal - sessionRcs.length)
+
+    return {
+      categories: { total: nrTotal, completed: nrCompleted, shadowed: nrShadowed, toDo: nrToDo },
+      sessions: { total: sessionTotal, completed: sessionCompleted, shadowed: sessionShadowed, toDo: sessionToDo },
+      hasRecurring: recurring.length > 0,
+    }
+  }
+
+  // Overall stats
+  const overallStats = useMemo(() => {
+    let total = 0
+    let done = 0
+    for (const { workshop, items } of workshopHierarchy) {
+      total += items.length
+      done += items.filter(mi => completions.some(c => c.menu_item_id === mi.id && c.workshop_id === workshop.id)).length
+    }
+    return { total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0 }
+  }, [workshopHierarchy, completions])
 
   function toggleWorkshop(id: string) {
     setExpandedWorkshops(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
-      return next
-    })
-    setExpandedCourses(new Set())
-  }
-
-  function toggleCourse(key: string) {
-    setExpandedCourses(prev => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
       return next
     })
   }
@@ -66,25 +86,17 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
       <div className="card p-5 mb-6 bg-charcoal text-white">
         <div className="flex items-end justify-between mb-3">
           <div>
-            <p className="text-white/50 text-xs uppercase tracking-widest mb-1">Overall completion</p>
-            <p className="font-serif text-4xl text-gold">{overallPercent}%</p>
+            <p className="text-white/50 text-xs uppercase tracking-widest mb-1">Overall</p>
+            <p className="font-serif text-4xl text-gold">{overallStats.pct}%</p>
           </div>
           <div className="text-right">
-            <p className="text-sm font-medium">{totalCompleted} <span className="text-white/40">of {totalItems}</span></p>
-            <p className="text-xs text-white/40 mt-0.5">items completed</p>
+            <p className="text-sm font-medium">{overallStats.done} <span className="text-white/40">of {overallStats.total}</span></p>
+            <p className="text-xs text-white/40 mt-0.5">completed</p>
           </div>
         </div>
         <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gold rounded-full transition-all duration-700"
-            style={{ width: `${overallPercent}%` }}
-          />
+          <div className="h-full bg-gold rounded-full transition-all" style={{ width: `${overallStats.pct}%` }} />
         </div>
-        {shadowingCount > 0 && (
-          <p className="text-xs text-white/40 mt-3">
-            Including {shadowingCount} shadowing moment{shadowingCount !== 1 ? 's' : ''}
-          </p>
-        )}
       </div>
 
       {/* By workshop */}
@@ -98,7 +110,6 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
 
           return (
             <div key={workshop.id} className="card overflow-hidden">
-              {/* Workshop header */}
               <button
                 onClick={() => toggleWorkshop(workshop.id)}
                 className="w-full p-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
@@ -115,34 +126,25 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gold rounded-full transition-all"
-                      style={{ width: `${wsPct}%` }}
-                    />
+                    <div className="h-full bg-gold rounded-full transition-all" style={{ width: `${wsPct}%` }} />
                   </div>
                   {wsExpanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
                 </div>
               </button>
 
-              {/* Courses inside workshop */}
               {wsExpanded && (
                 <div className="border-t border-black/5">
                   {wsCats.map(cat => {
-                    const courseKey = `${workshop.id}-${cat.id}`
-                    const courseExpanded = expandedCourses.has(courseKey)
-                    const colour = CATEGORY_COLOURS[cat.name] ?? cat.colour_hex
-                    const catItemsInWs = wsItems.filter(mi => mi.category_id === cat.id)
-                    const catDone = catItemsInWs.filter(mi => completions.some(c => c.menu_item_id === mi.id && c.workshop_id === workshop.id)).length
-                    const catTotal = catItemsInWs.length
-                    const catPct = catTotal > 0 ? Math.round((catDone / catTotal) * 100) : 0
+                    const colour = cat.colour_hex ?? CATEGORY_COLOURS[cat.name] ?? '#C9A96E'
+                    const bd = getCourseBreakdown(workshop.id, cat.id)
+                    const catPct = bd.categories.total > 0 ? Math.round(((bd.categories.completed + bd.categories.shadowed) / bd.categories.total) * 100) : 0
+                    const courseComps = completions.filter(c => c.workshop_id === workshop.id && menuItems.some(mi => mi.id === c.menu_item_id && mi.category_id === cat.id))
+                    const traineeRatings = courseComps.map(c => c.trainee_rating).filter((r): r is number => r != null)
+                    const avgTrainee = traineeRatings.length > 0 ? (traineeRatings.reduce((a, b) => a + b, 0) / traineeRatings.length).toFixed(1) : null
 
                     return (
-                      <div key={cat.id}>
-                        {/* Course header */}
-                        <button
-                          onClick={() => toggleCourse(courseKey)}
-                          className="w-full pl-8 pr-4 py-3 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors border-b border-black/5"
-                        >
+                      <div key={cat.id} className="pl-8 pr-4 py-3 border-b border-black/5">
+                        <div className="flex items-center gap-3">
                           <span
                             className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
                             style={{ backgroundColor: colour + '20', color: colour }}
@@ -154,44 +156,30 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
                               <p className="font-medium text-charcoal text-[14px]">{cat.name}</p>
                               <p className="text-sm font-medium" style={{ color: colour }}>{catPct}%</p>
                             </div>
-                            <p className="text-xs text-charcoal/40 mt-0.5">{catDone} of {catTotal} complete</p>
+                            <p className="text-[11px] text-charcoal/40 mt-0.5">
+                              {bd.categories.completed + bd.categories.shadowed} of {bd.categories.total} Categories
+                              {bd.categories.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{bd.categories.completed} Completed</span></>}
+                              {bd.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.categories.shadowed} Shadowed</span></>}
+                              {bd.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.categories.toDo} To Do</span></>}
+                            </p>
+                            {bd.hasRecurring && (
+                              <p className="text-[11px] text-charcoal/40 mt-0.5">
+                                {bd.sessions.completed + bd.sessions.shadowed} of {bd.sessions.total} Sessions
+                                {bd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{bd.sessions.completed} Completed</span></>}
+                                {bd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.sessions.shadowed} Shadowed</span></>}
+                                {bd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.sessions.toDo} To Do</span></>}
+                              </p>
+                            )}
+                            {avgTrainee && (
+                              <p className="text-[11px] text-charcoal/30 mt-0.5">
+                                My Confidence {avgTrainee}
+                              </p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-1 bg-charcoal/8 rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all"
-                                style={{ width: `${catPct}%`, backgroundColor: colour }}
-                              />
-                            </div>
-                            {courseExpanded ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
+                          <div className="w-12 h-1 bg-charcoal/8 rounded-full overflow-hidden flex-shrink-0">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${catPct}%`, backgroundColor: colour }} />
                           </div>
-                        </button>
-
-                        {/* Categories (menu items) */}
-                        {courseExpanded && (
-                          <div className="divide-y divide-black/5 bg-charcoal/[0.01]">
-                            {catItemsInWs.map(item => {
-                              const isCompleted = completions.some(c => c.menu_item_id === item.id && c.workshop_id === workshop.id)
-                              return (
-                                <div
-                                  key={item.id}
-                                  className={`pl-14 pr-4 py-3 flex items-center gap-3 ${isCompleted ? 'bg-green-50/30' : ''}`}
-                                >
-                                  <span
-                                    className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
-                                      isCompleted ? 'border-transparent bg-green-500' : 'border-charcoal/20'
-                                    }`}
-                                  >
-                                    {isCompleted && <span className="text-white text-[10px]">✓</span>}
-                                  </span>
-                                  <p className={`text-[13px] ${isCompleted ? 'text-charcoal/40' : 'text-charcoal'}`}>
-                                    {item.title}
-                                  </p>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
+                        </div>
                       </div>
                     )
                   })}
