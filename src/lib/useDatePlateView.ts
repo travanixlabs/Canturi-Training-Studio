@@ -158,13 +158,9 @@ export function useDatePlateView(
         const comp = getCompletion(mi.id)
         const completedOnThisDate = comp?.completed_date === selectedDate
         const completedBeforeAssigned = !!(comp && p.date_assigned && comp.completed_date <= p.date_assigned)
-        // Check if completed before the latest assigned date for this item (not just this plate's date)
-        const latestAssignedDate = allPlates
-          .filter(pp => pp.menu_item_id === mi.id && pp.trainee_id === userId)
-          .map(pp => pp.date_assigned)
-          .sort()
-          .pop()
-        const isShadowedEarly = !!(comp && latestAssignedDate && comp.completed_date < latestAssignedDate)
+        // Shadowed = completed on a date that is NOT an assigned plate date for this item
+        const assignedDatesForItem = new Set(allPlates.filter(pp => pp.menu_item_id === mi.id && pp.trainee_id === userId).map(pp => pp.date_assigned))
+        const isShadowedEarly = !!(comp && !assignedDatesForItem.has(comp.completed_date))
         const isShadowingMoment = comp?.is_shadowing_moment ?? false
 
         if (completedOnThisDate || (comp && completedBeforeAssigned && selectedDate === p.date_assigned)) {
@@ -219,10 +215,11 @@ export function useDatePlateView(
       const mi = c.menu_item
       if (mi?.is_recurring && mi?.recurring_amount) continue
 
-      // Check if this item has an assigned date (plate on a different date) and was completed before it
-      const assignedPlate = allPlates.find(p => p.menu_item_id === c.menu_item_id)
+      // Shadowed = completed on a date that is NOT an assigned plate date for this item
+      const assignedDatesForItem = new Set(allPlates.filter(pp => pp.menu_item_id === c.menu_item_id && pp.trainee_id === userId).map(pp => pp.date_assigned))
+      const assignedPlate = allPlates.find(p => p.menu_item_id === c.menu_item_id && p.trainee_id === userId)
       const assignedDate = assignedPlate?.date_assigned
-      const isShadowedEarly = !!(assignedDate && c.completed_date < assignedDate)
+      const isShadowed = !assignedDatesForItem.has(c.completed_date)
 
       completed.push({
         id: c.menu_item_id,
@@ -230,8 +227,8 @@ export function useDatePlateView(
         timeNeeded: mi?.time_needed ?? '',
         trainerType: mi?.trainer_type ?? '',
         completed: true,
-        shadowed: c.is_shadowing_moment,
-        shadowedEarly: isShadowedEarly,
+        shadowed: c.is_shadowing_moment || isShadowed,
+        shadowedEarly: isShadowed,
         completedDate: c.completed_date,
         assignedDate,
         rating: c.trainee_rating ?? undefined,
