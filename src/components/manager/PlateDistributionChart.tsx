@@ -181,12 +181,6 @@ export function PlateDistributionChart({
                 {formatDateLabel(date)}
               </p>
 
-              {/* Item count */}
-              {total > 0 && (
-                <p className={`text-[8px] ${isSelected ? 'text-charcoal/60' : 'text-charcoal/25'}`}>
-                  {total}
-                </p>
-              )}
             </div>
           )
         })}
