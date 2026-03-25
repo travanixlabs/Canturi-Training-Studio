@@ -27,11 +27,11 @@ export function PlateDistributionChart({
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
   const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set())
 
-  // Build 9 dates: yesterday + today + next 7
+  // Build 14 dates: past 7 days + today + next 6 days
   const chartDates = useMemo(() => {
     const dates: string[] = []
     const now = new Date()
-    for (let i = -1; i <= 7; i++) {
+    for (let i = -7; i <= 6; i++) {
       const d = new Date(now)
       d.setDate(d.getDate() + i)
       dates.push(toDateStringAEDT(d))
