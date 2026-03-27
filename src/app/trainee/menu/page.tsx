@@ -8,12 +8,12 @@ export default async function TraineeMenuPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: courses }, { data: categories }, { data: profile }, { data: workshops }, { data: workshopCategories }] = await Promise.all([
+  const [{ data: courses }, { data: categories }, { data: profile }, { data: workshops }, { data: workshopCourses }] = await Promise.all([
     supabase.from('courses').select('*').eq('status', 'active').order('sort_order'),
     supabase.from('categories').select('*, course:courses(*)').eq('status', 'active').order('title'),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
-    supabase.from('workshop_categorys').select('*'),
+    supabase.from('workshop_courses').select('*'),
   ])
 
   return (
@@ -22,7 +22,7 @@ export default async function TraineeMenuPage() {
       categories={categories ?? []}
       currentUser={profile as User}
       workshops={workshops ?? []}
-      workshopCategories={workshopCategories ?? []}
+      workshopCourses={workshopCourses ?? []}
     />
   )
 }

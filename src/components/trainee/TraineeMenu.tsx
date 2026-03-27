@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { COURSE_COLOURS } from '@/types'
-import type { Course, Category, User, Workshop, WorkshopCategory } from '@/types'
+import type { Course, Category, User, Workshop, WorkshopCourse } from '@/types'
 import { useRouter } from 'next/navigation'
 
 interface Props {
@@ -12,10 +12,10 @@ interface Props {
   categories: Category[]
   currentUser: User
   workshops?: Workshop[]
-  workshopCategories?: WorkshopCategory[]
+  workshopCourses?: WorkshopCourse[]
 }
 
-export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCategories = [] }: Props) {
+export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCourses = [] }: Props) {
   const [search, setSearch] = useState('')
   const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
@@ -53,13 +53,11 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 
   const workshopHierarchy = useMemo(() => {
     return workshops.map(ws => {
-      const itemIds = new Set(workshopCategories.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.category_id))
-      const wsItems = categories.filter(mi => itemIds.has(mi.id))
-      const catIds = [...new Set(wsItems.map(mi => mi.course_id))]
-      const wsCats = courses.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
-      return { workshop: ws, categories: wsCats, categoryItemIds: itemIds }
-    }).filter(ws => ws.categories.length > 0)
-  }, [workshops, workshopCategories, courses, categories])
+      const courseIds = new Set(workshopCourses.filter(wc => wc.workshop_id === ws.id).map(wc => wc.course_id))
+      const wsCourses = courses.filter(c => courseIds.has(c.id)).sort((a, b) => a.sort_order - b.sort_order)
+      return { workshop: ws, courses: wsCourses }
+    }).filter(ws => ws.courses.length > 0)
+  }, [workshops, workshopCourses, courses])
 
   function highlightText(text: string, query: string) {
     if (!query.trim()) return text
@@ -128,11 +126,11 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
         {/* Workshop > Course > Category browse (when not searching) */}
         {!isSearching && (
           <div className="space-y-3">
-            {workshopHierarchy.map(({ workshop, categories: wsCats, categoryItemIds }) => {
+            {workshopHierarchy.map(({ workshop, courses: wsCourses }) => {
               const wsExpanded = expandedWorkshops.has(workshop.id)
-              const wsItems = categories.filter(mi => categoryItemIds.has(mi.id))
+              const wsItems = categories.filter(mi => wsCourses.some(c => c.id === mi.course_id))
 
-              const allCourseKeys = wsCats.map(c => `${workshop.id}-${c.id}`)
+              const allCourseKeys = wsCourses.map(c => `${workshop.id}-${c.id}`)
               const allCoursesExpanded = allCourseKeys.length > 0 && allCourseKeys.every(k => expandedCategories.has(k))
 
               return (
@@ -147,7 +145,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                     </span>
                     <div className="flex-1">
                       <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
-                      <p className="text-xs text-charcoal/40 mt-0.5">{wsItems.length} topic{wsItems.length !== 1 ? 's' : ''} · {wsCats.length} course{wsCats.length !== 1 ? 's' : ''}</p>
+                      <p className="text-xs text-charcoal/40 mt-0.5">{wsItems.length} topic{wsItems.length !== 1 ? 's' : ''} · {wsCourses.length} course{wsCourses.length !== 1 ? 's' : ''}</p>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -184,7 +182,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                   {/* Courses inside this workshop */}
                   {wsExpanded && (
                     <div className="border-t border-black/5">
-                      {wsCats.map(category => {
+                      {wsCourses.map(category => {
                         const catItems = wsItems.filter(i => i.course_id === category.id)
                         const catKey = `${workshop.id}-${category.id}`
                         const catExpanded = expandedCategories.has(catKey)

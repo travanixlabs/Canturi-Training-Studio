@@ -1,15 +1,6 @@
 'use client'
 
-import type { Course, Category, Workshop, WorkshopCategory } from '@/types'
-
-interface Props {
-  courses: Course[]
-  categories: Category[]
-  workshops?: Workshop[]
-  workshopCategories?: WorkshopCategory[]
-}
-
-export function TraineeProgress({ courses, categories, workshops = [], workshopCategories = [] }: Props) {
+export function TraineeProgress() {
   return (
     <div className="px-5 py-6">
       <div className="mb-6">

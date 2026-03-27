@@ -4,14 +4,14 @@ import { useState } from 'react'
 import { Plus, Pencil, Trash2, Eye, EyeOff, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Workshop, WorkshopCategory } from '@/types'
+import type { Workshop, WorkshopCourse } from '@/types'
 
 interface Props {
   workshops: Workshop[]
-  workshopCategories: WorkshopCategory[]
+  workshopCourses: WorkshopCourse[]
 }
 
-export function WorkshopList({ workshops: initialWorkshops, workshopCategories }: Props) {
+export function WorkshopList({ workshops: initialWorkshops, workshopCourses }: Props) {
   const [workshops, setWorkshops] = useState(initialWorkshops)
   const [showAdd, setShowAdd] = useState(false)
   const [name, setName] = useState('')
@@ -23,7 +23,7 @@ export function WorkshopList({ workshops: initialWorkshops, workshopCategories }
   const supabase = createClient()
 
   const courseCount = (workshopId: string) =>
-    workshopCategories.filter(wmi => wmi.workshop_id === workshopId).length
+    workshopCourses.filter(wc => wc.workshop_id === workshopId).length
 
   async function handleAdd() {
     if (!name.trim()) return

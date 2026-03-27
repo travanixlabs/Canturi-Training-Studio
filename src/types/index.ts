@@ -53,12 +53,12 @@ export interface Workshop {
   created_at: string
 }
 
-export interface WorkshopCategory {
+export interface WorkshopCourse {
   id: string
   workshop_id: string
-  category_id: string
+  course_id: string
   created_at: string
-  category?: Category
+  course?: Course
 }
 
 // Course colour mapping
