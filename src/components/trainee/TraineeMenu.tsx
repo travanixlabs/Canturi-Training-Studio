@@ -26,8 +26,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     const q = search.toLowerCase()
     return categories.filter(item =>
       item.title.toLowerCase().includes(q) ||
-      item.description.toLowerCase().includes(q) ||
-      item.tags?.some(t => t.toLowerCase().includes(q))
+      item.description.toLowerCase().includes(q)
     )
   }, [categories, search])
 

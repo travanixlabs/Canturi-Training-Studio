@@ -40,20 +40,6 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
         <p className="text-sm text-charcoal/60 leading-relaxed mb-4">{categoryItem.description}</p>
       )}
 
-      {categoryItem.tags && categoryItem.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {categoryItem.tags.map((tag: string) => (
-            <span key={tag} className="px-2.5 py-1 bg-charcoal/5 text-charcoal/50 rounded-full text-xs">
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="text-xs text-charcoal/30 space-y-1">
-        <p>Trainer type: {categoryItem.trainer_type}</p>
-        {categoryItem.difficulty_level && <p>Level: {categoryItem.difficulty_level}</p>}
-      </div>
     </div>
   )
 }

@@ -5,14 +5,7 @@ import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, FileText, Globe, Image
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Category, Course, Subcategory, SubcategoryType, TrainerType, DifficultyLevel } from '@/types'
-
-const TRAINER_TYPES: TrainerType[] = ['Self', 'Manager', 'Self/Manager']
-const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
-  { value: 'introductory', label: 'Introductory' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced', label: 'Advanced' },
-]
+import type { Category, Course, Subcategory, SubcategoryType } from '@/types'
 
 const SUBCATEGORY_TYPES: { value: SubcategoryType; label: string; icon: React.ReactNode }[] = [
   { value: 'text', label: 'Text', icon: <FileText size={16} /> },
@@ -35,9 +28,6 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   // Category fields
   const [title, setTitle] = useState(initialItem.title)
   const [description, setDescription] = useState(initialItem.description)
-  const [tags, setTags] = useState(initialItem.tags?.join(', ') ?? '')
-  const [trainerType, setTrainerType] = useState<TrainerType>(initialItem.trainer_type)
-  const [priorityLevel, setPriorityLevel] = useState<DifficultyLevel | ''>(initialItem.difficulty_level ?? '')
 
   // Subcategories
   const [subcategories, setSubcategories] = useState<Subcategory[]>(initialSubcategories)
@@ -60,13 +50,10 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     await supabase.from('categories').update({
       title,
       description,
-      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
-      trainer_type: trainerType,
-      difficulty_level: priorityLevel || null,
     }).eq('id', initialItem.id)
     setSaveStatus('saved')
     setTimeout(() => setSaveStatus('idle'), 2000)
-  }, [title, description, tags, trainerType, priorityLevel])
+  }, [title, description])
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -76,7 +63,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => { autoSave() }, 800)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [title, description, tags, trainerType, priorityLevel])
+  }, [title, description])
 
   async function addSubcategory(type: SubcategoryType) {
     const newOrder = subcategories.length
@@ -315,44 +302,6 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Tags (comma-separated)</label>
-                <input className="input" value={tags} onChange={e => setTags(e.target.value)} placeholder="engraving, services, personalisation" />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Trainer type</label>
-                <div className="flex gap-2">
-                  {TRAINER_TYPES.map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setTrainerType(t)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                        trainerType === t ? 'border-gold bg-gold/10 text-gold' : 'border-charcoal/15 text-charcoal/50'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Difficulty level</label>
-                <div className="flex gap-2">
-                  {DIFFICULTY_LEVELS.map(p => (
-                    <button
-                      key={p.value}
-                      onClick={() => setPriorityLevel(priorityLevel === p.value ? '' : p.value)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                        priorityLevel === p.value ? 'border-gold bg-gold/10 text-gold' : 'border-charcoal/15 text-charcoal/50'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
 

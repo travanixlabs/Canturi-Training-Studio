@@ -4,27 +4,17 @@ import { useState, useTransition } from 'react'
 import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Course, Category, TrainerType, DifficultyLevel } from '@/types'
+import type { Course, Category } from '@/types'
 
 interface Props {
   courses: Course[]
   categories: Category[]
 }
 
-const TRAINER_TYPES: TrainerType[] = ['Self', 'Manager', 'Self/Manager']
-const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
-  { value: 'introductory', label: 'Introductory' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced', label: 'Advanced' },
-]
-
 interface CourseFormData {
   title: string
   description: string
   course_id: string
-  tags: string
-  trainer_type: TrainerType
-  difficulty_level: DifficultyLevel | ''
 }
 
 interface CategoryFormData {
@@ -38,9 +28,6 @@ const emptyCourseForm = (): CourseFormData => ({
   title: '',
   description: '',
   course_id: '',
-  tags: '',
-  trainer_type: '' as TrainerType,
-  difficulty_level: '',
 })
 
 const emptyCategoryForm = (): CategoryFormData => ({
@@ -101,9 +88,6 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
       title: item.title,
       description: item.description,
       course_id: item.course_id,
-      tags: (item.tags ?? []).join(', '),
-      trainer_type: item.trainer_type,
-      difficulty_level: item.difficulty_level ?? '',
     })
     setCourseError(null)
     setCourseModal({ mode: 'edit', item })
@@ -118,9 +102,6 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     if (!courseForm.title.trim()) { setCourseError('Title is required.'); return }
     if (!courseForm.description.trim()) { setCourseError('Description is required.'); return }
     if (!courseForm.course_id) { setCourseError('Course is required.'); return }
-    if (!courseForm.tags.trim()) { setCourseError('Tags are required.'); return }
-    if (!courseForm.trainer_type) { setCourseError('Trainer type is required.'); return }
-    if (!courseForm.difficulty_level) { setCourseError('Difficulty level is required.'); return }
 
     setCourseSaving(true)
     setCourseError(null)
@@ -129,12 +110,6 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
       title: courseForm.title.trim(),
       description: courseForm.description.trim(),
       course_id: courseForm.course_id,
-      tags: courseForm.tags
-        .split(',')
-        .map(t => t.trim())
-        .filter(Boolean),
-      trainer_type: courseForm.trainer_type,
-      difficulty_level: courseForm.difficulty_level || null,
     }
 
     if (courseModal?.mode === 'add') {
@@ -482,71 +457,6 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
                 </select>
               </div>
 
-              {/* Tags */}
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Tags <span className="text-red-400">*</span> <span className="text-charcoal/30 normal-case font-normal">(comma-separated)</span>
-                </label>
-                <input
-                  type="text"
-                  className="input"
-                  value={courseForm.tags}
-                  onChange={e => setCourseForm(f => ({ ...f, tags: e.target.value }))}
-                  placeholder="e.g. diamonds, consultation, sales"
-                />
-              </div>
-
-              {/* Trainer type */}
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Trainer type <span className="text-red-400">*</span>
-                </label>
-                <div className="flex gap-2">
-                  {TRAINER_TYPES.map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setCourseForm(f => ({ ...f, trainer_type: t }))}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                        courseForm.trainer_type === t
-                          ? 'border-gold bg-gold/10 text-gold'
-                          : 'border-charcoal/15 text-charcoal/50 hover:border-charcoal/30'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Difficulty level */}
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Difficulty level <span className="text-red-400">*</span>
-                </label>
-                <div className="flex gap-2">
-                  {DIFFICULTY_LEVELS.map(p => (
-                    <button
-                      key={p.value}
-                      type="button"
-                      onClick={() =>
-                        setCourseForm(f => ({
-                          ...f,
-                          difficulty_level: p.value,
-                        }))
-                      }
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                        courseForm.difficulty_level === p.value
-                          ? 'border-gold bg-gold/10 text-gold'
-                          : 'border-charcoal/15 text-charcoal/50 hover:border-charcoal/30'
-                      }`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {courseError && (
                 <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{courseError}</p>
               )}
@@ -743,21 +653,6 @@ function CourseRow({
         {item.description && (
           <p className="text-xs text-charcoal/40 mt-0.5 line-clamp-1">{item.description}</p>
         )}
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          {item.trainer_type && (
-            <span className="text-xs text-charcoal/30">{item.trainer_type}</span>
-          )}
-          {item.difficulty_level && (
-            <span className="text-xs text-charcoal/30">
-              · {DIFFICULTY_LEVELS.find(p => p.value === item.difficulty_level)?.label ?? item.difficulty_level}
-            </span>
-          )}
-          {(item.tags ?? []).map(tag => (
-            <span key={tag} className="text-xs text-charcoal/25 bg-charcoal/5 px-1.5 py-0.5 rounded-full">
-              {tag}
-            </span>
-          ))}
-        </div>
       </div>
 
       {/* Actions */}

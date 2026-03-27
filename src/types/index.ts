@@ -37,10 +37,7 @@ export interface Category {
   title: string
   description: string
   course_id: string
-  tags: string[]
-  trainer_type: TrainerType
   created_at: string
-  difficulty_level: DifficultyLevel | null
   course?: Course
 }
 
