@@ -10,7 +10,7 @@ export interface Boutique {
   id: string
   name: string
   city: string
-  manager_ids: string[]
+
 }
 
 export interface User {

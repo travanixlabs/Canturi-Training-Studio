@@ -11,7 +11,6 @@ create table public.boutiques (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
   city text not null,
-  manager_ids uuid[] default '{}',
   created_at timestamptz default now()
 );
 
