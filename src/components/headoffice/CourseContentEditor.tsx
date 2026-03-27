@@ -309,8 +309,8 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                       </div>
                     </div>
 
-                    {/* Training tasks + add button below selected subcategory */}
-                    {isExpanded && (
+                    {/* Training tasks — always visible if tasks exist, add button only when selected */}
+                    {(subTasks.length > 0 || isExpanded) && (
                       <div className="ml-6 pl-3 border-l border-charcoal/10 mt-1 mb-2 space-y-1">
                         {subTasks.map(task => (
                           <div key={task.id} className="group/task flex items-center gap-1">
@@ -332,13 +332,15 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                             </button>
                           </div>
                         ))}
-                        <button
-                          onClick={() => addTrainingTask(sub.id)}
-                          className="w-full px-3 py-2 rounded-lg flex items-center gap-2 border border-dashed border-charcoal/10 text-charcoal/30 hover:border-blue-300 hover:text-blue-500 transition-all text-xs"
-                        >
-                          <Plus size={10} />
-                          <span>Add training task</span>
-                        </button>
+                        {isExpanded && (
+                          <button
+                            onClick={() => addTrainingTask(sub.id)}
+                            className="w-full px-3 py-2 rounded-lg flex items-center gap-2 border border-dashed border-charcoal/10 text-charcoal/30 hover:border-blue-300 hover:text-blue-500 transition-all text-xs"
+                          >
+                            <Plus size={10} />
+                            <span>Add training task</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
