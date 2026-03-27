@@ -38,16 +38,10 @@ export interface Category {
   description: string
   course_id: string
   tags: string[]
-  time_needed: string
   trainer_type: TrainerType
-  resource_link: string | null
-  boutique_id: string | null
   created_at: string
   status: ItemStatus
   difficulty_level: DifficultyLevel | null
-  is_recurring: boolean
-  recurring_amount: number | null
-  training_task_content: string | null
   course?: Course
 }
 
@@ -82,36 +76,6 @@ export interface Completion {
   trainee?: User
 }
 
-export type SubcategoryType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
-
-export interface Subcategory {
-  id: string
-  category_id: string
-  title: string
-  type: SubcategoryType
-  content: string
-  file_url: string | null
-  sort_order: number
-  created_at: string
-}
-
-export interface SubcategoryCompletion {
-  id: string
-  subcategory_id: string
-  trainee_id: string
-  completed_at: string
-  workshop_id: string | null
-}
-
-export interface TrainingTaskCompletion {
-  id: string
-  trainee_id: string
-  category_id: string
-  completed_date: string
-  notes: string | null
-  created_at: string
-  workshop_id: string | null
-}
 
 export interface Workshop {
   id: string

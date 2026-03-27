@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { COURSE_COLOURS } from '@/types'
-import type { Course, Category, Completion, User, TrainingTaskCompletion, Plate, Workshop, WorkshopCategory } from '@/types'
+import type { Course, Category, Completion, User, Plate, Workshop, WorkshopCategory } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT } from '@/lib/dates'
 
@@ -13,13 +13,12 @@ interface Props {
   categories: Category[]
   completions: Completion[]
   currentUser: User
-  recurringCompletions?: TrainingTaskCompletion[]
   plates?: Plate[]
   workshops?: Workshop[]
   workshopCategories?: WorkshopCategory[]
 }
 
-export function TraineeMenu({ courses, categories, completions, currentUser, recurringCompletions = [], plates = [], workshops = [], workshopCategories = [] }: Props) {
+export function TraineeMenu({ courses, categories, completions, currentUser, plates = [], workshops = [], workshopCategories = [] }: Props) {
   const [search, setSearch] = useState('')
   const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
@@ -28,19 +27,7 @@ export function TraineeMenu({ courses, categories, completions, currentUser, rec
   const isCompleted = (itemId: string) => completions.some(c => c.category_id === itemId)
   const getCompletion = (itemId: string) => completions.find(c => c.category_id === itemId) ?? null
 
-  const getRecurringCount = (itemId: string) =>
-    recurringCompletions.filter(rc => rc.category_id === itemId && rc.trainee_id === currentUser.id).length
-
-  const getRecurringBreakdown = (itemId: string) => {
-    const rcs = recurringCompletions.filter(rc => rc.category_id === itemId && rc.trainee_id === currentUser.id)
-    const plateDates = plates.filter(p => p.category_id === itemId && p.trainee_id === currentUser.id).map(p => p.date_assigned)
-    const assigned = rcs.filter(rc => plateDates.includes(rc.completed_date)).length
-    return { assigned, shadowed: rcs.length - assigned }
-  }
-
   const todayStr = todayAEDT()
-  const isDoneToday = (itemId: string) =>
-    recurringCompletions.some(rc => rc.category_id === itemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
 
   const getAssignedDate = (itemId: string) =>
     plates.find(p => p.category_id === itemId && p.trainee_id === currentUser.id)?.date_assigned ?? null
@@ -266,20 +253,13 @@ export function TraineeMenu({ courses, categories, completions, currentUser, rec
                             {catExpanded && (
                               <div className="divide-y divide-black/5 bg-charcoal/[0.01]">
                                 {catItems.map(item => {
-                                  const isRec = item.is_recurring && !!item.recurring_amount
-                                  const recDone = isRec ? getRecurringCount(item.id) : 0
-                                  const recTotal = item.recurring_amount ?? 0
-                                  const recFullyComplete = isRec && recDone >= recTotal
-
                                   const completed = isCompleted(item.id)
                                   const comp = getCompletion(item.id)
                                   const shadowedEarly = isShadowedEarly(item.id)
                                   const assignedDate = getAssignedDate(item.id)
-                                  const isOverdue = !isRec && !completed && assignedDate && assignedDate < todayStr
+                                  const isOverdue = !completed && assignedDate && assignedDate < todayStr
 
-                                  const bgClass = isRec
-                                    ? (recFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
-                                    : (completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
+                                  const bgClass = completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2'
 
                                   return (
                                     <button
@@ -289,34 +269,18 @@ export function TraineeMenu({ courses, categories, completions, currentUser, rec
                                     >
                                       <span
                                         className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
-                                          isRec
-                                            ? (recFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
-                                            : (completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
+                                          completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20'
                                         }`}
                                       >
-                                        {(completed || recFullyComplete) && <span className="text-white text-[10px]">✓</span>}
+                                        {completed && <span className="text-white text-[10px]">✓</span>}
                                       </span>
                                       <div className="flex-1">
                                         <p className={`text-[14px] leading-snug ${
-                                          isRec
-                                            ? (recFullyComplete ? 'text-charcoal/40' : 'text-charcoal')
-                                            : (completed ? 'text-charcoal/40' : 'text-charcoal')
+                                          completed ? 'text-charcoal/40' : 'text-charcoal'
                                         }`}>
                                           {item.title}
                                         </p>
-                                        {isRec ? (
-                                          <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
-                                            {recDone} out of {recTotal} training tasks completed
-                                            {recDone > 0 && (() => {
-                                              const bd = getRecurringBreakdown(item.id)
-                                              return (
-                                                <span className="ml-1">
-                                                  | {bd.shadowed > 0 && <span className="text-blue-600">{bd.shadowed} shadowed</span>}{bd.assigned > 0 && bd.shadowed > 0 && <span className="text-charcoal/30"> / </span>}{bd.assigned > 0 && <span className="text-green-600">{bd.assigned} completed</span>}
-                                                </span>
-                                              )
-                                            })()}
-                                          </p>
-                                        ) : completed ? (
+                                        {completed ? (
                                           <p className="text-xs mt-0.5">
                                             {shadowedEarly ? (
                                               <span className="text-blue-600 font-medium">Shadowed early on {formatDate(comp!.completed_date)}</span>

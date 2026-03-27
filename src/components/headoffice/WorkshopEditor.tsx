@@ -377,9 +377,6 @@ function CourseToggleRow({
           <CourseBadge courseName={item.course.name} icon={item.course.icon} />
         )}
         <p className="text-[14px] text-charcoal leading-snug">{item.title}</p>
-        {item.is_recurring && item.recurring_amount && (
-          <p className="text-xs text-charcoal/40 mt-0.5">Training Task — {item.recurring_amount} training tasks</p>
-        )}
       </div>
       {toggling && (
         <span className="text-xs text-charcoal/30">…</span>

@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
-import type { User, Course, Category, Completion, Plate, VisibleCourse, Workshop, WorkshopCategory, TrainingTaskCompletion } from '@/types'
+import type { User, Course, Category, Completion, Plate, VisibleCourse, Workshop, WorkshopCategory } from '@/types'
 
 interface Props {
   trainees: User[]
@@ -14,10 +14,9 @@ interface Props {
   visibleCategories?: VisibleCourse[]
   workshops?: Workshop[]
   workshopCategories?: WorkshopCategory[]
-  recurringCompletions?: TrainingTaskCompletion[]
 }
 
-export function ManagerTrainees({ trainees, courses, categories, completions, plates = [], visibleCategories = [], workshops = [], workshopCategories = [], recurringCompletions = [] }: Props) {
+export function ManagerTrainees({ trainees, courses, categories, completions, plates = [], visibleCategories = [], workshops = [], workshopCategories = [] }: Props) {
   const [selected, setSelected] = useState<User | 'all'>('all')
   const [expandedLevel1, setExpandedLevel1] = useState<Set<string>>(new Set())
   const [expandedLevel2, setExpandedLevel2] = useState<Set<string>>(new Set())
@@ -44,40 +43,25 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
     return catItems.filter(mi => completions.some(c => c.category_id === mi.id && c.trainee_id === traineeId && c.workshop_id === workshopId))
   }
 
-  // Detailed course breakdown: categories (non-recurring) + sessions (recurring)
+  // Detailed course breakdown
   const getCourseBreakdown = (traineeId: string, workshopId: string, categoryId: string) => {
     const wsItemIds = new Set(workshopCategories.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.category_id))
     const catItems = categories.filter(mi => wsItemIds.has(mi.id) && mi.course_id === categoryId)
-    const nonRecurring = catItems.filter(mi => !mi.is_recurring)
-    const recurring = catItems.filter(mi => mi.is_recurring && mi.recurring_amount)
 
-    // Non-recurring: completed vs shadowed
-    const nonRecComps = completions.filter(c => c.trainee_id === traineeId && c.workshop_id === workshopId && nonRecurring.some(mi => mi.id === c.category_id))
-    const nrCompleted = nonRecComps.filter(c => !c.is_shadowing_moment).length
-    const nrShadowed = nonRecComps.filter(c => c.is_shadowing_moment).length
-    const nrTotal = nonRecurring.length
+    const catComps = completions.filter(c => c.trainee_id === traineeId && c.workshop_id === workshopId && catItems.some(mi => mi.id === c.category_id))
+    const nrCompleted = catComps.filter(c => !c.is_shadowing_moment).length
+    const nrShadowed = catComps.filter(c => c.is_shadowing_moment).length
+    const nrTotal = catItems.length
     const nrToDo = nrTotal - nrCompleted - nrShadowed
-
-    // Recurring: session counts
-    const sessionTotal = recurring.reduce((sum, mi) => sum + (mi.recurring_amount ?? 0), 0)
-    const sessionRcs = recurringCompletions.filter(rc => rc.trainee_id === traineeId && rc.workshop_id === workshopId && recurring.some(mi => mi.id === rc.category_id))
-    // Determine which sessions were assigned (matched plate dates) vs shadowed
-    const plateDates = plates.filter(p => p.trainee_id === traineeId && p.workshop_id === workshopId && recurring.some(mi => mi.id === p.category_id)).map(p => p.date_assigned)
-    const sessionCompleted = sessionRcs.filter(rc => plateDates.includes(rc.completed_date)).length
-    const sessionShadowed = sessionRcs.length - sessionCompleted
-    const sessionToDo = Math.max(0, sessionTotal - sessionRcs.length)
 
     return {
       categories: { total: nrTotal, completed: nrCompleted, shadowed: nrShadowed, toDo: nrToDo },
-      sessions: { total: sessionTotal, completed: sessionCompleted, shadowed: sessionShadowed, toDo: sessionToDo },
-      hasRecurring: recurring.length > 0,
     }
   }
 
   // Workshop-level aggregated breakdown
   const getWorkshopBreakdown = (traineeId: string, workshopId: string, wsCats: Course[], wsItems: Category[]) => {
     let nrTotal = 0, nrCompleted = 0, nrShadowed = 0
-    let sTotal = 0, sCompleted = 0, sShadowed = 0
     let coursesCompleted = 0
     const allTraineeRatings: number[] = []
     const allTrainerRatings: number[] = []
@@ -87,14 +71,9 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
       nrTotal += bd.categories.total
       nrCompleted += bd.categories.completed
       nrShadowed += bd.categories.shadowed
-      sTotal += bd.sessions.total
-      sCompleted += bd.sessions.completed
-      sShadowed += bd.sessions.shadowed
 
-      // Course is complete if all non-recurring categories are done and all sessions are done
       const catDone = bd.categories.completed + bd.categories.shadowed >= bd.categories.total
-      const sesDone = !bd.hasRecurring || (bd.sessions.completed + bd.sessions.shadowed >= bd.sessions.total)
-      if (catDone && sesDone && bd.categories.total > 0) coursesCompleted++
+      if (catDone && bd.categories.total > 0) coursesCompleted++
 
       // Ratings
       const courseComps = completions.filter(c => c.trainee_id === traineeId && c.workshop_id === workshopId && wsItems.some(mi => mi.id === c.category_id && mi.course_id === cat.id))
@@ -108,8 +87,6 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
       coursesCompleted,
       coursesTotal: wsCats.length,
       categories: { total: nrTotal, completed: nrCompleted, shadowed: nrShadowed, toDo: nrTotal - nrCompleted - nrShadowed },
-      sessions: { total: sTotal, completed: sCompleted, shadowed: sShadowed, toDo: Math.max(0, sTotal - sCompleted - sShadowed) },
-      hasSessions: sTotal > 0,
       avgTrainee: allTraineeRatings.length > 0 ? (allTraineeRatings.reduce((a, b) => a + b, 0) / allTraineeRatings.length).toFixed(1) : null,
       avgTrainer: allTrainerRatings.length > 0 ? (allTrainerRatings.reduce((a, b) => a + b, 0) / allTrainerRatings.length).toFixed(1) : null,
     }
@@ -121,7 +98,6 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
     let workshopsTotal = 0, workshopsCompleted = 0
     let coursesTotal = 0, coursesCompleted = 0
     let nrTotal = 0, nrCompleted = 0, nrShadowed = 0
-    let sTotal = 0, sCompleted = 0, sShadowed = 0
 
     for (const { workshop, categories: wsCats, items: wsItems } of workshopHierarchy) {
       total += wsItems.length
@@ -134,9 +110,6 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
       nrTotal += wsBd.categories.total
       nrCompleted += wsBd.categories.completed
       nrShadowed += wsBd.categories.shadowed
-      sTotal += wsBd.sessions.total
-      sCompleted += wsBd.sessions.completed
-      sShadowed += wsBd.sessions.shadowed
 
       // Workshop is complete if all courses are complete
       if (wsBd.coursesCompleted >= wsBd.coursesTotal && wsBd.coursesTotal > 0) workshopsCompleted++
@@ -147,8 +120,6 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
       workshopsTotal, workshopsCompleted,
       coursesTotal, coursesCompleted,
       categories: { total: nrTotal, completed: nrCompleted, shadowed: nrShadowed, toDo: nrTotal - nrCompleted - nrShadowed },
-      sessions: { total: sTotal, completed: sCompleted, shadowed: sShadowed, toDo: Math.max(0, sTotal - sCompleted - sShadowed) },
-      hasSessions: sTotal > 0,
     }
   }
 
@@ -285,14 +256,6 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
                         {tStats.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{tStats.categories.shadowed} Shadowed</span></>}
                         {tStats.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{tStats.categories.toDo} To Do</span></>}
                       </p>
-                      {tStats.hasSessions && (
-                        <p className="text-[11px] text-charcoal/40">
-                          {tStats.sessions.completed + tStats.sessions.shadowed} of {tStats.sessions.total} Training Tasks
-                          {tStats.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{tStats.sessions.completed} Completed</span></>}
-                          {tStats.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{tStats.sessions.shadowed} Shadowed</span></>}
-                          {tStats.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{tStats.sessions.toDo} To Do</span></>}
-                        </p>
-                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
@@ -333,14 +296,6 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
                                   {wsBd.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{wsBd.categories.shadowed} Shadowed</span></>}
                                   {wsBd.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{wsBd.categories.toDo} To Do</span></>}
                                 </p>
-                                {wsBd.hasSessions && (
-                                  <p className="text-[11px] text-charcoal/40">
-                                    {wsBd.sessions.completed + wsBd.sessions.shadowed} of {wsBd.sessions.total} Training Tasks
-                                    {wsBd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{wsBd.sessions.completed} Completed</span></>}
-                                    {wsBd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{wsBd.sessions.shadowed} Shadowed</span></>}
-                                    {wsBd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{wsBd.sessions.toDo} To Do</span></>}
-                                  </p>
-                                )}
                                 {(wsBd.avgTrainee || wsBd.avgTrainer) && (
                                   <p className="text-[11px] text-charcoal/30">
                                     {wsBd.avgTrainee && <span>Trainee Rating {wsBd.avgTrainee}</span>}
@@ -390,14 +345,6 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
                                             {bd.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.categories.shadowed} Shadowed</span></>}
                                             {bd.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.categories.toDo} To Do</span></>}
                                           </p>
-                                          {bd.hasRecurring && (
-                                            <p className="text-[11px] text-charcoal/40 mt-0.5">
-                                              {bd.sessions.completed + bd.sessions.shadowed} of {bd.sessions.total} Training Tasks
-                                              {bd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{bd.sessions.completed} Completed</span></>}
-                                              {bd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.sessions.shadowed} Shadowed</span></>}
-                                              {bd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.sessions.toDo} To Do</span></>}
-                                            </p>
-                                          )}
                                           {(avgTrainee || avgTrainer) && (
                                             <p className="text-[11px] text-charcoal/30 mt-0.5">
                                               {avgTrainee && <span>Trainee Rating {avgTrainee}</span>}
@@ -461,14 +408,6 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
                           {wsBd.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{wsBd.categories.shadowed} Shadowed</span></>}
                           {wsBd.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{wsBd.categories.toDo} To Do</span></>}
                         </p>
-                        {wsBd.hasSessions && (
-                          <p className="text-[11px] text-charcoal/40">
-                            {wsBd.sessions.completed + wsBd.sessions.shadowed} of {wsBd.sessions.total} Training Tasks
-                            {wsBd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{wsBd.sessions.completed} Completed</span></>}
-                            {wsBd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{wsBd.sessions.shadowed} Shadowed</span></>}
-                            {wsBd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{wsBd.sessions.toDo} To Do</span></>}
-                          </p>
-                        )}
                         {(wsBd.avgTrainee || wsBd.avgTrainer) && (
                           <p className="text-[11px] text-charcoal/30">
                             {wsBd.avgTrainee && <span>Trainee Rating {wsBd.avgTrainee}</span>}
@@ -517,14 +456,6 @@ export function ManagerTrainees({ trainees, courses, categories, completions, pl
                                     {bd.categories.shadowed > 0 && <span className="text-blue-600"> | {bd.categories.shadowed} Shadowed</span>}
                                     {bd.categories.toDo > 0 && <span> | {bd.categories.toDo} To Do</span>}
                                   </p>
-                                  {bd.hasRecurring && (
-                                    <p className="text-[11px] text-charcoal/40 mt-0.5">
-                                      {bd.sessions.completed + bd.sessions.shadowed} of {bd.sessions.total} Training Tasks
-                                      {bd.sessions.completed > 0 && <span className="text-green-600"> | {bd.sessions.completed} Completed</span>}
-                                      {bd.sessions.shadowed > 0 && <span className="text-blue-600"> | {bd.sessions.shadowed} Shadowed</span>}
-                                      {bd.sessions.toDo > 0 && <span> | {bd.sessions.toDo} To Do</span>}
-                                    </p>
-                                  )}
                                   {(avgTrainee || avgTrainer) && (
                                     <p className="text-[11px] text-charcoal/30 mt-0.5">
                                       {avgTrainee && <span>Trainee Rating {avgTrainee}</span>}

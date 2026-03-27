@@ -14,7 +14,7 @@ export default async function TraineesPage() {
     await supabase.from('users').select('id').eq('boutique_id', manager.boutique_id).eq('role', 'trainee')
   ).data?.map(u => u.id) ?? []
 
-  const [{ data: trainees }, { data: courses }, { data: categories }, { data: completions }, { data: plates }, { data: visibleCats }, { data: workshops }, { data: workshopCategories }, { data: recurringCompletions }] = await Promise.all([
+  const [{ data: trainees }, { data: courses }, { data: categories }, { data: completions }, { data: plates }, { data: visibleCats }, { data: workshops }, { data: workshopCategories }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
     supabase.from('courses').select('*').order('sort_order'),
     supabase.from('categories').select('*').eq('status', 'active'),
@@ -27,9 +27,6 @@ export default async function TraineesPage() {
     supabase.from('visible_courses').select('*'),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
     supabase.from('workshop_categorys').select('*'),
-    traineeIds.length > 0
-      ? supabase.from('training_task_completions').select('*').in('trainee_id', traineeIds)
-      : Promise.resolve({ data: [] }),
   ])
 
   return (
@@ -42,7 +39,6 @@ export default async function TraineesPage() {
       visibleCategories={visibleCats ?? []}
       workshops={workshops ?? []}
       workshopCategories={workshopCategories ?? []}
-      recurringCompletions={recurringCompletions ?? []}
     />
   )
 }

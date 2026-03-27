@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
-import type { Plate, Completion, User, Course, TrainingTaskCompletion, Workshop, WorkshopCategory } from '@/types'
+import type { Plate, Completion, User, Course, Workshop, WorkshopCategory } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, formatDateShort } from '@/lib/dates'
 import { useDatePlateView } from '@/lib/useDatePlateView'
@@ -13,7 +13,6 @@ import { DateNavigation } from './DateNavigation'
 interface Props {
   allPlates: Plate[]
   allCompletions: Completion[]
-  allRecurringCompletions: TrainingTaskCompletion[]
   currentUser: User
   workshops?: Workshop[]
   workshopCategories?: WorkshopCategory[]
@@ -24,7 +23,7 @@ interface WorkshopPlateGroup {
   courseGroups: PlateGroup[]
 }
 
-export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions, currentUser, workshops = [], workshopCategories = [] }: Props) {
+export function TodaysPlate({ allPlates, allCompletions, currentUser, workshops = [], workshopCategories = [] }: Props) {
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(todayAEDT())
 
@@ -37,7 +36,7 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
     prevDate,
     nextDate,
     dateBounds,
-  } = useDatePlateView(allPlates, allCompletions, allRecurringCompletions, selectedDate, currentUser.id)
+  } = useDatePlateView(allPlates, allCompletions, selectedDate, currentUser.id)
 
   // Build lookup: category_id -> workshop_id
   const itemToWorkshop = useMemo(() => {
@@ -118,34 +117,15 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
             let remainingCount = 0
 
             for (const i of allCompletedItems) {
-              if (i.isRecurring) {
-                // Recurring completed: session was done on this date
-                // Was this date an assigned plate date? If yes = completed, if no = shadowed
-                if (i.recurringDoneToday) {
-                  if (i.assignedDate === selectedDate) {
-                    completedCount++
-                  } else {
-                    shadowedCount++
-                  }
-                }
+              if (i.shadowed || i.shadowedEarly) {
+                shadowedCount++
               } else {
-                if (i.shadowed || i.shadowedEarly) {
-                  shadowedCount++
-                } else {
-                  completedCount++
-                }
+                completedCount++
               }
             }
 
             for (const i of allRemainingItems) {
-              if (i.isRecurring) {
-                // Recurring remaining: session assigned today but not done yet = 1 remaining
-                if (i.assignedDate === selectedDate) {
-                  remainingCount++
-                }
-              } else {
-                remainingCount++
-              }
+              remainingCount++
             }
 
             const total = completedCount + shadowedCount + remainingCount
@@ -376,18 +356,13 @@ function CourseGroup({
       {expanded && (
         <div className="divide-y divide-black/5 bg-charcoal/[0.01]">
           {items.map(item => {
-            const recurringFullyComplete = item.isRecurring && (item.recurringDone ?? 0) >= (item.recurringTotal ?? 0)
             const isShadowed = item.shadowedEarly || item.shadowed
 
-            const bgClass = item.isRecurring
-              ? (recurringFullyComplete ? 'bg-green-50/50 hover:bg-green-50' : 'hover:bg-charcoal/2')
-              : item.completedOnOtherDate
+            const bgClass = item.completedOnOtherDate
                 ? 'hover:bg-charcoal/2'
                 : (item.completed ? (isShadowed ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : item.isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2')
 
-            const circleClass = item.isRecurring
-              ? (recurringFullyComplete ? 'border-transparent bg-green-500' : 'border-charcoal/20')
-              : item.completedOnOtherDate
+            const circleClass = item.completedOnOtherDate
                 ? 'border-charcoal/20'
                 : (item.completed ? (isShadowed ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : item.isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20')
 
@@ -398,26 +373,15 @@ function CourseGroup({
                 className={`w-full pl-12 pr-5 py-3.5 flex items-center gap-3 text-left transition-colors ${bgClass}`}
               >
                 <span className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${circleClass}`}>
-                  {(item.completed && !item.completedOnOtherDate) || recurringFullyComplete ? <span className="text-white text-[10px]">✓</span> : null}
+                  {(item.completed && !item.completedOnOtherDate) ? <span className="text-white text-[10px]">✓</span> : null}
                 </span>
                 <div className="flex-1">
                   <p className={`text-[14px] leading-snug ${
-                    item.isRecurring
-                      ? (recurringFullyComplete ? 'text-charcoal/40' : 'text-charcoal')
-                      : (item.completed && !item.completedOnOtherDate ? 'text-charcoal/40' : 'text-charcoal')
+                    (item.completed && !item.completedOnOtherDate ? 'text-charcoal/40' : 'text-charcoal')
                   }`}>
                     {item.title}
                   </p>
-                  {item.isRecurring ? (
-                    <p className={`text-xs font-medium mt-0.5 ${recurringFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
-                      {item.recurringDone} out of {item.recurringTotal} training tasks completed
-                      {(item.recurringDone ?? 0) > 0 && item.recurringBreakdown && (
-                        <span className="ml-1">
-                          | {item.recurringBreakdown.shadowed > 0 && <span className="text-blue-600">{item.recurringBreakdown.shadowed} shadowed</span>}{item.recurringBreakdown.assigned > 0 && item.recurringBreakdown.shadowed > 0 && <span className="text-charcoal/30"> / </span>}{item.recurringBreakdown.assigned > 0 && <span className="text-green-600">{item.recurringBreakdown.assigned} completed</span>}
-                        </span>
-                      )}
-                    </p>
-                  ) : item.completedOnOtherDate ? (
+                  {item.completedOnOtherDate ? (
                     <p className="text-xs mt-0.5 text-charcoal/50">
                       Completed {formatDateShort(item.completedOnOtherDate)}
                     </p>
@@ -441,7 +405,7 @@ function CourseGroup({
                     </p>
                   ) : null}
                 </div>
-                {!item.completed && !recurringFullyComplete && !item.completedOnOtherDate && (
+                {!item.completed && !item.completedOnOtherDate && (
                   <span className="text-charcoal/20 text-lg">›</span>
                 )}
               </button>

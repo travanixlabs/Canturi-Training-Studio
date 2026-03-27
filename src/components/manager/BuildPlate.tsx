@@ -7,7 +7,7 @@ import { TaskModal } from '@/components/ui/TaskModal'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
-import type { User, Course, Category, Plate, VisibleCourse, Completion, TrainingTaskCompletion, Workshop, WorkshopCategory } from '@/types'
+import type { User, Course, Category, Plate, VisibleCourse, Completion, Workshop, WorkshopCategory } from '@/types'
 import { PlateDistributionChart } from './PlateDistributionChart'
 
 interface Props {
@@ -18,7 +18,6 @@ interface Props {
   todayPlates: Plate[]
   visibleCategories?: VisibleCourse[]
   completions?: Completion[]
-  recurringCompletions?: TrainingTaskCompletion[]
   showBoutique?: boolean
   workshops?: Workshop[]
   workshopCategories?: WorkshopCategory[]
@@ -40,7 +39,7 @@ function getUpcomingDates() {
   return dates
 }
 
-export function BuildPlate({ manager, trainees, courses, categories, todayPlates, visibleCategories: initialVisible = [], completions: allCompletions = [], recurringCompletions: initialRecurring = [], showBoutique, workshops = [], workshopCategories = [] }: Props) {
+export function BuildPlate({ manager, trainees, courses, categories, todayPlates, visibleCategories: initialVisible = [], completions: allCompletions = [], showBoutique, workshops = [], workshopCategories = [] }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
@@ -51,9 +50,6 @@ export function BuildPlate({ manager, trainees, courses, categories, todayPlates
   const [visibleCats, setVisibleCats] = useState<VisibleCourse[]>(initialVisible)
   const [isPending, startTransition] = useTransition()
   const [datePicker, setDatePicker] = useState<{ items: Category[]; anchorId: string; workshopId: string } | null>(null)
-  const [multiDatePicker, setMultiDatePicker] = useState<{ item: Category; anchorId: string; workshopId: string } | null>(null)
-  const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
-  const [recurringCompletions, setRecurringCompletions] = useState<TrainingTaskCompletion[]>(initialRecurring)
   const [chartFilter, setChartFilter] = useState<{ dates: Set<string>; courseIds: Set<string> }>({ dates: new Set(), courseIds: new Set() })
   const router = useRouter()
   const supabase = createClient()
@@ -83,31 +79,12 @@ export function BuildPlate({ manager, trainees, courses, categories, todayPlates
     return allCompletions.find(c => c.category_id === categoryItemId && c.trainee_id === selectedTrainee?.id && c.workshop_id === workshopId)
   }
 
-  const getRecurringCount = (categoryItemId: string, workshopId: string, traineeId?: string) => {
-    const tid = traineeId ?? selectedTrainee?.id
-    return recurringCompletions.filter(rc => rc.category_id === categoryItemId && rc.trainee_id === tid && rc.workshop_id === workshopId).length
-  }
-
-  const getRecurringDates = (categoryItemId: string, workshopId: string, traineeId?: string) => {
-    const tid = traineeId ?? selectedTrainee?.id
-    return recurringCompletions
-      .filter(rc => rc.category_id === categoryItemId && rc.trainee_id === tid && rc.workshop_id === workshopId)
-      .map(rc => rc.completed_date)
-      .sort()
-  }
-
   const traineeOnPlateCount = (traineeId: string) =>
     plates.filter(p => p.trainee_id === traineeId).length
 
   // Show date picker for a single item or multiple items (category)
   function requestAssign(items: Category[], anchorId: string, workshopId: string) {
     if (!selectedTrainee) return
-    // For a single recurring item, show multi-date picker
-    if (items.length === 1 && items[0].is_recurring) {
-      setMultiDatePicker({ item: items[0], anchorId, workshopId })
-      setSelectedDates(new Set())
-      return
-    }
     setDatePicker({ items, anchorId, workshopId })
   }
 
@@ -146,62 +123,9 @@ export function BuildPlate({ manager, trainees, courses, categories, todayPlates
     startTransition(() => router.refresh())
   }
 
-  async function assignMultipleDates() {
-    if (!selectedTrainee || !multiDatePicker || selectedDates.size === 0) return
-    const item = multiDatePicker.item
-
-    const newPlates: Plate[] = []
-    for (const date of Array.from(selectedDates).sort()) {
-      // Skip if already has a plate for this item+trainee+date+workshop
-      const alreadyExists = plates.some(
-        p => p.category_id === item.id && p.trainee_id === selectedTrainee.id && p.date_assigned === date && p.workshop_id === multiDatePicker.workshopId
-      )
-      if (alreadyExists) continue
-
-      const { data, error } = await supabase.from('plates').insert({
-        trainee_id: selectedTrainee.id,
-        category_id: item.id,
-        assigned_by: manager.id,
-        date_assigned: date,
-        boutique_id: selectedTrainee.boutique_id || manager.boutique_id,
-        workshop_id: multiDatePicker.workshopId,
-      }).select().single()
-
-      if (!error && data) {
-        newPlates.push(data as Plate)
-      }
-    }
-
-    if (newPlates.length > 0) {
-      setPlates(prev => [...prev, ...newPlates])
-    }
-    setMultiDatePicker(null)
-    setSelectedDates(new Set())
-    startTransition(() => router.refresh())
-  }
 
   async function removeFromPlate(item: Category, workshopId: string) {
     if (!selectedTrainee) return
-
-    if (item.is_recurring) {
-      // For recurring items, only remove plates where there is NO recurring_task_completion for that date
-      const traineeRecurringDates = new Set(
-        recurringCompletions
-          .filter(rc => rc.category_id === item.id && rc.trainee_id === selectedTrainee.id && rc.workshop_id === workshopId)
-          .map(rc => rc.completed_date)
-      )
-      const removable = plates.filter(
-        p => p.category_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId && !traineeRecurringDates.has(p.date_assigned)
-      )
-      if (removable.length === 0) return
-      const removeIds = removable.map(p => p.id)
-      setPlates(prev => prev.filter(p => !removeIds.includes(p.id)))
-      for (const p of removable) {
-        await supabase.from('plates').delete().eq('id', p.id)
-      }
-      startTransition(() => router.refresh())
-      return
-    }
 
     const existing = plates.find(
       p => p.category_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId
@@ -249,12 +173,6 @@ export function BuildPlate({ manager, trainees, courses, categories, todayPlates
 
       // Delete completions for this category's items in this workshop
       await supabase.from('completions').delete()
-        .in('category_id', catItemIds)
-        .eq('trainee_id', selectedTrainee.id)
-        .eq('workshop_id', workshopId)
-
-      // Delete recurring completions for this category's items in this workshop
-      await supabase.from('training_task_completions').delete()
         .in('category_id', catItemIds)
         .eq('trainee_id', selectedTrainee.id)
         .eq('workshop_id', workshopId)
@@ -441,71 +359,6 @@ export function BuildPlate({ manager, trainees, courses, categories, todayPlates
         </div>
       )}
 
-      {/* Multi-date picker modal for recurring items */}
-      {multiDatePicker && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4" onClick={() => setMultiDatePicker(null)}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-serif text-lg text-charcoal">Assign recurring dates</h3>
-                <p className="text-xs text-charcoal/40 mt-0.5">
-                  {multiDatePicker.item.title}
-                  {' → '}{selectedTrainee?.name.split(' ')[0]}
-                </p>
-                <p className="text-xs text-blue-600 mt-1">
-                  Select multiple dates · {selectedDates.size} selected
-                </p>
-              </div>
-              <button onClick={() => setMultiDatePicker(null)} className="text-charcoal/30 hover:text-charcoal">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto mb-4">
-              {upcomingDates.map(date => {
-                const checked = selectedDates.has(date.value)
-                return (
-                  <button
-                    key={date.value}
-                    onClick={() => {
-                      setSelectedDates(prev => {
-                        const next = new Set(prev)
-                        if (next.has(date.value)) next.delete(date.value)
-                        else next.add(date.value)
-                        return next
-                      })
-                    }}
-                    className={`px-3 py-3 rounded-xl text-sm font-medium text-left transition-all border flex items-center gap-2 ${
-                      checked
-                        ? 'border-gold bg-gold/10 text-gold'
-                        : date.isToday
-                        ? 'border-gold/30 bg-gold/5 text-charcoal/70 hover:border-gold'
-                        : 'border-charcoal/10 text-charcoal/70 hover:border-gold hover:text-gold'
-                    }`}
-                  >
-                    <span className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                      checked ? 'bg-gold border-gold' : 'border-charcoal/20'
-                    }`}>
-                      {checked && <Check size={10} className="text-white" />}
-                    </span>
-                    <span>
-                      {date.label}
-                      {date.isToday && <span className="block text-xs text-gold/60 mt-0.5">Today</span>}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            <button
-              onClick={assignMultipleDates}
-              disabled={selectedDates.size === 0}
-              className="btn-gold w-full disabled:opacity-40"
-            >
-              Assign {selectedDates.size} date{selectedDates.size !== 1 ? 's' : ''}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* People selector */}
       {trainees.length === 0 ? (
         <div className="card p-6 text-center mb-5">
@@ -666,8 +519,6 @@ export function BuildPlate({ manager, trainees, courses, categories, todayPlates
                       <div className="border-t border-black/5">
                         {wsCats.filter(c => isCourseVisibleByChart(c.id)).map(category => {
                           const catItems = wsItems.filter(i => i.course_id === category.id && isItemVisibleByChart(i.id, workshop.id))
-                          const nonRecurring = catItems.filter(i => !i.is_recurring)
-                          const recurring = catItems.filter(i => i.is_recurring)
                           const catExpanded = expandedCategories.has(`${workshop.id}-${category.id}`)
                           const visible = isCategoryVisible(category.id, workshop.id)
                           const assignedCount = catItems.filter(i => isOnPlate(i.id, workshop.id)).length
@@ -752,73 +603,26 @@ export function BuildPlate({ manager, trainees, courses, categories, todayPlates
                               {/* Expanded: categories (menu items) inside this course */}
                               {catExpanded && (!isEmployee || visible) && (
                                 <div className="bg-charcoal/[0.01]">
-                                  {nonRecurring.length > 0 && (
-                                    <div>
-                                      {recurring.length > 0 && (
-                                        <div className="pl-12 pr-5 pt-2 pb-1">
-                                          <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Categories</p>
-                                        </div>
-                                      )}
-                                      <div className="divide-y divide-black/5">
-                                        {nonRecurring.map(item => (
-                                          <CategoryRow
-                                            key={item.id}
-                                            item={item}
-                                            onPlate={isOnPlate(item.id, workshop.id)}
-                                            completed={isCompleted(item.id, workshop.id)}
-                                            completedDate={getCompletion(item.id, workshop.id)?.completed_date}
-                                            assignedDate={plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id)?.date_assigned}
-                                            onAssign={() => requestAssign([item], item.id, workshop.id)}
-                                            onRemove={() => removeFromPlate(item, workshop.id)}
-                                            compact
-                                            onReassign={() => reassignItem(item, workshop.id)}
-                                            completion={getCompletion(item.id, workshop.id)}
-                                            currentUser={manager}
-                                            plate={plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id) ?? null}
-                                            assignedPlateDates={plates.filter(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id).map(p => p.date_assigned)}
-                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.category_id === item.id && rc.trainee_id === selectedTrainee?.id && rc.workshop_id === workshop.id).map(rc => rc.completed_date)}
-                                          />
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                  {recurring.length > 0 && (
-                                    <div className={nonRecurring.length > 0 ? 'border-t border-black/5' : ''}>
-                                      <div className="pl-12 pr-5 pt-2 pb-1">
-                                        <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Training Task Categories</p>
-                                      </div>
-                                      <div className="divide-y divide-black/5">
-                                        {recurring.map(item => (
-                                          <CategoryRow
-                                            key={item.id}
-                                            item={item}
-                                            onPlate={isOnPlate(item.id, workshop.id)}
-                                            completed={isCompleted(item.id, workshop.id)}
-                                            completedDate={getCompletion(item.id, workshop.id)?.completed_date}
-                                            assignedDate={(() => {
-                                              const todayStr = todayAEDT()
-                                              const futureDates = plates
-                                                .filter(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id && p.date_assigned >= todayStr)
-                                                .map(p => p.date_assigned)
-                                                .sort()
-                                              return futureDates[0] ?? plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id)?.date_assigned
-                                            })()}
-                                            onAssign={() => requestAssign([item], item.id, workshop.id)}
-                                            onRemove={() => removeFromPlate(item, workshop.id)}
-                                            compact
-                                            recurringCount={getRecurringCount(item.id, workshop.id)}
-                                            recurringDates={getRecurringDates(item.id, workshop.id)}
-                                            onReassign={() => reassignItem(item, workshop.id)}
-                                            completion={getCompletion(item.id, workshop.id)}
-                                            currentUser={manager}
-                                            plate={plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id) ?? null}
-                                            assignedPlateDates={plates.filter(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id).map(p => p.date_assigned)}
-                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.category_id === item.id && rc.trainee_id === selectedTrainee?.id && rc.workshop_id === workshop.id).map(rc => rc.completed_date)}
-                                          />
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
+                                  <div className="divide-y divide-black/5">
+                                    {catItems.map(item => (
+                                      <CategoryRow
+                                        key={item.id}
+                                        item={item}
+                                        onPlate={isOnPlate(item.id, workshop.id)}
+                                        completed={isCompleted(item.id, workshop.id)}
+                                        completedDate={getCompletion(item.id, workshop.id)?.completed_date}
+                                        assignedDate={plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id)?.date_assigned}
+                                        onAssign={() => requestAssign([item], item.id, workshop.id)}
+                                        onRemove={() => removeFromPlate(item, workshop.id)}
+                                        compact
+                                        onReassign={() => reassignItem(item, workshop.id)}
+                                        completion={getCompletion(item.id, workshop.id)}
+                                        currentUser={manager}
+                                        plate={plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id) ?? null}
+                                        assignedPlateDates={plates.filter(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id).map(p => p.date_assigned)}
+                                      />
+                                    ))}
+                                  </div>
                                 </div>
                               )}
 
@@ -894,14 +698,11 @@ function CategoryRow({
   onAssign,
   onRemove,
   compact = false,
-  recurringCount,
-  recurringDates,
   onReassign,
   completion,
   currentUser,
   plate,
   assignedPlateDates,
-  recurringCompletionDates,
 }: {
   item: Category
   onPlate: boolean
@@ -911,60 +712,25 @@ function CategoryRow({
   onAssign: () => void
   onRemove: () => void
   compact?: boolean
-  recurringCount?: number
-  recurringDates?: string[]
   onReassign?: () => void
   completion?: Completion | null
   currentUser?: User
   plate?: Plate | null
   assignedPlateDates?: string[]
-  recurringCompletionDates?: string[]
 }) {
   const [showDetail, setShowDetail] = useState(false)
   const shadowedEarly = completed && completedDate && assignedDate && completedDate < assignedDate
-  const isRecurringItem = item.is_recurring && item.recurring_amount
-  const recurringTotal = item.recurring_amount ?? 0
-  const recurringDone = recurringCount ?? 0
-  const recurringFullyComplete = isRecurringItem && recurringDone >= recurringTotal
-  const isOverdue = !isRecurringItem && !completed && assignedDate && assignedDate < todayAEDT()
-
-  // Compute assigned vs shadowed session counts
-  const assignedSessionCount = isRecurringItem && recurringCompletionDates && assignedPlateDates
-    ? recurringCompletionDates.filter(d => assignedPlateDates.includes(d)).length
-    : 0
-  const shadowedSessionCount = recurringDone - assignedSessionCount
+  const isOverdue = !completed && assignedDate && assignedDate < todayAEDT()
 
   return (
     <div className={`flex items-center gap-3 ${compact ? 'pl-14 pr-5 py-3' : 'card px-4 py-3'} ${
-      isRecurringItem
-        ? (recurringFullyComplete ? 'bg-green-50/50' : '')
-        : (completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : isOverdue ? 'bg-yellow-50/50' : '')
+      completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : isOverdue ? 'bg-yellow-50/50' : ''
     }`}>
       <div className="flex-1">
         {!compact && item.course && (
           <CourseBadge courseName={item.course.name} icon={item.course.icon} />
         )}
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
-        {isRecurringItem ? (
-          <div className="mt-0.5">
-            <p className={`text-xs font-medium ${recurringFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
-              {recurringFullyComplete ? 'Completed' : `${recurringDone} out of ${recurringTotal} training tasks completed`}
-              {!recurringFullyComplete && recurringDone > 0 && (
-                <span className="ml-1">
-                  | {shadowedSessionCount > 0 && <span className="text-blue-600">{shadowedSessionCount} shadowed</span>}{assignedSessionCount > 0 && shadowedSessionCount > 0 && <span className="text-charcoal/30"> / </span>}{assignedSessionCount > 0 && <span className="text-green-600">{assignedSessionCount} completed</span>}
-                </span>
-              )}
-              {!recurringFullyComplete && assignedDate && (
-                <span className="font-semibold text-charcoal/50 ml-1">{new Date(assignedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}</span>
-              )}
-            </p>
-            {recurringFullyComplete && recurringDates && recurringDates.length > 0 && (
-              <p className="text-xs text-green-600/70 mt-0.5">
-                {recurringDates.map(d => new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })).join(' | ')}
-              </p>
-            )}
-          </div>
-        ) : (
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-xs text-charcoal/35">
             {assignedDate && !completed && (
@@ -984,7 +750,6 @@ function CategoryRow({
             </span>
           )}
         </div>
-        )}
       </div>
       {/* Edit date button for assigned items */}
       {onPlate && !completed && (

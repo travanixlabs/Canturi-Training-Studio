@@ -18,11 +18,10 @@ export default async function TraineePlatePage() {
     .eq('trainee_id', authUser.id)
     .order('date_assigned', { ascending: true })
 
-  // Fetch all completions with category join, all recurring completions, profile, workshops, and visibility
-  const [{ data: allCompletions }, { data: profile }, { data: allRecurringCompletions }, { data: workshops }, { data: workshopCategories }, { data: visibleCats }] = await Promise.all([
+  // Fetch all completions with category join, profile, workshops, and visibility
+  const [{ data: allCompletions }, { data: profile }, { data: workshops }, { data: workshopCategories }, { data: visibleCats }] = await Promise.all([
     supabase.from('completions').select('*, category:categories(*, course:courses(*))').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
-    supabase.from('training_task_completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
     supabase.from('workshop_categorys').select('*'),
     supabase.from('visible_courses').select('course_id').eq('user_id', authUser.id),
@@ -35,17 +34,11 @@ export default async function TraineePlatePage() {
     const catId = (c.category as any)?.course_id
     return catId && visibleCategoryIds.has(catId)
   })
-  const filteredRecurring = (allRecurringCompletions ?? []).filter(rc => {
-    const plate = (allPlates ?? []).find(p => p.category_id === rc.category_id)
-    const catId = plate?.category?.course_id
-    return catId && visibleCategoryIds.has(catId)
-  })
 
   return (
     <TodaysPlate
       allPlates={filteredPlates}
       allCompletions={filteredCompletions}
-      allRecurringCompletions={filteredRecurring}
       currentUser={profile as User}
       workshops={workshops ?? []}
       workshopCategories={workshopCategories ?? []}

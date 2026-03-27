@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { X, Clock, Users, RotateCcw } from 'lucide-react'
+import { X, Users, RotateCcw } from 'lucide-react'
 import { CourseBadge } from './CourseBadge'
 import { StarRating } from './StarRating'
 import { CelebrationScreen } from './CelebrationScreen'
@@ -185,10 +185,6 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
         <div className="px-5 py-5 space-y-5">
           {/* Meta */}
           <div className="flex items-center gap-4 text-sm text-charcoal/50">
-            <span className="flex items-center gap-1.5">
-              <Clock size={14} />
-              {item.time_needed}
-            </span>
             <span className="flex items-center gap-1.5">
               <Users size={14} />
               {item.trainer_type}

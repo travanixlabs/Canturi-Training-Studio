@@ -1,12 +1,11 @@
 import { useMemo } from 'react'
 import { todayAEDT } from '@/lib/dates'
 import { COURSE_COLOURS } from '@/types'
-import type { Plate, Completion, TrainingTaskCompletion, Course } from '@/types'
+import type { Plate, Completion, Course } from '@/types'
 
 export interface PlateItemInfo {
   id: string
   title: string
-  timeNeeded: string
   trainerType: string
   completed: boolean
   shadowed?: boolean
@@ -15,11 +14,6 @@ export interface PlateItemInfo {
   assignedDate?: string
   isOverdue?: boolean
   rating?: number
-  isRecurring?: boolean
-  recurringDone?: number
-  recurringTotal?: number
-  recurringDoneToday?: boolean
-  recurringBreakdown?: { assigned: number; shadowed: number }
   /** Item was completed on a different date — show text but no green formatting */
   completedOnOtherDate?: string
 }
@@ -45,7 +39,6 @@ export interface DatePlateView {
 export function useDatePlateView(
   allPlates: Plate[],
   allCompletions: Completion[],
-  allRecurringCompletions: TrainingTaskCompletion[],
   selectedDate: string,
   userId: string,
 ): DatePlateView {
@@ -57,9 +50,8 @@ export function useDatePlateView(
     const dateSet = new Set<string>()
     for (const p of allPlates) dateSet.add(p.date_assigned)
     for (const c of allCompletions) dateSet.add(c.completed_date)
-    for (const rc of allRecurringCompletions) dateSet.add(rc.completed_date)
     return Array.from(dateSet).sort()
-  }, [allPlates, allCompletions, allRecurringCompletions])
+  }, [allPlates, allCompletions])
 
   const dateBounds = useMemo(() => {
     if (availableDates.length === 0) return null
@@ -85,32 +77,6 @@ export function useDatePlateView(
   const getCompletion = (categoryItemId: string) =>
     allCompletions.find(c => c.category_id === categoryItemId) ?? null
 
-  // Helper: recurring completions for an item
-  const getRecurringForItem = (categoryItemId: string) =>
-    allRecurringCompletions.filter(rc => rc.category_id === categoryItemId && rc.trainee_id === userId)
-
-  // Helper: recurring count as of a date (snapshot)
-  const getRecurringCountAsOf = (categoryItemId: string, asOfDate: string) =>
-    getRecurringForItem(categoryItemId).filter(rc => rc.completed_date <= asOfDate).length
-
-  // Helper: was a session done on a specific date
-  const wasSessionDoneOn = (categoryItemId: string, date: string) =>
-    getRecurringForItem(categoryItemId).some(rc => rc.completed_date === date)
-
-  // Helper: recurring breakdown as of date
-  const getRecurringBreakdownAsOf = (categoryItemId: string, asOfDate: string) => {
-    const rcsAsOf = getRecurringForItem(categoryItemId).filter(rc => rc.completed_date <= asOfDate)
-    const assignedDates = allPlates
-      .filter(p => p.category_id === categoryItemId && p.trainee_id === userId)
-      .map(p => p.date_assigned)
-    const assigned = rcsAsOf.filter(rc => assignedDates.includes(rc.completed_date)).length
-    return { assigned, shadowed: rcsAsOf.length - assigned }
-  }
-
-  // Helper: is recurring fully complete as of date
-  const isFullyCompleteAsOf = (categoryItemId: string, recurringAmount: number, asOfDate: string) =>
-    getRecurringCountAsOf(categoryItemId, asOfDate) >= recurringAmount
-
   // Build view for selected date
   const { remainingGroups, completedGroups, progress } = useMemo(() => {
     const remaining: PlateItemInfo[] = []
@@ -122,98 +88,53 @@ export function useDatePlateView(
     for (const p of platesOnDate) {
       const mi = p.category
       if (!mi) continue
-      const isRec = mi.is_recurring && !!mi.recurring_amount
 
-      if (isRec) {
-        const recTotal = mi.recurring_amount ?? 0
-        const recDoneAsOf = getRecurringCountAsOf(mi.id, selectedDate)
-        const fullyComplete = recDoneAsOf >= recTotal
-        const doneOnThisDate = wasSessionDoneOn(mi.id, selectedDate)
-        const breakdown = getRecurringBreakdownAsOf(mi.id, selectedDate)
+      const comp = getCompletion(mi.id)
+      const completedOnThisDate = comp?.completed_date === selectedDate
+      const completedBeforeAssigned = !!(comp && p.date_assigned && comp.completed_date <= p.date_assigned)
+      const isShadowedEarly = !!(comp && p.date_assigned && comp.completed_date < p.date_assigned)
 
-        const item: PlateItemInfo = {
+      if (completedOnThisDate || (comp && completedBeforeAssigned && selectedDate === p.date_assigned)) {
+        completed.push({
           id: mi.id,
           title: mi.title,
-          timeNeeded: mi.time_needed ?? '',
+          trainerType: mi.trainer_type ?? '',
+          completed: true,
+          completedDate: comp!.completed_date,
+          assignedDate: p.date_assigned,
+          shadowedEarly: isShadowedEarly,
+          shadowed: isShadowedEarly,
+          rating: comp!.trainee_rating ?? undefined,
+        })
+      } else if (comp && !completedBeforeAssigned) {
+        remaining.push({
+          id: mi.id,
+          title: mi.title,
           trainerType: mi.trainer_type ?? '',
           completed: false,
           assignedDate: p.date_assigned,
-          isRecurring: true,
-          recurringDone: recDoneAsOf,
-          recurringTotal: recTotal,
-          recurringDoneToday: doneOnThisDate,
-          recurringBreakdown: breakdown,
-        }
-
-        if (doneOnThisDate || fullyComplete) {
-          // Check if the session done on this date was shadowed (not on an assigned plate date)
-          const assignedDates = new Set(allPlates.filter(pp => pp.category_id === mi.id && pp.trainee_id === userId).map(pp => pp.date_assigned))
-          const sessionShadowed = doneOnThisDate && !assignedDates.has(selectedDate)
-          completed.push({ ...item, completed: true, shadowed: sessionShadowed })
-        } else {
-          remaining.push(item)
-        }
+          completedOnOtherDate: comp.completed_date,
+          shadowed: comp.is_shadowing_moment,
+        })
       } else {
-        // Non-recurring
-        const comp = getCompletion(mi.id)
-        const completedOnThisDate = comp?.completed_date === selectedDate
-        const completedBeforeAssigned = !!(comp && p.date_assigned && comp.completed_date <= p.date_assigned)
-        // Non-recurring: shadowed = completed BEFORE the assigned date (early)
-        // Completed on or after assigned date = completed (even if late)
-        const isShadowedEarly = !!(comp && p.date_assigned && comp.completed_date < p.date_assigned)
-
-        if (completedOnThisDate || (comp && completedBeforeAssigned && selectedDate === p.date_assigned)) {
-          // Completed on this date OR viewing the assigned date and it was completed before/on it
-          completed.push({
-            id: mi.id,
-            title: mi.title,
-            timeNeeded: mi.time_needed ?? '',
-            trainerType: mi.trainer_type ?? '',
-            completed: true,
-            completedDate: comp!.completed_date,
-            assignedDate: p.date_assigned,
-            shadowedEarly: isShadowedEarly,
-            shadowed: isShadowedEarly,
-            rating: comp!.trainee_rating ?? undefined,
-          })
-        } else if (comp && !completedBeforeAssigned) {
-          // Completed on a later date — show in To Complete with neutral text
-          remaining.push({
-            id: mi.id,
-            title: mi.title,
-            timeNeeded: mi.time_needed ?? '',
-            trainerType: mi.trainer_type ?? '',
-            completed: false,
-            assignedDate: p.date_assigned,
-            completedOnOtherDate: comp.completed_date,
-            shadowed: comp.is_shadowing_moment,
-          })
-        } else {
-          // Not completed yet
-          remaining.push({
-            id: mi.id,
-            title: mi.title,
-            timeNeeded: mi.time_needed ?? '',
-            trainerType: mi.trainer_type ?? '',
-            completed: false,
-            assignedDate: p.date_assigned,
-          })
-        }
+        remaining.push({
+          id: mi.id,
+          title: mi.title,
+          trainerType: mi.trainer_type ?? '',
+          completed: false,
+          assignedDate: p.date_assigned,
+        })
       }
     }
 
     // 2. Completions on this date for items NOT assigned on this date (shadowed or completed on this date)
     const platesOnDateItemIds = new Set(platesOnDate.map(p => p.category_id))
 
-    // Non-recurring completions on selected date not already covered by plates
     for (const c of allCompletions) {
       if (c.completed_date !== selectedDate) continue
       if (platesOnDateItemIds.has(c.category_id)) continue
-      // Check if this item is recurring — if so, handled separately below
       const mi = c.category
-      if (mi?.is_recurring && mi?.recurring_amount) continue
 
-      // Non-recurring: shadowed = completed BEFORE the assigned date
       const assignedPlate = allPlates.find(p => p.category_id === c.category_id && p.trainee_id === userId)
       const assignedDate = assignedPlate?.date_assigned
       const isShadowedEarly = !!(assignedDate && c.completed_date < assignedDate)
@@ -221,7 +142,6 @@ export function useDatePlateView(
       completed.push({
         id: c.category_id,
         title: mi?.title ?? '',
-        timeNeeded: mi?.time_needed ?? '',
         trainerType: mi?.trainer_type ?? '',
         completed: true,
         shadowed: isShadowedEarly,
@@ -229,38 +149,6 @@ export function useDatePlateView(
         completedDate: c.completed_date,
         assignedDate,
         rating: c.trainee_rating ?? undefined,
-      })
-    }
-
-    // Recurring completions on selected date for items not assigned on this date
-    const seenRecurring = new Set<string>()
-    for (const rc of allRecurringCompletions) {
-      if (rc.completed_date !== selectedDate) continue
-      if (platesOnDateItemIds.has(rc.category_id)) continue
-      if (seenRecurring.has(rc.category_id)) continue
-      seenRecurring.add(rc.category_id)
-
-      // Find the category from any plate that has it
-      const refPlate = allPlates.find(p => p.category_id === rc.category_id)
-      const mi = refPlate?.category
-      if (!mi) continue
-
-      const recTotal = mi.recurring_amount ?? 0
-      const recDoneAsOf = getRecurringCountAsOf(mi.id, selectedDate)
-      const breakdown = getRecurringBreakdownAsOf(mi.id, selectedDate)
-
-      completed.push({
-        id: mi.id,
-        title: mi.title,
-        timeNeeded: mi.time_needed ?? '',
-        trainerType: mi.trainer_type ?? '',
-        completed: true,
-        assignedDate: refPlate?.date_assigned,
-        isRecurring: true,
-        recurringDone: recDoneAsOf,
-        recurringTotal: recTotal,
-        recurringDoneToday: true,
-        recurringBreakdown: breakdown,
       })
     }
 
@@ -278,61 +166,11 @@ export function useDatePlateView(
         if (completedItemIds.has(mi.id)) continue
         if (remainingItemIds.has(mi.id)) continue
 
-        const isRec = mi.is_recurring && !!mi.recurring_amount
-
-        if (isRec) {
-          const recTotal = mi.recurring_amount ?? 0
-          if (isFullyCompleteAsOf(mi.id, recTotal, today)) continue
-          if (todayItemIds.has(mi.id)) continue
-          if (!wasSessionDoneOn(mi.id, p.date_assigned)) {
-            // Session was due but not done on that date, no today assignment
-            const recDoneAsOf = getRecurringCountAsOf(mi.id, today)
-            const breakdown = getRecurringBreakdownAsOf(mi.id, today)
-            remaining.push({
-              id: mi.id,
-              title: mi.title,
-              timeNeeded: mi.time_needed ?? '',
-              trainerType: mi.trainer_type ?? '',
-              completed: false,
-              assignedDate: p.date_assigned,
-              isOverdue: true,
-              isRecurring: true,
-              recurringDone: recDoneAsOf,
-              recurringTotal: recTotal,
-              recurringBreakdown: breakdown,
-            })
-            remainingItemIds.add(mi.id)
-          }
-        } else {
-          const comp = getCompletion(mi.id)
-          if (comp) continue // completed — don't show as overdue
-          remaining.push({
-            id: mi.id,
-            title: mi.title,
-            timeNeeded: mi.time_needed ?? '',
-            trainerType: mi.trainer_type ?? '',
-            completed: false,
-            assignedDate: p.date_assigned,
-            isOverdue: true,
-          })
-          remainingItemIds.add(mi.id)
-        }
-      }
-
-      // Also add past-assigned incomplete non-recurring items on current date
-      for (const p of allPlates) {
-        if (p.date_assigned >= today) continue
-        const mi = p.category
-        if (!mi || (mi.is_recurring && mi.recurring_amount)) continue
-        if (remainingItemIds.has(mi.id)) continue
-        if (completedItemIds.has(mi.id)) continue
-        if (todayItemIds.has(mi.id)) continue
         const comp = getCompletion(mi.id)
-        if (comp) continue
+        if (comp) continue // completed — don't show as overdue
         remaining.push({
           id: mi.id,
           title: mi.title,
-          timeNeeded: mi.time_needed ?? '',
           trainerType: mi.trainer_type ?? '',
           completed: false,
           assignedDate: p.date_assigned,
@@ -386,7 +224,7 @@ export function useDatePlateView(
       completedGroups: groupItems(dedupCompleted),
       progress: { completed: completedCount, shadowed: shadowedCount, remaining: remainingCount, total: totalItems },
     }
-  }, [allPlates, allCompletions, allRecurringCompletions, selectedDate, userId, isToday, today])
+  }, [allPlates, allCompletions, selectedDate, userId, isToday, today])
 
   return {
     isToday,

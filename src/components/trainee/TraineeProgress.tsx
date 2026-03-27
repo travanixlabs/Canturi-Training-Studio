@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
-import type { Course, Category, Completion, Workshop, WorkshopCategory, TrainingTaskCompletion, Plate } from '@/types'
+import type { Course, Category, Completion, Workshop, WorkshopCategory, Plate } from '@/types'
 
 interface Props {
   courses: Course[]
@@ -11,11 +11,10 @@ interface Props {
   completions: Completion[]
   workshops?: Workshop[]
   workshopCategories?: WorkshopCategory[]
-  recurringCompletions?: TrainingTaskCompletion[]
   plates?: Plate[]
 }
 
-export function TraineeProgress({ courses, categories, completions, workshops = [], workshopCategories = [], recurringCompletions = [], plates = [] }: Props) {
+export function TraineeProgress({ courses, categories, completions, workshops = [], workshopCategories = [], plates = [] }: Props) {
   const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
 
   const workshopHierarchy = useMemo(() => {
@@ -31,49 +30,29 @@ export function TraineeProgress({ courses, categories, completions, workshops = 
   const getCourseBreakdown = (workshopId: string, categoryId: string) => {
     const wsItemIds = new Set(workshopCategories.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.category_id))
     const catItems = categories.filter(mi => wsItemIds.has(mi.id) && mi.course_id === categoryId)
-    const nonRecurring = catItems.filter(mi => !mi.is_recurring)
-    const recurring = catItems.filter(mi => mi.is_recurring && mi.recurring_amount)
 
-    // Non-recurring
-    const nonRecComps = completions.filter(c => c.workshop_id === workshopId && nonRecurring.some(mi => mi.id === c.category_id))
-    const nrCompleted = nonRecComps.filter(c => !c.is_shadowing_moment).length
-    const nrShadowed = nonRecComps.filter(c => c.is_shadowing_moment).length
-    const nrTotal = nonRecurring.length
-    const nrToDo = nrTotal - nrCompleted - nrShadowed
+    const catComps = completions.filter(c => c.workshop_id === workshopId && catItems.some(mi => mi.id === c.category_id))
+    const completed = catComps.filter(c => !c.is_shadowing_moment).length
+    const shadowed = catComps.filter(c => c.is_shadowing_moment).length
+    const total = catItems.length
+    const toDo = total - completed - shadowed
 
-    // Recurring — separate logic
-    const sessionTotal = recurring.reduce((sum, mi) => sum + (mi.recurring_amount ?? 0), 0)
-    const sessionRcs = recurringCompletions.filter(rc => rc.workshop_id === workshopId && recurring.some(mi => mi.id === rc.category_id))
-    const plateDates = plates.filter(p => p.workshop_id === workshopId && recurring.some(mi => mi.id === p.category_id)).map(p => p.date_assigned)
-    const sessionCompleted = sessionRcs.filter(rc => plateDates.includes(rc.completed_date)).length
-    const sessionShadowed = sessionRcs.length - sessionCompleted
-    const sessionToDo = Math.max(0, sessionTotal - sessionRcs.length)
-
-    return {
-      categories: { total: nrTotal, completed: nrCompleted, shadowed: nrShadowed, toDo: nrToDo },
-      sessions: { total: sessionTotal, completed: sessionCompleted, shadowed: sessionShadowed, toDo: sessionToDo },
-      hasRecurring: recurring.length > 0,
-    }
+    return { total, completed, shadowed, toDo }
   }
 
   const getWorkshopBreakdown = (workshopId: string, wsCats: Course[], wsItems: Category[]) => {
     let nrTotal = 0, nrCompleted = 0, nrShadowed = 0
-    let sTotal = 0, sCompleted = 0, sShadowed = 0
     let coursesCompleted = 0
     const allTraineeRatings: number[] = []
 
     for (const cat of wsCats) {
       const bd = getCourseBreakdown(workshopId, cat.id)
-      nrTotal += bd.categories.total
-      nrCompleted += bd.categories.completed
-      nrShadowed += bd.categories.shadowed
-      sTotal += bd.sessions.total
-      sCompleted += bd.sessions.completed
-      sShadowed += bd.sessions.shadowed
+      nrTotal += bd.total
+      nrCompleted += bd.completed
+      nrShadowed += bd.shadowed
 
-      const catDone = bd.categories.completed + bd.categories.shadowed >= bd.categories.total
-      const sesDone = !bd.hasRecurring || (bd.sessions.completed + bd.sessions.shadowed >= bd.sessions.total)
-      if (catDone && sesDone && bd.categories.total > 0) coursesCompleted++
+      const catDone = bd.completed + bd.shadowed >= bd.total
+      if (catDone && bd.total > 0) coursesCompleted++
 
       const courseComps = completions.filter(c => c.workshop_id === workshopId && wsItems.some(mi => mi.id === c.category_id && mi.course_id === cat.id))
       for (const c of courseComps) {
@@ -85,8 +64,6 @@ export function TraineeProgress({ courses, categories, completions, workshops = 
       coursesCompleted,
       coursesTotal: wsCats.length,
       categories: { total: nrTotal, completed: nrCompleted, shadowed: nrShadowed, toDo: nrTotal - nrCompleted - nrShadowed },
-      sessions: { total: sTotal, completed: sCompleted, shadowed: sShadowed, toDo: Math.max(0, sTotal - sCompleted - sShadowed) },
-      hasSessions: sTotal > 0,
       avgTrainee: allTraineeRatings.length > 0 ? (allTraineeRatings.reduce((a, b) => a + b, 0) / allTraineeRatings.length).toFixed(1) : null,
     }
   }
@@ -163,14 +140,6 @@ export function TraineeProgress({ courses, categories, completions, workshops = 
                     {wsBd.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{wsBd.categories.shadowed} Shadowed</span></>}
                     {wsBd.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{wsBd.categories.toDo} To Do</span></>}
                   </p>
-                  {wsBd.hasSessions && (
-                    <p className="text-[11px] text-charcoal/40">
-                      {wsBd.sessions.completed + wsBd.sessions.shadowed} of {wsBd.sessions.total} Training Tasks
-                      {wsBd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{wsBd.sessions.completed} Completed</span></>}
-                      {wsBd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{wsBd.sessions.shadowed} Shadowed</span></>}
-                      {wsBd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{wsBd.sessions.toDo} To Do</span></>}
-                    </p>
-                  )}
                   {wsBd.avgTrainee && (
                     <p className="text-[11px] text-charcoal/30">My Confidence {wsBd.avgTrainee}</p>
                   )}
@@ -188,7 +157,7 @@ export function TraineeProgress({ courses, categories, completions, workshops = 
                   {wsCats.map(cat => {
                     const colour = cat.colour_hex ?? COURSE_COLOURS[cat.name] ?? '#C9A96E'
                     const bd = getCourseBreakdown(workshop.id, cat.id)
-                    const catPct = bd.categories.total > 0 ? Math.round(((bd.categories.completed + bd.categories.shadowed) / bd.categories.total) * 100) : 0
+                    const catPct = bd.total > 0 ? Math.round(((bd.completed + bd.shadowed) / bd.total) * 100) : 0
                     const courseComps = completions.filter(c => c.workshop_id === workshop.id && categories.some(mi => mi.id === c.category_id && mi.course_id === cat.id))
                     const traineeRatings = courseComps.map(c => c.trainee_rating).filter((r): r is number => r != null)
                     const avgTrainee = traineeRatings.length > 0 ? (traineeRatings.reduce((a, b) => a + b, 0) / traineeRatings.length).toFixed(1) : null
@@ -208,19 +177,11 @@ export function TraineeProgress({ courses, categories, completions, workshops = 
                               <p className="text-sm font-medium" style={{ color: colour }}>{catPct}%</p>
                             </div>
                             <p className="text-[11px] text-charcoal/40 mt-0.5">
-                              {bd.categories.completed + bd.categories.shadowed} of {bd.categories.total} Categories
-                              {bd.categories.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{bd.categories.completed} Completed</span></>}
-                              {bd.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.categories.shadowed} Shadowed</span></>}
-                              {bd.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.categories.toDo} To Do</span></>}
+                              {bd.completed + bd.shadowed} of {bd.total} Categories
+                              {bd.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{bd.completed} Completed</span></>}
+                              {bd.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.shadowed} Shadowed</span></>}
+                              {bd.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.toDo} To Do</span></>}
                             </p>
-                            {bd.hasRecurring && (
-                              <p className="text-[11px] text-charcoal/40 mt-0.5">
-                                {bd.sessions.completed + bd.sessions.shadowed} of {bd.sessions.total} Training Tasks
-                                {bd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{bd.sessions.completed} Completed</span></>}
-                                {bd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.sessions.shadowed} Shadowed</span></>}
-                                {bd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.sessions.toDo} To Do</span></>}
-                              </p>
-                            )}
                             {avgTrainee && (
                               <p className="text-[11px] text-charcoal/30 mt-0.5">
                                 My Confidence {avgTrainee}
