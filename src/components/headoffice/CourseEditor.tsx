@@ -343,7 +343,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       {/* Page header */}
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="font-serif text-2xl text-charcoal">Categories</h1>
+          <h1 className="font-serif text-2xl text-charcoal">Course Menu</h1>
           <p className="text-sm text-charcoal/40 mt-1">{menuItems.length} categories across {categories.length} courses</p>
         </div>
         <button
