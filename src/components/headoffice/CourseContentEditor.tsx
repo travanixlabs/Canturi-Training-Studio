@@ -429,7 +429,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                     </label>
                   )}
                   <div className="mt-3">
-                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description (optional)</label>
+                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
                     <input className="input" value={activeSubcategory.content} onChange={e => updateSubcategory(activeSubcategory.id, { content: e.target.value })} placeholder="PDF description" />
                   </div>
                 </div>
