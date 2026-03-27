@@ -128,7 +128,7 @@ export function WorkshopEditor({ workshop: initialWorkshop, courses, categories,
               className="input mt-1"
             />
           </div>
-          <div className="flex justify-end pt-1">
+          <div className="flex justify-start pt-1">
             <button
               onClick={handleSaveDetails}
               disabled={!name.trim() || saving}
