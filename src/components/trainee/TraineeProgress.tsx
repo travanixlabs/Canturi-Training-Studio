@@ -165,7 +165,7 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
                   </p>
                   {wsBd.hasSessions && (
                     <p className="text-[11px] text-charcoal/40">
-                      {wsBd.sessions.completed + wsBd.sessions.shadowed} of {wsBd.sessions.total} Sessions
+                      {wsBd.sessions.completed + wsBd.sessions.shadowed} of {wsBd.sessions.total} Training Tasks
                       {wsBd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{wsBd.sessions.completed} Completed</span></>}
                       {wsBd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{wsBd.sessions.shadowed} Shadowed</span></>}
                       {wsBd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{wsBd.sessions.toDo} To Do</span></>}
@@ -215,7 +215,7 @@ export function TraineeProgress({ categories, menuItems, completions, workshops 
                             </p>
                             {bd.hasRecurring && (
                               <p className="text-[11px] text-charcoal/40 mt-0.5">
-                                {bd.sessions.completed + bd.sessions.shadowed} of {bd.sessions.total} Sessions
+                                {bd.sessions.completed + bd.sessions.shadowed} of {bd.sessions.total} Training Tasks
                                 {bd.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{bd.sessions.completed} Completed</span></>}
                                 {bd.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{bd.sessions.shadowed} Shadowed</span></>}
                                 {bd.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{bd.sessions.toDo} To Do</span></>}

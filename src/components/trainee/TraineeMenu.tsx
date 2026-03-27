@@ -306,7 +306,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                                         </p>
                                         {isRec ? (
                                           <p className={`text-xs font-medium mt-0.5 ${recFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
-                                            {recDone} out of {recTotal} sessions completed
+                                            {recDone} out of {recTotal} training tasks completed
                                             {recDone > 0 && (() => {
                                               const bd = getRecurringBreakdown(item.id)
                                               return (

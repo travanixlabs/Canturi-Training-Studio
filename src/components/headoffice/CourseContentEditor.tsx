@@ -65,8 +65,8 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     if (!tags.trim()) { alert('Tags are required.'); return }
     if (!trainerType) { alert('Trainer type is required.'); return }
     if (!priorityLevel) { alert('Difficulty level is required.'); return }
-    if (isRecurring && (!recurringAmount || recurringAmount < 1)) { alert('Sessions Count is required when recurring is enabled.'); return }
-    if (isRecurring && !recurringTaskContent.trim()) { alert('Session Details content is required. Please fill in the Session page.'); setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false); return }
+    if (isRecurring && (!recurringAmount || recurringAmount < 1)) { alert('Training Tasks Count is required when recurring is enabled.'); return }
+    if (isRecurring && !recurringTaskContent.trim()) { alert('Training Task Details content is required. Please fill in the Training Task page.'); setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false); return }
     setSaving(true)
     await supabase.from('menu_items').update({
       title,
@@ -242,7 +242,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             </button>
 
             <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">
-              Modules · {modules.length}
+              Subcategories · {modules.length}
             </p>
 
             <div className="space-y-1">
@@ -283,7 +283,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
               className="w-full mt-3 px-3 py-2.5 rounded-xl flex items-center gap-3 border border-dashed border-charcoal/15 text-charcoal/40 hover:border-gold hover:text-gold transition-all"
             >
               <Plus size={14} />
-              <span className="text-sm">Add module</span>
+              <span className="text-sm">Add subcategory</span>
             </button>
 
             {/* Type selector */}
@@ -306,7 +306,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             {isRecurring && (
               <>
                 <div className="border-t border-black/5 mt-4 pt-4">
-                  <p className="text-xs font-medium text-charcoal/30 uppercase tracking-wider mb-2">Session</p>
+                  <p className="text-xs font-medium text-charcoal/30 uppercase tracking-wider mb-2">Training Task</p>
                 </div>
                 <button
                   onClick={() => { setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false) }}
@@ -317,7 +317,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                   }`}
                 >
                   <span className="w-5 h-5 rounded-full bg-charcoal/8 flex items-center justify-center text-[10px]">↻</span>
-                  <span className="truncate">Session Details</span>
+                  <span className="truncate">Training Task Details</span>
                   {!recurringTaskContent.trim() && (
                     <span className="text-red-400 text-xs ml-auto">*</span>
                   )}
@@ -406,12 +406,12 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                   >
                     <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform mx-1 ${isRecurring ? 'translate-x-4' : ''}`} />
                   </button>
-                  <span className="text-sm text-charcoal/70">Sessions</span>
+                  <span className="text-sm text-charcoal/70">Training Tasks</span>
                 </div>
 
                 <div className={`${isRecurring ? '' : 'opacity-30 pointer-events-none'}`}>
                   <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                    Sessions Count {isRecurring && <span className="text-red-400">*</span>}
+                    Training Tasks Count {isRecurring && <span className="text-red-400">*</span>}
                   </label>
                   <select
                     className="input w-24"
@@ -423,7 +423,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-charcoal/30 mt-1">Number of sessions to complete</p>
+                  <p className="text-xs text-charcoal/30 mt-1">Number of training tasks to complete</p>
                 </div>
               </div>
             </div>
@@ -435,17 +435,17 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
               <div className="flex items-center gap-2 mb-1">
                 {MODULE_TYPES.find(t => t.value === (activeModule.type ?? 'text'))?.icon}
                 <p className="text-xs text-charcoal/40 uppercase tracking-wider">
-                  {MODULE_TYPES.find(t => t.value === (activeModule.type ?? 'text'))?.label} · Module {modules.indexOf(activeModule) + 1} of {modules.length}
+                  {MODULE_TYPES.find(t => t.value === (activeModule.type ?? 'text'))?.label} · Subcategory {modules.indexOf(activeModule) + 1} of {modules.length}
                 </p>
               </div>
 
               <div className="mb-4">
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Module title</label>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Subcategory title</label>
                 <input
                   className="input font-serif text-xl"
                   value={activeModule.title}
                   onChange={e => updateModule(activeModule.id, { title: e.target.value })}
-                  placeholder="Module title"
+                  placeholder="Subcategory title"
                 />
               </div>
 
@@ -458,7 +458,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                     rows={16}
                     value={activeModule.content}
                     onChange={e => updateModule(activeModule.id, { content: e.target.value })}
-                    placeholder="Write the module content here.&#10;&#10;You can use paragraphs, numbered lists, or bullet points."
+                    placeholder="Write the subcategory content here.&#10;&#10;You can use paragraphs, numbered lists, or bullet points."
                   />
                 </div>
               )}
@@ -591,14 +591,14 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-charcoal/30">↻</span>
-                <p className="text-xs text-charcoal/40 uppercase tracking-wider">Session</p>
+                <p className="text-xs text-charcoal/40 uppercase tracking-wider">Training Task</p>
               </div>
 
               <div className="mb-4">
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>
                 <input
                   className="input font-serif text-xl bg-charcoal/3 cursor-not-allowed"
-                  value="Session Details"
+                  value="Training Task Details"
                   disabled
                 />
               </div>
@@ -612,7 +612,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                   rows={16}
                   value={recurringTaskContent}
                   onChange={e => setRecurringTaskContent(e.target.value)}
-                  placeholder="Describe what the employee must do each time they complete this session.&#10;&#10;For example: 'Perform a full ultrasonic clean cycle on 3 pieces. Log the piece types and any issues observed.'"
+                  placeholder="Describe what the employee must do each time they complete this training task.&#10;&#10;For example: 'Perform a full ultrasonic clean cycle on 3 pieces. Log the piece types and any issues observed.'"
                 />
               </div>
 
@@ -620,7 +620,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                 <div className="mt-6 pt-6 border-t border-black/5">
                   <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Preview</p>
                   <div className="card p-5">
-                    <h3 className="font-serif text-lg text-charcoal mb-3">Session Details</h3>
+                    <h3 className="font-serif text-lg text-charcoal mb-3">Training Task Details</h3>
                     <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap">
                       {recurringTaskContent}
                     </div>
@@ -634,8 +634,8 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
           {!activeModule && !editingCourseDetails && !editingRecurringTask && (
             <div className="text-center py-12">
               <p className="text-4xl mb-4">📖</p>
-              <p className="font-serif text-lg text-charcoal/60 mb-2">No modules yet</p>
-              <p className="text-sm text-charcoal/40 mb-6">Add modules to build out the category content.</p>
+              <p className="font-serif text-lg text-charcoal/60 mb-2">No subcategories yet</p>
+              <p className="text-sm text-charcoal/40 mb-6">Add subcategories to build out the category content.</p>
               <div className="flex flex-wrap justify-center gap-2">
                 {MODULE_TYPES.map(t => (
                   <button key={t.value} onClick={() => addModule(t.value)} className="btn-outline inline-flex items-center gap-2 text-sm">

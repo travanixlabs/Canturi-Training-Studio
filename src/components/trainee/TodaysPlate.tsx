@@ -410,7 +410,7 @@ function CourseGroup({
                   </p>
                   {item.isRecurring ? (
                     <p className={`text-xs font-medium mt-0.5 ${recurringFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
-                      {item.recurringDone} out of {item.recurringTotal} sessions completed
+                      {item.recurringDone} out of {item.recurringTotal} training tasks completed
                       {(item.recurringDone ?? 0) > 0 && item.recurringBreakdown && (
                         <span className="ml-1">
                           | {item.recurringBreakdown.shadowed > 0 && <span className="text-blue-600">{item.recurringBreakdown.shadowed} shadowed</span>}{item.recurringBreakdown.assigned > 0 && item.recurringBreakdown.shadowed > 0 && <span className="text-charcoal/30"> / </span>}{item.recurringBreakdown.assigned > 0 && <span className="text-green-600">{item.recurringBreakdown.assigned} completed</span>}

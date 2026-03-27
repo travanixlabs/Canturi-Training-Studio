@@ -378,7 +378,7 @@ function CourseToggleRow({
         )}
         <p className="text-[14px] text-charcoal leading-snug">{item.title}</p>
         {item.is_recurring && item.recurring_amount && (
-          <p className="text-xs text-charcoal/40 mt-0.5">Session — {item.recurring_amount} sessions</p>
+          <p className="text-xs text-charcoal/40 mt-0.5">Training Task — {item.recurring_amount} training tasks</p>
         )}
       </div>
       {toggling && (

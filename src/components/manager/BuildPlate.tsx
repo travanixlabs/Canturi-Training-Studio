@@ -785,7 +785,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                   {recurring.length > 0 && (
                                     <div className={nonRecurring.length > 0 ? 'border-t border-black/5' : ''}>
                                       <div className="pl-12 pr-5 pt-2 pb-1">
-                                        <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Session Categories</p>
+                                        <p className="text-[10px] font-semibold text-charcoal/30 uppercase tracking-widest">Training Task Categories</p>
                                       </div>
                                       <div className="divide-y divide-black/5">
                                         {recurring.map(item => (
@@ -948,7 +948,7 @@ function MenuItemRow({
         {isRecurringItem ? (
           <div className="mt-0.5">
             <p className={`text-xs font-medium ${recurringFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
-              {recurringFullyComplete ? 'Completed' : `${recurringDone} out of ${recurringTotal} sessions completed`}
+              {recurringFullyComplete ? 'Completed' : `${recurringDone} out of ${recurringTotal} training tasks completed`}
               {!recurringFullyComplete && recurringDone > 0 && (
                 <span className="ml-1">
                   | {shadowedSessionCount > 0 && <span className="text-blue-600">{shadowedSessionCount} shadowed</span>}{assignedSessionCount > 0 && shadowedSessionCount > 0 && <span className="text-charcoal/30"> / </span>}{assignedSessionCount > 0 && <span className="text-green-600">{assignedSessionCount} completed</span>}

@@ -191,7 +191,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     }`}
                   >
                     <span>↻</span>
-                    <span className="truncate max-w-[120px]">Session {recurringDone} / {recurringTotal}</span>
+                    <span className="truncate max-w-[120px]">Training Task {recurringDone} / {recurringTotal}</span>
                   </button>
                 )}
               </div>
@@ -199,7 +199,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
               {/* Desktop: vertical list */}
               <div className="hidden lg:block p-4">
                 <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">
-                  Modules · {completedCount}/{modules.length}
+                  Subcategories · {completedCount}/{modules.length}
                 </p>
                 <div className="space-y-1">
                   {modules.map((mod, i) => {
@@ -246,8 +246,8 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                         <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
                           viewingRecurringTask ? 'bg-blue-500 text-white' : allModulesComplete ? 'bg-charcoal/8 text-charcoal/40' : 'bg-charcoal/5 text-charcoal/15'
                         }`}>↻</span>
-                        <span className="text-sm">Session {recurringDone} / {recurringTotal}</span>
-                        {!allModulesComplete && <span className="text-[10px] text-charcoal/20 ml-auto">Complete modules first</span>}
+                        <span className="text-sm">Training Task {recurringDone} / {recurringTotal}</span>
+                        {!allModulesComplete && <span className="text-[10px] text-charcoal/20 ml-auto">Complete subcategories first</span>}
                       </button>
                     </>
                   )}
@@ -263,7 +263,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                 <div className="flex items-center gap-2 mb-1">
                   <BookOpen size={14} className="text-charcoal/30" />
                   <p className="text-xs text-charcoal/40 uppercase tracking-wider">
-                    Module {modules.indexOf(activeModule) + 1} of {modules.length}
+                    Subcategory {modules.indexOf(activeModule) + 1} of {modules.length}
                   </p>
                 </div>
                 <h2 className="font-serif text-xl text-charcoal mb-4">{activeModule.title}</h2>
@@ -283,9 +283,9 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     }`}
                   >
                     {isModuleComplete(activeModule.id) ? (
-                      <><Check size={16} /> Module completed</>
+                      <><Check size={16} /> Subcategory completed</>
                     ) : (
-                      <>Mark module as done</>
+                      <>Mark subcategory as done</>
                     )}
                   </button>
                 )}
@@ -330,7 +330,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     onClick={() => setViewingRecurringTask(true)}
                     className="btn-gold w-full"
                   >
-                    Session Details
+                    Training Task Details
                   </button>
                 )}
               </div>
@@ -341,9 +341,9 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-charcoal/30">↻</span>
-                  <p className="text-xs text-charcoal/40 uppercase tracking-wider">Session</p>
+                  <p className="text-xs text-charcoal/40 uppercase tracking-wider">Training Task</p>
                 </div>
-                <h2 className="font-serif text-xl text-charcoal mb-4">Session Details</h2>
+                <h2 className="font-serif text-xl text-charcoal mb-4">Training Task Details</h2>
 
                 {menuItem.recurring_task_content && (
                   <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap mb-6">
@@ -354,7 +354,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                 {/* Progress */}
                 <div className="card p-4 mb-6">
                   <div className="flex justify-between text-sm mb-1.5">
-                    <span className="text-charcoal/60">Session progress</span>
+                    <span className="text-charcoal/60">Training Task progress</span>
                     <span className={`font-medium ${recurringFullyComplete ? 'text-green-600' : recurringDone > 0 ? 'text-blue-600' : 'text-charcoal'}`}>
                       {recurringDone}/{recurringTotal}
                     </span>
@@ -366,7 +366,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                     />
                   </div>
                   <p className={`text-xs mt-2 ${recurringFullyComplete ? 'text-green-600' : 'text-charcoal/40'}`}>
-                    {recurringDone} out of {recurringTotal} sessions completed
+                    {recurringDone} out of {recurringTotal} training tasks completed
                     {recurringDone > 0 && (
                       <span className="ml-1">
                         | {shadowedSessionCount > 0 && <span className="text-blue-600">{shadowedSessionCount} shadowed</span>}{assignedSessionCount > 0 && shadowedSessionCount > 0 && <span className="text-charcoal/30"> / </span>}{assignedSessionCount > 0 && <span className="text-green-600">{assignedSessionCount} completed</span>}
@@ -378,14 +378,14 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                 {/* Session history log */}
                 {sessionHistory.length > 0 && (
                   <div className="mb-6">
-                    <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Session History</p>
+                    <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Training Task History</p>
                     <div className="space-y-2">
                       {sessionHistory.map((entry, idx) => {
                         const sessionNum = sessionHistory.length - idx
                         return (
                         <div key={entry.id} className="card p-4">
                           <p className="text-xs font-medium text-charcoal/50 mb-1">
-                            <span className="text-charcoal font-semibold">Session {sessionNum}</span>
+                            <span className="text-charcoal font-semibold">Training Task {sessionNum}</span>
                             {' · '}
                             {new Date(entry.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}
                             {' '}
@@ -407,7 +407,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                 {!courseCompleted && !recurringFullyComplete && (
                   <div className="mb-6">
                     <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                      Session Notes <span className="text-red-400">*</span>
+                      Training Task Notes <span className="text-red-400">*</span>
                     </label>
                     <textarea
                       className="textarea font-sans text-sm leading-relaxed mb-3"
@@ -421,7 +421,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                       disabled={markingRecurring || !sessionNotes.trim()}
                       className={`btn-gold w-full ${!sessionNotes.trim() ? 'opacity-40 cursor-not-allowed' : ''}`}
                     >
-                      {markingRecurring ? 'Saving...' : 'Mark session as done'}
+                      {markingRecurring ? 'Saving...' : 'Mark training task as done'}
                     </button>
                   </div>
                 )}
