@@ -44,6 +44,19 @@ export interface Category {
   course?: Course
 }
 
+export type SubcategoryType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
+
+export interface Subcategory {
+  id: string
+  category_id: string
+  title: string
+  type: SubcategoryType
+  content: string
+  file_url: string | null
+  sort_order: number
+  created_at: string
+}
+
 export interface Workshop {
   id: string
   name: string

@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Save, Check } from 'lucide-react'
+import { ArrowLeft, Save, Check, Plus, Trash2, ChevronUp, ChevronDown, FileText, Globe, Image, Video, FileUp, Upload } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Category, Course, TrainerType, DifficultyLevel } from '@/types'
+import type { Category, Course, Subcategory, SubcategoryType, TrainerType, DifficultyLevel } from '@/types'
 
 const TRAINER_TYPES: TrainerType[] = ['Self', 'Manager', 'Self/Manager']
 const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
@@ -14,31 +14,48 @@ const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
   { value: 'advanced', label: 'Advanced' },
 ]
 
+const SUBCATEGORY_TYPES: { value: SubcategoryType; label: string; icon: React.ReactNode }[] = [
+  { value: 'text', label: 'Text', icon: <FileText size={16} /> },
+  { value: 'webpage', label: 'Webpage', icon: <Globe size={16} /> },
+  { value: 'image', label: 'Image', icon: <Image size={16} /> },
+  { value: 'video', label: 'Video', icon: <Video size={16} /> },
+  { value: 'pdf', label: 'PDF', icon: <FileUp size={16} /> },
+]
+
 interface Props {
   categoryItem: Category
-  categories: Course[]
+  courses: Course[]
+  subcategories: Subcategory[]
 }
 
-export function CourseContentEditor({ categoryItem: initialItem, categories }: Props) {
+export function CourseContentEditor({ categoryItem: initialItem, courses, subcategories: initialSubcategories }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
-  // Course fields
+  // Category fields
   const [title, setTitle] = useState(initialItem.title)
   const [description, setDescription] = useState(initialItem.description)
-  const [categoryId, setCategoryId] = useState(initialItem.course_id)
   const [tags, setTags] = useState(initialItem.tags?.join(', ') ?? '')
   const [trainerType, setTrainerType] = useState<TrainerType>(initialItem.trainer_type)
   const [priorityLevel, setPriorityLevel] = useState<DifficultyLevel | ''>(initialItem.difficulty_level ?? '')
+
+  // Subcategories
+  const [subcategories, setSubcategories] = useState<Subcategory[]>(initialSubcategories)
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<string | null>(null)
+  const [editingCategoryDetails, setEditingCategoryDetails] = useState(true)
+  const [showTypeSelector, setShowTypeSelector] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   // State
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  async function saveCourse() {
+  const activeSubcategory = subcategories.find(s => s.id === selectedSubcategoryId)
+  const course = courses.find(c => c.id === initialItem.course_id)
+
+  async function saveCategory() {
     if (!title.trim()) { alert('Title is required.'); return }
     if (!description.trim()) { alert('Description is required.'); return }
-    if (!categoryId) { alert('Course is required.'); return }
     if (!tags.trim()) { alert('Tags are required.'); return }
     if (!trainerType) { alert('Trainer type is required.'); return }
     if (!priorityLevel) { alert('Difficulty level is required.'); return }
@@ -46,7 +63,6 @@ export function CourseContentEditor({ categoryItem: initialItem, categories }: P
     await supabase.from('categories').update({
       title,
       description,
-      course_id: categoryId,
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
       trainer_type: trainerType,
       difficulty_level: priorityLevel || null,
@@ -56,11 +72,83 @@ export function CourseContentEditor({ categoryItem: initialItem, categories }: P
     setTimeout(() => setSaved(false), 2000)
   }
 
+  async function addSubcategory(type: SubcategoryType) {
+    const newOrder = subcategories.length
+    const typeLabel = SUBCATEGORY_TYPES.find(t => t.value === type)?.label ?? type
+    const { data, error } = await supabase.from('subcategories').insert({
+      category_id: initialItem.id,
+      title: `${typeLabel} ${newOrder + 1}`,
+      type,
+      content: '',
+      file_url: null,
+      sort_order: newOrder,
+    }).select().single()
+
+    if (!error && data) {
+      setSubcategories(prev => [...prev, data as Subcategory])
+      setSelectedSubcategoryId(data.id)
+      setEditingCategoryDetails(false)
+      setShowTypeSelector(false)
+    }
+  }
+
+  async function updateSubcategory(id: string, updates: Partial<Subcategory>) {
+    setSubcategories(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
+    await supabase.from('subcategories').update(updates).eq('id', id)
+  }
+
+  async function deleteSubcategory(id: string) {
+    setSubcategories(prev => prev.filter(s => s.id !== id))
+    await supabase.from('subcategories').delete().eq('id', id)
+    if (selectedSubcategoryId === id) {
+      setSelectedSubcategoryId(subcategories.find(s => s.id !== id)?.id ?? null)
+      if (subcategories.length <= 1) setEditingCategoryDetails(true)
+    }
+  }
+
+  async function moveSubcategory(id: string, direction: 'up' | 'down') {
+    const idx = subcategories.findIndex(s => s.id === id)
+    if (direction === 'up' && idx <= 0) return
+    if (direction === 'down' && idx >= subcategories.length - 1) return
+
+    const newList = [...subcategories]
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    ;[newList[idx], newList[swapIdx]] = [newList[swapIdx], newList[idx]]
+
+    const updated = newList.map((s, i) => ({ ...s, sort_order: i }))
+    setSubcategories(updated)
+
+    await Promise.all(
+      updated.map(s => supabase.from('subcategories').update({ sort_order: s.sort_order }).eq('id', s.id))
+    )
+  }
+
+  async function handleFileUpload(subcategoryId: string, file: File) {
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `subcategories/${subcategoryId}/${Date.now()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('module-files')
+      .upload(path, file, { upsert: true })
+
+    if (uploadError) {
+      alert('Upload failed: ' + uploadError.message)
+      setUploading(false)
+      return
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('module-files')
+      .getPublicUrl(path)
+
+    await updateSubcategory(subcategoryId, { file_url: urlData.publicUrl })
+    setUploading(false)
+  }
+
   function handleBack() {
     router.push('/head-office/courses')
   }
-
-  const category = categories.find(c => c.id === categoryId)
 
   return (
     <div className="min-h-screen bg-ivory">
@@ -70,14 +158,14 @@ export function CourseContentEditor({ categoryItem: initialItem, categories }: P
           <ArrowLeft size={20} />
         </button>
         <div className="flex-1 min-w-0">
-          {category && (
-            <CourseBadge courseName={category.name} icon={category.icon} />
+          {course && (
+            <CourseBadge courseName={course.name} icon={course.icon} />
           )}
-          <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{title || 'Untitled Course'}</h1>
+          <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{title || 'Untitled Category'}</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={saveCourse}
+            onClick={saveCategory}
             disabled={saving}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-gold text-white hover:bg-gold/90 transition-colors"
           >
@@ -86,68 +174,349 @@ export function CourseContentEditor({ categoryItem: initialItem, categories }: P
         </div>
       </div>
 
-      {/* Main content area */}
-      <div className="flex-1 px-5 py-6 max-w-3xl">
-        <div className="space-y-5">
-          <h2 className="font-serif text-xl text-charcoal">Course Details</h2>
-
-          <div>
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>
-            <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
+      <div className="flex flex-col lg:flex-row">
+        {/* Subcategory sidebar */}
+        <div className="lg:w-72 lg:min-h-[calc(100vh-57px)] lg:border-r border-b lg:border-b-0 border-black/5 bg-white">
+          {/* Mobile: horizontal strip */}
+          <div className="lg:hidden px-4 py-3 flex gap-2 overflow-x-auto">
+            <button
+              onClick={() => { setEditingCategoryDetails(true); setSelectedSubcategoryId(null) }}
+              className={`px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border transition-all ${
+                editingCategoryDetails
+                  ? 'border-gold bg-gold/10 text-gold'
+                  : 'border-charcoal/10 text-charcoal/50'
+              }`}
+            >
+              Category Details
+            </button>
+            {subcategories.map((sub, i) => (
+              <button
+                key={sub.id}
+                onClick={() => { setSelectedSubcategoryId(sub.id); setEditingCategoryDetails(false) }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border transition-all ${
+                  selectedSubcategoryId === sub.id && !editingCategoryDetails
+                    ? 'border-gold bg-gold/10 text-gold'
+                    : 'border-charcoal/10 text-charcoal/50'
+                }`}
+              >
+                <span>{i + 1}</span>
+                <span className="truncate max-w-[120px]">{sub.title}</span>
+              </button>
+            ))}
+            <button
+              onClick={() => setShowTypeSelector(true)}
+              className="px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border border-dashed border-charcoal/15 text-charcoal/40 hover:border-gold hover:text-gold transition-all"
+            >
+              <Plus size={12} />
+            </button>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description</label>
-            <textarea className="textarea" rows={4} value={description} onChange={e => setDescription(e.target.value)} />
-          </div>
+          {/* Desktop: vertical list */}
+          <div className="hidden lg:block p-4">
+            <button
+              onClick={() => { setEditingCategoryDetails(true); setSelectedSubcategoryId(null) }}
+              className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all mb-3 ${
+                editingCategoryDetails
+                  ? 'bg-gold/10 text-gold'
+                  : 'hover:bg-charcoal/3 text-charcoal/70'
+              }`}
+            >
+              <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs">⚙</span>
+              <span className="text-sm font-medium">Category Details</span>
+            </button>
 
-          <div>
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Course</label>
-            <select className="input" value={categoryId} onChange={e => setCategoryId(e.target.value)}>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-              ))}
-            </select>
-          </div>
+            <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">
+              Subcategories · {subcategories.length}
+            </p>
 
-          <div>
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Tags (comma-separated)</label>
-            <input className="input" value={tags} onChange={e => setTags(e.target.value)} placeholder="engraving, services, personalisation" />
-          </div>
+            <div className="space-y-1">
+              {subcategories.map((sub, i) => (
+                <div key={sub.id} className="group flex items-center gap-1">
+                  <button
+                    onClick={() => { setSelectedSubcategoryId(sub.id); setEditingCategoryDetails(false) }}
+                    className={`flex-1 text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
+                      selectedSubcategoryId === sub.id && !editingCategoryDetails
+                        ? 'bg-gold/10 text-gold'
+                        : 'hover:bg-charcoal/3 text-charcoal/70'
+                    }`}
+                  >
+                    <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm truncate">{sub.title}</span>
+                  </button>
 
-          <div>
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Trainer type</label>
-            <div className="flex gap-2">
-              {TRAINER_TYPES.map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTrainerType(t)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                    trainerType === t ? 'border-gold bg-gold/10 text-gold' : 'border-charcoal/15 text-charcoal/50'
-                  }`}
-                >
-                  {t}
-                </button>
+                  <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
+                    <button onClick={() => moveSubcategory(sub.id, 'up')} className="p-1 text-charcoal/20 hover:text-charcoal/50">
+                      <ChevronUp size={12} />
+                    </button>
+                    <button onClick={() => moveSubcategory(sub.id, 'down')} className="p-1 text-charcoal/20 hover:text-charcoal/50">
+                      <ChevronDown size={12} />
+                    </button>
+                    <button onClick={() => deleteSubcategory(sub.id)} className="p-1 text-charcoal/20 hover:text-red-500">
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Difficulty level</label>
-            <div className="flex gap-2">
-              {DIFFICULTY_LEVELS.map(p => (
-                <button
-                  key={p.value}
-                  onClick={() => setPriorityLevel(priorityLevel === p.value ? '' : p.value)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
-                    priorityLevel === p.value ? 'border-gold bg-gold/10 text-gold' : 'border-charcoal/15 text-charcoal/50'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={() => setShowTypeSelector(true)}
+              className="w-full mt-3 px-3 py-2.5 rounded-xl flex items-center gap-3 border border-dashed border-charcoal/15 text-charcoal/40 hover:border-gold hover:text-gold transition-all"
+            >
+              <Plus size={14} />
+              <span className="text-sm">Add subcategory</span>
+            </button>
+
+            {/* Type selector */}
+            {showTypeSelector && (
+              <div className="mt-2 space-y-1">
+                {SUBCATEGORY_TYPES.map(t => (
+                  <button
+                    key={t.value}
+                    onClick={() => addSubcategory(t.value)}
+                    className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 hover:bg-gold/5 text-charcoal/60 hover:text-gold transition-all"
+                  >
+                    {t.icon}
+                    <span className="text-sm">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Main content area */}
+        <div className="flex-1 px-5 py-6 max-w-3xl">
+          {/* Category details editor */}
+          {editingCategoryDetails && (
+            <div className="space-y-5">
+              <h2 className="font-serif text-xl text-charcoal">Category Details</h2>
+
+              <div>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>
+                <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description</label>
+                <textarea className="textarea" rows={4} value={description} onChange={e => setDescription(e.target.value)} />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Course</label>
+                <select className="input bg-charcoal/3 cursor-not-allowed" value={initialItem.course_id} disabled>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Tags (comma-separated)</label>
+                <input className="input" value={tags} onChange={e => setTags(e.target.value)} placeholder="engraving, services, personalisation" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Trainer type</label>
+                <div className="flex gap-2">
+                  {TRAINER_TYPES.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setTrainerType(t)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                        trainerType === t ? 'border-gold bg-gold/10 text-gold' : 'border-charcoal/15 text-charcoal/50'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Difficulty level</label>
+                <div className="flex gap-2">
+                  {DIFFICULTY_LEVELS.map(p => (
+                    <button
+                      key={p.value}
+                      onClick={() => setPriorityLevel(priorityLevel === p.value ? '' : p.value)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                        priorityLevel === p.value ? 'border-gold bg-gold/10 text-gold' : 'border-charcoal/15 text-charcoal/50'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Subcategory content editor */}
+          {activeSubcategory && !editingCategoryDetails && (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                {SUBCATEGORY_TYPES.find(t => t.value === activeSubcategory.type)?.icon}
+                <p className="text-xs text-charcoal/40 uppercase tracking-wider">
+                  {SUBCATEGORY_TYPES.find(t => t.value === activeSubcategory.type)?.label} · Subcategory {subcategories.indexOf(activeSubcategory) + 1} of {subcategories.length}
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Subcategory title</label>
+                <input
+                  className="input font-serif text-xl"
+                  value={activeSubcategory.title}
+                  onChange={e => updateSubcategory(activeSubcategory.id, { title: e.target.value })}
+                  placeholder="Subcategory title"
+                />
+              </div>
+
+              {/* Text */}
+              {activeSubcategory.type === 'text' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Content</label>
+                  <textarea
+                    className="textarea font-sans text-sm leading-relaxed"
+                    rows={16}
+                    value={activeSubcategory.content}
+                    onChange={e => updateSubcategory(activeSubcategory.id, { content: e.target.value })}
+                    placeholder="Write the subcategory content here."
+                  />
+                </div>
+              )}
+
+              {/* Webpage */}
+              {activeSubcategory.type === 'webpage' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Webpage URL</label>
+                  <input
+                    className="input"
+                    value={activeSubcategory.content}
+                    onChange={e => updateSubcategory(activeSubcategory.id, { content: e.target.value })}
+                    placeholder="https://example.com"
+                    type="url"
+                  />
+                  {activeSubcategory.content && (
+                    <div className="mt-4 card overflow-hidden" style={{ height: '500px' }}>
+                      <iframe src={activeSubcategory.content} className="w-full h-full border-0" title={activeSubcategory.title} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Image */}
+              {activeSubcategory.type === 'image' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Image</label>
+                  {activeSubcategory.file_url ? (
+                    <div className="space-y-3">
+                      <img src={activeSubcategory.file_url} alt={activeSubcategory.title} className="max-w-full rounded-xl border border-black/5" />
+                      <button onClick={() => updateSubcategory(activeSubcategory.id, { file_url: null })} className="text-xs text-red-500 hover:text-red-700">
+                        Remove image
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
+                      <Upload size={24} className="text-charcoal/30" />
+                      <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload an image'}</p>
+                      <p className="text-xs text-charcoal/25">PNG, JPEG, WebP</p>
+                      <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleFileUpload(activeSubcategory.id, e.target.files[0])} />
+                    </label>
+                  )}
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
+                    <input className="input" value={activeSubcategory.content} onChange={e => updateSubcategory(activeSubcategory.id, { content: e.target.value })} placeholder="Image caption" />
+                  </div>
+                </div>
+              )}
+
+              {/* Video */}
+              {activeSubcategory.type === 'video' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Video</label>
+                  {activeSubcategory.file_url ? (
+                    <div className="space-y-3">
+                      <video src={activeSubcategory.file_url} controls className="max-w-full rounded-xl" />
+                      <button onClick={() => updateSubcategory(activeSubcategory.id, { file_url: null })} className="text-xs text-red-500 hover:text-red-700">
+                        Remove video
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
+                      <Upload size={24} className="text-charcoal/30" />
+                      <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload a video'}</p>
+                      <p className="text-xs text-charcoal/25">MP4, WebM, MOV</p>
+                      <input type="file" accept="video/*" className="hidden" onChange={e => e.target.files?.[0] && handleFileUpload(activeSubcategory.id, e.target.files[0])} />
+                    </label>
+                  )}
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description (optional)</label>
+                    <input className="input" value={activeSubcategory.content} onChange={e => updateSubcategory(activeSubcategory.id, { content: e.target.value })} placeholder="Video description" />
+                  </div>
+                </div>
+              )}
+
+              {/* PDF */}
+              {activeSubcategory.type === 'pdf' && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">PDF Document</label>
+                  {activeSubcategory.file_url ? (
+                    <div className="space-y-3">
+                      <div className="card overflow-hidden" style={{ height: '600px' }}>
+                        <iframe src={activeSubcategory.file_url} className="w-full h-full border-0" title={activeSubcategory.title} />
+                      </div>
+                      <button onClick={() => updateSubcategory(activeSubcategory.id, { file_url: null })} className="text-xs text-red-500 hover:text-red-700">
+                        Remove PDF
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
+                      <Upload size={24} className="text-charcoal/30" />
+                      <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload a PDF'}</p>
+                      <p className="text-xs text-charcoal/25">PDF files only</p>
+                      <input type="file" accept=".pdf" className="hidden" onChange={e => e.target.files?.[0] && handleFileUpload(activeSubcategory.id, e.target.files[0])} />
+                    </label>
+                  )}
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description (optional)</label>
+                    <input className="input" value={activeSubcategory.content} onChange={e => updateSubcategory(activeSubcategory.id, { content: e.target.value })} placeholder="PDF description" />
+                  </div>
+                </div>
+              )}
+
+              {/* Text preview */}
+              {activeSubcategory.type === 'text' && activeSubcategory.content && (
+                <div className="mt-6 pt-6 border-t border-black/5">
+                  <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">Preview</p>
+                  <div className="card p-5">
+                    <h3 className="font-serif text-lg text-charcoal mb-3">{activeSubcategory.title}</h3>
+                    <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap">
+                      {activeSubcategory.content}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!activeSubcategory && !editingCategoryDetails && (
+            <div className="text-center py-12">
+              <p className="text-4xl mb-4">📖</p>
+              <p className="font-serif text-lg text-charcoal/60 mb-2">No subcategories yet</p>
+              <p className="text-sm text-charcoal/40 mb-6">Add subcategories to build out the category content.</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {SUBCATEGORY_TYPES.map(t => (
+                  <button key={t.value} onClick={() => addSubcategory(t.value)} className="btn-outline inline-flex items-center gap-2 text-sm">
+                    {t.icon} {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
