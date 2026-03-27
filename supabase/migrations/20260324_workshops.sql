@@ -7,22 +7,22 @@ CREATE TABLE workshops (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Many-to-many: workshops <-> menu_items
-CREATE TABLE workshop_menu_items (
+-- Many-to-many: workshops <-> categories
+CREATE TABLE workshop_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   workshop_id UUID NOT NULL REFERENCES workshops(id) ON DELETE CASCADE,
-  menu_item_id UUID NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (workshop_id, menu_item_id)
+  UNIQUE (workshop_id, category_id)
 );
 
 -- Indexes for fast lookups
-CREATE INDEX idx_workshop_menu_items_workshop ON workshop_menu_items(workshop_id);
-CREATE INDEX idx_workshop_menu_items_menu_item ON workshop_menu_items(menu_item_id);
+CREATE INDEX idx_workshop_categories_workshop ON workshop_categories(workshop_id);
+CREATE INDEX idx_workshop_categories_menu_item ON workshop_categories(category_id);
 
 -- Enable RLS
 ALTER TABLE workshops ENABLE ROW LEVEL SECURITY;
-ALTER TABLE workshop_menu_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workshop_categories ENABLE ROW LEVEL SECURITY;
 
 -- Policies: all authenticated users can read, head_office can write
 CREATE POLICY "Authenticated users can read workshops"
@@ -37,11 +37,11 @@ CREATE POLICY "Head office can manage workshops"
     EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'head_office')
   );
 
-CREATE POLICY "Authenticated users can read workshop_menu_items"
-  ON workshop_menu_items FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Authenticated users can read workshop_categories"
+  ON workshop_categories FOR SELECT TO authenticated USING (true);
 
-CREATE POLICY "Head office can manage workshop_menu_items"
-  ON workshop_menu_items FOR ALL TO authenticated
+CREATE POLICY "Head office can manage workshop_categories"
+  ON workshop_categories FOR ALL TO authenticated
   USING (
     EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role = 'head_office')
   )

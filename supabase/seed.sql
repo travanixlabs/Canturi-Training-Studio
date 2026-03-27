@@ -22,9 +22,9 @@ insert into public.courses (id, name, icon, colour_hex, sort_order) values
   ('22222222-0000-0000-0000-000000000007', 'Client Experience', '❋', '#9A6B70', 7);
 
 -- ─────────────────────────────────────────
--- MENU ITEMS — Services
+-- CATEGORIES — Services
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.categories (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Ultrasonic Clean',
     'Learn to operate the ultrasonic cleaning machine safely. Understand which pieces can and cannot go in — no pearls, emeralds, treated stones, or glued settings. Demonstrate correct solution levels and cycle times.',
@@ -77,9 +77,9 @@ insert into public.menu_items (title, description, course_id, tags, time_needed,
   );
 
 -- ─────────────────────────────────────────
--- MENU ITEMS — Product Knowledge
+-- CATEGORIES — Product Knowledge
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.categories (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Canturi Collections Overview',
     'Deep-dive into all current Canturi collections — design philosophy, signature elements, price architecture, and target client profiles. Be able to speak fluently about each collection without referencing notes.',
@@ -122,9 +122,9 @@ insert into public.menu_items (title, description, course_id, tags, time_needed,
   );
 
 -- ─────────────────────────────────────────
--- MENU ITEMS — Boutique
+-- CATEGORIES — Boutique
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.categories (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Opening Procedure',
     'Complete the full boutique opening sequence — safe access, case setup, lighting, display refresh, POS login, and morning team briefing. Be able to open independently within your first two weeks.',
@@ -157,9 +157,9 @@ insert into public.menu_items (title, description, course_id, tags, time_needed,
   );
 
 -- ─────────────────────────────────────────
--- MENU ITEMS — Administration
+-- CATEGORIES — Administration
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.categories (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'RECAP System',
     'Learn the RECAP CRM system — creating client profiles, logging interactions, adding purchase history, and running client lookup. Every client interaction should be recorded same day.',
@@ -192,9 +192,9 @@ insert into public.menu_items (title, description, course_id, tags, time_needed,
   );
 
 -- ─────────────────────────────────────────
--- MENU ITEMS — Diamonds
+-- CATEGORIES — Diamonds
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.categories (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'The 4Cs — Cut, Colour, Clarity, Carat',
     'Master the 4Cs framework and be able to explain each C to a client in plain, engaging language. Know how Canturi uses the 4Cs in sourcing decisions and how to guide a client through trade-offs.',
@@ -227,9 +227,9 @@ insert into public.menu_items (title, description, course_id, tags, time_needed,
   );
 
 -- ─────────────────────────────────────────
--- MENU ITEMS — Deliveries
+-- CATEGORIES — Deliveries
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.categories (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Receiving Stock',
     'Full stock receiving process — signing off delivery, checking contents against the packing slip, condition assessment, photography, and entering new stock into the system accurately.',
@@ -252,9 +252,9 @@ insert into public.menu_items (title, description, course_id, tags, time_needed,
   );
 
 -- ─────────────────────────────────────────
--- MENU ITEMS — Client Experience
+-- CATEGORIES — Client Experience
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.categories (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'The Canturi Welcome',
     'The first 60 seconds of a client''s visit sets the tone. Learn the Canturi welcome — eye contact, greeting, offer of water, and how to read whether a client wants to browse or be guided.',
@@ -302,31 +302,31 @@ insert into public.menu_items (title, description, course_id, tags, time_needed,
 -- ─────────────────────────────────────────
 
 -- Diamond Certificates requires: The 4Cs
-update public.menu_items
+update public.categories
 set prerequisites = array(
-  select id from public.menu_items where title = 'The 4Cs — Cut, Colour, Clarity, Carat'
+  select id from public.categories where title = 'The 4Cs — Cut, Colour, Clarity, Carat'
 )
 where title = 'Diamond Certificates';
 
 -- Engagement Consultation requires: The 4Cs + Diamond Certificates
-update public.menu_items
+update public.categories
 set prerequisites = array(
-  select id from public.menu_items
+  select id from public.categories
   where title in ('The 4Cs — Cut, Colour, Clarity, Carat', 'Diamond Certificates')
 )
 where title = 'Engagement Consultation';
 
 -- Repairs & Alterations requires: JCS Repairs System
-update public.menu_items
+update public.categories
 set prerequisites = array(
-  select id from public.menu_items where title = 'JCS Repairs System'
+  select id from public.categories where title = 'JCS Repairs System'
 )
 where title = 'Repairs & Alterations';
 
 -- Closing Procedure requires: Opening Procedure
-update public.menu_items
+update public.categories
 set prerequisites = array(
-  select id from public.menu_items where title = 'Opening Procedure'
+  select id from public.categories where title = 'Opening Procedure'
 )
 where title = 'Closing Procedure';
 

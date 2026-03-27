@@ -56,7 +56,7 @@ export function CourseDetail({ categoryItem, modules, moduleCompletions: initial
   const shadowedSessionCount = recurringDone - assignedSessionCount
 
   const isModuleComplete = (moduleId: string) =>
-    completedModules.some(mc => mc.subcourse_id === moduleId && mc.trainee_id === currentUser.id)
+    completedModules.some(mc => mc.subcategory_id === moduleId && mc.trainee_id === currentUser.id)
 
   const completedCount = useMemo(
     () => modules.filter(m => isModuleComplete(m.id)).length,
@@ -73,14 +73,14 @@ export function CourseDetail({ categoryItem, modules, moduleCompletions: initial
   }, [selectedModuleId, modules, completedModules, viewingRecurringTask])
 
   async function toggleModuleComplete(moduleId: string) {
-    const existing = completedModules.find(mc => mc.subcourse_id === moduleId && mc.trainee_id === currentUser.id)
+    const existing = completedModules.find(mc => mc.subcategory_id === moduleId && mc.trainee_id === currentUser.id)
 
     if (existing) {
       setCompletedModules(prev => prev.filter(mc => mc.id !== existing.id))
       await supabase.from('subcategory_completions').delete().eq('id', existing.id)
     } else {
       const { data, error } = await supabase.from('subcategory_completions').insert({
-        subcourse_id: moduleId,
+        subcategory_id: moduleId,
         trainee_id: currentUser.id,
         workshop_id: plate?.workshop_id ?? null,
       }).select().single()

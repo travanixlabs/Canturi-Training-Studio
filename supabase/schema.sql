@@ -61,9 +61,9 @@ create policy "Courses are viewable by authenticated users" on public.courses
   for select using (auth.role() = 'authenticated');
 
 -- ─────────────────────────────────────────
--- MENU ITEMS
+-- CATEGORIES
 -- ─────────────────────────────────────────
-create table public.menu_items (
+create table public.categories (
   id uuid primary key default uuid_generate_v4(),
   title text not null,
   description text not null default '',
@@ -81,14 +81,14 @@ create table public.menu_items (
   created_at timestamptz default now()
 );
 
-alter table public.menu_items enable row level security;
-create policy "Menu items viewable by authenticated users" on public.menu_items
+alter table public.categories enable row level security;
+create policy "Categories viewable by authenticated users" on public.categories
   for select using (auth.role() = 'authenticated');
-create policy "Managers can insert menu items" on public.menu_items
+create policy "Managers can insert categories" on public.categories
   for insert with check (
     exists (select 1 from public.users where id = auth.uid() and role in ('manager', 'head_office'))
   );
-create policy "Managers can update menu items" on public.menu_items
+create policy "Managers can update categories" on public.categories
   for update using (
     exists (select 1 from public.users where id = auth.uid() and role in ('manager', 'head_office'))
   );
@@ -99,12 +99,12 @@ create policy "Managers can update menu items" on public.menu_items
 create table public.plates (
   id uuid primary key default uuid_generate_v4(),
   trainee_id uuid not null references public.users(id),
-  menu_item_id uuid not null references public.menu_items(id),
+  category_id uuid not null references public.categories(id),
   assigned_by uuid not null references public.users(id),
   date_assigned date not null default current_date,
   boutique_id uuid references public.boutiques(id),
   created_at timestamptz default now(),
-  unique(trainee_id, menu_item_id, date_assigned)
+  unique(trainee_id, category_id, date_assigned)
 );
 
 alter table public.plates enable row level security;
@@ -138,7 +138,7 @@ create policy "Managers can delete plates" on public.plates
 create table public.completions (
   id uuid primary key default uuid_generate_v4(),
   plate_id uuid references public.plates(id),
-  menu_item_id uuid not null references public.menu_items(id),
+  category_id uuid not null references public.categories(id),
   trainee_id uuid not null references public.users(id),
   trainer_id uuid references public.users(id),
   -- Trainee fields
@@ -155,7 +155,7 @@ create table public.completions (
   completed_date date not null default current_date,
   is_shadowing_moment boolean not null default false,
   created_at timestamptz default now(),
-  unique(trainee_id, menu_item_id) -- one completion record per trainee per item
+  unique(trainee_id, category_id) -- one completion record per trainee per item
 );
 
 alter table public.completions enable row level security;
