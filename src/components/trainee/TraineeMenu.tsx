@@ -4,42 +4,22 @@ import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { COURSE_COLOURS } from '@/types'
-import type { Course, Category, Completion, User, Plate, Workshop, WorkshopCategory } from '@/types'
+import type { Course, Category, User, Workshop, WorkshopCategory } from '@/types'
 import { useRouter } from 'next/navigation'
-import { todayAEDT } from '@/lib/dates'
 
 interface Props {
   courses: Course[]
   categories: Category[]
-  completions: Completion[]
   currentUser: User
-  plates?: Plate[]
   workshops?: Workshop[]
   workshopCategories?: WorkshopCategory[]
 }
 
-export function TraineeMenu({ courses, categories, completions, currentUser, plates = [], workshops = [], workshopCategories = [] }: Props) {
+export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCategories = [] }: Props) {
   const [search, setSearch] = useState('')
   const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const router = useRouter()
-
-  const isCompleted = (itemId: string) => completions.some(c => c.category_id === itemId)
-  const getCompletion = (itemId: string) => completions.find(c => c.category_id === itemId) ?? null
-
-  const todayStr = todayAEDT()
-
-  const getAssignedDate = (itemId: string) =>
-    plates.find(p => p.category_id === itemId && p.trainee_id === currentUser.id)?.date_assigned ?? null
-
-  const isShadowedEarly = (itemId: string) => {
-    const comp = getCompletion(itemId)
-    const assignedDate = getAssignedDate(itemId)
-    return !!(comp && assignedDate && comp.completed_date < assignedDate)
-  }
-
-  const formatDate = (d: string) =>
-    new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) return categories
@@ -96,17 +76,17 @@ export function TraineeMenu({ courses, categories, completions, currentUser, pla
       <div className="px-5 py-6">
         <div className="mb-5">
           <h1 className="font-serif text-2xl text-charcoal">Training Menu</h1>
-          <p className="text-sm text-charcoal/40 mt-1">Browse all topics or search to log a shadowing moment</p>
+          <p className="text-sm text-charcoal/40 mt-1">Browse all training topics</p>
         </div>
 
-        {/* Search bar — the shadowing trigger */}
+        {/* Search bar */}
         <div className="relative mb-5">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal/30" />
           <input
             type="search"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search topics, tags… e.g. 'ultrasonic clean'"
+            placeholder="Search topics, tags..."
             className="input pl-10 pr-10"
             autoComplete="off"
           />
@@ -136,7 +116,6 @@ export function TraineeMenu({ courses, categories, completions, currentUser, pla
                 <CategoryCard
                   key={item.id}
                   item={item}
-                  completed={isCompleted(item.id)}
                   searchQuery={search}
                   highlightText={highlightText}
                   onOpen={() => router.push(`/trainee/course/${item.id}`)}
@@ -146,13 +125,12 @@ export function TraineeMenu({ courses, categories, completions, currentUser, pla
           </div>
         )}
 
-        {/* Workshop → Course → Category browse (when not searching) */}
+        {/* Workshop > Course > Category browse (when not searching) */}
         {!isSearching && (
           <div className="space-y-3">
             {workshopHierarchy.map(({ workshop, categories: wsCats, categoryItemIds }) => {
               const wsExpanded = expandedWorkshops.has(workshop.id)
               const wsItems = categories.filter(mi => categoryItemIds.has(mi.id))
-              const wsCompleted = wsItems.filter(i => isCompleted(i.id)).length
 
               const allCourseKeys = wsCats.map(c => `${workshop.id}-${c.id}`)
               const allCoursesExpanded = allCourseKeys.length > 0 && allCourseKeys.every(k => expandedCategories.has(k))
@@ -169,7 +147,7 @@ export function TraineeMenu({ courses, categories, completions, currentUser, pla
                     </span>
                     <div className="flex-1">
                       <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
-                      <p className="text-xs text-charcoal/40 mt-0.5">{wsCompleted}/{wsItems.length} complete · {wsCats.length} course{wsCats.length !== 1 ? 's' : ''}</p>
+                      <p className="text-xs text-charcoal/40 mt-0.5">{wsItems.length} topic{wsItems.length !== 1 ? 's' : ''} · {wsCats.length} course{wsCats.length !== 1 ? 's' : ''}</p>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -198,13 +176,7 @@ export function TraineeMenu({ courses, categories, completions, currentUser, pla
                         {allCoursesExpanded ? 'Collapse all' : 'Expand all'}
                       </button>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gold rounded-full"
-                          style={{ width: `${wsItems.length > 0 ? (wsCompleted / wsItems.length) * 100 : 0}%` }}
-                        />
-                      </div>
+                    <div className="flex items-center gap-2">
                       {wsExpanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
                     </div>
                   </button>
@@ -216,7 +188,6 @@ export function TraineeMenu({ courses, categories, completions, currentUser, pla
                         const catItems = wsItems.filter(i => i.course_id === category.id)
                         const catKey = `${workshop.id}-${category.id}`
                         const catExpanded = expandedCategories.has(catKey)
-                        const completedCount = catItems.filter(i => isCompleted(i.id)).length
 
                         return (
                           <div key={category.id}>
@@ -233,18 +204,9 @@ export function TraineeMenu({ courses, categories, completions, currentUser, pla
                               </span>
                               <div className="flex-1">
                                 <p className="font-medium text-charcoal text-[14px]">{category.name}</p>
-                                <p className="text-xs text-charcoal/40 mt-0.5">{completedCount}/{catItems.length} complete</p>
+                                <p className="text-xs text-charcoal/40 mt-0.5">{catItems.length} topic{catItems.length !== 1 ? 's' : ''}</p>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <div className="w-12 h-1 bg-charcoal/8 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full"
-                                    style={{
-                                      width: `${catItems.length > 0 ? (completedCount / catItems.length) * 100 : 0}%`,
-                                      backgroundColor: category.colour_hex
-                                    }}
-                                  />
-                                </div>
+                              <div className="flex items-center gap-2">
                                 {catExpanded ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
                               </div>
                             </button>
@@ -252,59 +214,19 @@ export function TraineeMenu({ courses, categories, completions, currentUser, pla
                             {/* Categories (menu items) inside this course */}
                             {catExpanded && (
                               <div className="divide-y divide-black/5 bg-charcoal/[0.01]">
-                                {catItems.map(item => {
-                                  const completed = isCompleted(item.id)
-                                  const comp = getCompletion(item.id)
-                                  const shadowedEarly = isShadowedEarly(item.id)
-                                  const assignedDate = getAssignedDate(item.id)
-                                  const isOverdue = !completed && assignedDate && assignedDate < todayStr
-
-                                  const bgClass = completed ? (shadowedEarly ? 'bg-blue-50/50 hover:bg-blue-50' : 'bg-green-50/50 hover:bg-green-50') : isOverdue ? 'bg-yellow-50/50 hover:bg-yellow-50' : 'hover:bg-charcoal/2'
-
-                                  return (
-                                    <button
-                                      key={item.id}
-                                      onClick={() => router.push(`/trainee/course/${item.id}`)}
-                                      className={`w-full pl-12 pr-5 py-3.5 flex items-center gap-3 text-left transition-colors ${bgClass}`}
-                                    >
-                                      <span
-                                        className={`w-5 h-5 rounded-full border flex-shrink-0 flex items-center justify-center text-xs ${
-                                          completed ? (shadowedEarly ? 'border-transparent bg-blue-500' : 'border-transparent bg-green-500') : isOverdue ? 'border-yellow-400 bg-yellow-50' : 'border-charcoal/20'
-                                        }`}
-                                      >
-                                        {completed && <span className="text-white text-[10px]">✓</span>}
-                                      </span>
-                                      <div className="flex-1">
-                                        <p className={`text-[14px] leading-snug ${
-                                          completed ? 'text-charcoal/40' : 'text-charcoal'
-                                        }`}>
-                                          {item.title}
-                                        </p>
-                                        {completed ? (
-                                          <p className="text-xs mt-0.5">
-                                            {shadowedEarly ? (
-                                              <span className="text-blue-600 font-medium">Shadowed early on {formatDate(comp!.completed_date)}</span>
-                                            ) : (
-                                              <>
-                                                <span className="text-green-600 font-medium">Completed {formatDate(comp!.completed_date)}</span>
-                                                {assignedDate && (
-                                                  <span className="font-semibold text-charcoal/50 ml-1">{formatDate(assignedDate)}</span>
-                                                )}
-                                              </>
-                                            )}
-                                          </p>
-                                        ) : assignedDate ? (
-                                          <p className="text-xs mt-0.5">
-                                            <span className={`font-semibold ${isOverdue ? 'text-yellow-600' : 'text-charcoal/50'}`}>
-                                              {isOverdue ? 'Overdue — ' : ''}{formatDate(assignedDate)}
-                                            </span>
-                                          </p>
-                                        ) : null}
-                                      </div>
-                                      <span className="text-charcoal/20 text-lg">›</span>
-                                    </button>
-                                  )
-                                })}
+                                {catItems.map(item => (
+                                  <button
+                                    key={item.id}
+                                    onClick={() => router.push(`/trainee/course/${item.id}`)}
+                                    className="w-full pl-12 pr-5 py-3.5 flex items-center gap-3 text-left transition-colors hover:bg-charcoal/2"
+                                  >
+                                    <span className="w-5 h-5 rounded-full border border-charcoal/20 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <p className="text-[14px] leading-snug text-charcoal">{item.title}</p>
+                                    </div>
+                                    <span className="text-charcoal/20 text-lg">&rsaquo;</span>
+                                  </button>
+                                ))}
                               </div>
                             )}
                           </div>
@@ -318,20 +240,17 @@ export function TraineeMenu({ courses, categories, completions, currentUser, pla
           </div>
         )}
       </div>
-
     </>
   )
 }
 
 function CategoryCard({
   item,
-  completed,
   searchQuery,
   highlightText,
   onOpen,
 }: {
   item: Category
-  completed: boolean
   searchQuery: string
   highlightText: (text: string, query: string) => React.ReactNode
   onOpen: () => void
@@ -357,11 +276,6 @@ function CategoryCard({
         <p className="text-xs text-charcoal/50 mt-1 line-clamp-2 leading-relaxed">
           {highlightText(item.description, searchQuery)}
         </p>
-        {completed && (
-          <span className="inline-flex items-center gap-1 text-xs text-green-600 mt-2">
-            <span>✓</span> Completed
-          </span>
-        )}
       </div>
     </button>
   )
