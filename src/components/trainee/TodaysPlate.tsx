@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
-import type { Plate, Completion, User, Course, TrainingTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
+import type { Plate, Completion, User, Course, TrainingTaskCompletion, Workshop, WorkshopCategory } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, formatDateShort } from '@/lib/dates'
 import { useDatePlateView } from '@/lib/useDatePlateView'
@@ -16,7 +16,7 @@ interface Props {
   allRecurringCompletions: TrainingTaskCompletion[]
   currentUser: User
   workshops?: Workshop[]
-  workshopMenuItems?: WorkshopMenuItem[]
+  workshopCategories?: WorkshopCategory[]
 }
 
 interface WorkshopPlateGroup {
@@ -24,7 +24,7 @@ interface WorkshopPlateGroup {
   courseGroups: PlateGroup[]
 }
 
-export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions, currentUser, workshops = [], workshopMenuItems = [] }: Props) {
+export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions, currentUser, workshops = [], workshopCategories = [] }: Props) {
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState(todayAEDT())
 
@@ -39,14 +39,14 @@ export function TodaysPlate({ allPlates, allCompletions, allRecurringCompletions
     dateBounds,
   } = useDatePlateView(allPlates, allCompletions, allRecurringCompletions, selectedDate, currentUser.id)
 
-  // Build lookup: menu_item_id -> workshop_id
+  // Build lookup: category_id -> workshop_id
   const itemToWorkshop = useMemo(() => {
     const map = new Map<string, string>()
-    for (const wmi of workshopMenuItems) {
-      map.set(wmi.menu_item_id, wmi.workshop_id)
+    for (const wmi of workshopCategories) {
+      map.set(wmi.category_id, wmi.workshop_id)
     }
     return map
-  }, [workshopMenuItems])
+  }, [workshopCategories])
 
   const workshopMap = useMemo(() => {
     const map = new Map<string, Workshop>()

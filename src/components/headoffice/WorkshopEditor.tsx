@@ -5,16 +5,16 @@ import { ArrowLeft, Search, X, ChevronDown, ChevronUp, Check, Plus } from 'lucid
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Workshop, Course, MenuItem, WorkshopMenuItem } from '@/types'
+import type { Workshop, Course, Category, WorkshopCategory } from '@/types'
 
 interface Props {
   workshop: Workshop
-  categories: Course[]
-  menuItems: MenuItem[]
-  workshopMenuItems: WorkshopMenuItem[]
+  courses: Course[]
+  categories: Category[]
+  workshopCategories: WorkshopCategory[]
 }
 
-export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItems, workshopMenuItems: initialWMI }: Props) {
+export function WorkshopEditor({ workshop: initialWorkshop, courses, categories, workshopCategories: initialWMI }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -25,7 +25,7 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
   const [saved, setSaved] = useState(false)
 
   const [assignedIds, setAssignedIds] = useState<Set<string>>(
-    new Set(initialWMI.map(wmi => wmi.menu_item_id))
+    new Set(initialWMI.map(wmi => wmi.category_id))
   )
   const [toggling, setToggling] = useState<string | null>(null)
   const [togglingAll, setTogglingAll] = useState<string | null>(null)
@@ -34,14 +34,14 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
   const [filter, setFilter] = useState<'all' | 'assigned' | 'unassigned'>('all')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
-  const applyFilter = (items: MenuItem[]) => {
+  const applyFilter = (items: Category[]) => {
     if (filter === 'assigned') return items.filter(i => assignedIds.has(i.id))
     if (filter === 'unassigned') return items.filter(i => !assignedIds.has(i.id))
     return items
   }
 
   const filteredItems = useMemo(() => {
-    let items = menuItems
+    let items = categories
     if (search.trim()) {
       const q = search.toLowerCase()
       items = items.filter(item =>
@@ -52,7 +52,7 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
       )
     }
     return applyFilter(items)
-  }, [menuItems, search, filter, assignedIds])
+  }, [categories, search, filter, assignedIds])
 
   const assignedCount = assignedIds.size
 
@@ -77,10 +77,10 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
 
     if (isAssigned) {
       const { error } = await supabase
-        .from('workshop_menu_items')
+        .from('workshop_categorys')
         .delete()
         .eq('workshop_id', workshop.id)
-        .eq('menu_item_id', itemId)
+        .eq('category_id', itemId)
       if (!error) {
         setAssignedIds(prev => {
           const next = new Set(prev)
@@ -90,8 +90,8 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
       }
     } else {
       const { error } = await supabase
-        .from('workshop_menu_items')
-        .insert({ workshop_id: workshop.id, menu_item_id: itemId })
+        .from('workshop_categorys')
+        .insert({ workshop_id: workshop.id, category_id: itemId })
       if (!error) {
         setAssignedIds(prev => new Set(prev).add(itemId))
       }
@@ -100,7 +100,7 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
   }
 
   async function toggleAllInCategory(categoryId: string) {
-    const items = menuItems.filter(i => i.course_id === categoryId)
+    const items = categories.filter(i => i.course_id === categoryId)
     const allAssigned = items.every(i => assignedIds.has(i.id))
     setTogglingAll(categoryId)
 
@@ -108,10 +108,10 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
       // Deselect all
       const itemIds = items.map(i => i.id)
       const { error } = await supabase
-        .from('workshop_menu_items')
+        .from('workshop_categorys')
         .delete()
         .eq('workshop_id', workshop.id)
-        .in('menu_item_id', itemIds)
+        .in('category_id', itemIds)
       if (!error) {
         setAssignedIds(prev => {
           const next = new Set(prev)
@@ -123,16 +123,16 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
       // Select all unassigned
       const toAdd = items.filter(i => !assignedIds.has(i.id)).map(i => ({
         workshop_id: workshop.id,
-        menu_item_id: i.id,
+        category_id: i.id,
       }))
       if (toAdd.length > 0) {
         const { error } = await supabase
-          .from('workshop_menu_items')
+          .from('workshop_categorys')
           .insert(toAdd)
         if (!error) {
           setAssignedIds(prev => {
             const next = new Set(prev)
-            for (const row of toAdd) next.add(row.menu_item_id)
+            for (const row of toAdd) next.add(row.category_id)
             return next
           })
         }
@@ -268,8 +268,8 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
       {/* Course browse (when not searching) */}
       {!search.trim() && (
         <div className="space-y-3">
-          {categories.map(category => {
-            const allItems = menuItems.filter(i => i.course_id === category.id)
+          {courses.map(category => {
+            const allItems = categories.filter(i => i.course_id === category.id)
             const items = applyFilter(allItems)
             if (allItems.length === 0) return null
             if (items.length === 0 && filter !== 'all') return null
@@ -351,7 +351,7 @@ function CourseToggleRow({
   onToggle,
   showCategory = false,
 }: {
-  item: MenuItem
+  item: Category
   assigned: boolean
   toggling: boolean
   onToggle: () => void

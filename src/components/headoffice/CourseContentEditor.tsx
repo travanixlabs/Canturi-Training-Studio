@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, Save, Trash2, ChevronUp, ChevronDown, Check, BookOpen,
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { MenuItem, Subcategory, SubcategoryType, Course, TrainerType, DifficultyLevel } from '@/types'
+import type { Category, Subcategory, SubcategoryType, Course, TrainerType, DifficultyLevel } from '@/types'
 
 const SUBCATEGORY_TYPES: { value: SubcategoryType; label: string; icon: React.ReactNode }[] = [
   { value: 'text', label: 'Text', icon: <FileText size={16} /> },
@@ -23,12 +23,12 @@ const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
 ]
 
 interface Props {
-  menuItem: MenuItem
+  categoryItem: Category
   initialModules: Subcategory[]
   categories: Course[]
 }
 
-export function CourseContentEditor({ menuItem: initialItem, initialModules, categories }: Props) {
+export function CourseContentEditor({ categoryItem: initialItem, initialModules, categories }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -68,7 +68,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     if (isRecurring && (!recurringAmount || recurringAmount < 1)) { alert('Training Tasks Count is required when recurring is enabled.'); return }
     if (isRecurring && !recurringTaskContent.trim()) { alert('Training Task Details content is required. Please fill in the Training Task page.'); setEditingRecurringTask(true); setSelectedModuleId(null); setEditingCourseDetails(false); return }
     setSaving(true)
-    await supabase.from('menu_items').update({
+    await supabase.from('categories').update({
       title,
       description,
       course_id: categoryId,
@@ -90,7 +90,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     const typeLabel = SUBCATEGORY_TYPES.find(t => t.value === type)?.label ?? type
     // Note: storage bucket remains 'module-files' (Supabase storage bucket rename requires recreation)
     const { data, error } = await supabase.from('subcategories').insert({
-      menu_item_id: initialItem.id,
+      category_id: initialItem.id,
       title: `${typeLabel} ${newOrder + 1}`,
       type,
       content: '',

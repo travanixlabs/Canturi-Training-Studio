@@ -6,11 +6,11 @@ import { CourseBadge } from './CourseBadge'
 import { StarRating } from './StarRating'
 import { CelebrationScreen } from './CelebrationScreen'
 import { createClient } from '@/lib/supabase/client'
-import type { MenuItem, Plate, Completion, User } from '@/types'
+import type { Category, Plate, Completion, User } from '@/types'
 import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
 
 interface Props {
-  item: MenuItem
+  item: Category
   plate?: Plate | null
   existingCompletion?: Completion | null
   currentUser: User
@@ -67,12 +67,12 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
     // Remove any existing plate for this item+trainee
     await supabase.from('plates').delete()
       .eq('trainee_id', existingCompletion.trainee_id)
-      .eq('menu_item_id', existingCompletion.menu_item_id)
+      .eq('category_id', existingCompletion.category_id)
 
     // Create a fresh plate assignment for the selected date
     await supabase.from('plates').insert({
       trainee_id: existingCompletion.trainee_id,
-      menu_item_id: existingCompletion.menu_item_id,
+      category_id: existingCompletion.category_id,
       assigned_by: currentUser.id,
       date_assigned: date,
       boutique_id: currentUser.boutique_id,
@@ -92,7 +92,7 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
 
     const completionData = {
       plate_id: plate?.id ?? null,
-      menu_item_id: item.id,
+      category_id: item.id,
       trainee_id: currentUser.id,
       trainee_notes: traineeNotes || null,
       trainee_rating: traineeRating,

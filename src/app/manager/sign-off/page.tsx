@@ -18,14 +18,14 @@ export default async function SignOffPage() {
 
   const traineeIds = (await supabase.from('users').select('id').eq('boutique_id', manager.boutique_id).eq('role', 'trainee')).data?.map(u => u.id) ?? []
 
-  const [{ data: trainees }, { data: completions }, { data: menuItems }, { data: plates }] = await Promise.all([
+  const [{ data: trainees }, { data: completions }, { data: categories }, { data: plates }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
     supabase
       .from('completions')
-      .select('*, menu_item:menu_items(*, course:courses(*)), trainee:users!completions_trainee_id_fkey(*)')
+      .select('*, category:categories(*, course:courses(*)), trainee:users!completions_trainee_id_fkey(*)')
       .in('trainee_id', traineeIds)
       .order('created_at', { ascending: false }),
-    supabase.from('menu_items').select('*, course:courses(*)').eq('status', 'active'),
+    supabase.from('categories').select('*, course:courses(*)').eq('status', 'active'),
     supabase.from('plates').select('*').in('trainee_id', traineeIds),
   ])
 
@@ -34,7 +34,7 @@ export default async function SignOffPage() {
       manager={manager as User}
       trainees={trainees ?? []}
       completions={completions ?? []}
-      menuItems={menuItems ?? []}
+      categories={categories ?? []}
       plates={plates ?? []}
     />
   )

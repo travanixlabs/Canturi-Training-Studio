@@ -8,17 +8,17 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: menuItem }, { data: modules }, { data: categories }] = await Promise.all([
-    supabase.from('menu_items').select('*, course:courses(*)').eq('id', id).single(),
-    supabase.from('subcategories').select('*').eq('menu_item_id', id).order('sort_order'),
+  const [{ data: categoryItem }, { data: modules }, { data: categories }] = await Promise.all([
+    supabase.from('categories').select('*, course:courses(*)').eq('id', id).single(),
+    supabase.from('subcategories').select('*').eq('category_id', id).order('sort_order'),
     supabase.from('courses').select('*').order('sort_order'),
   ])
 
-  if (!menuItem) redirect('/head-office/courses')
+  if (!categoryItem) redirect('/head-office/courses')
 
   return (
     <CourseContentEditor
-      menuItem={menuItem}
+      categoryItem={categoryItem}
       initialModules={modules ?? []}
       categories={categories ?? []}
     />

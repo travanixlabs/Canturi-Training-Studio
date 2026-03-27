@@ -8,32 +8,32 @@ export default async function TraineeMenuPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: categories }, { data: menuItems }, { data: completions }, { data: profile }, { data: visibleCats }, { data: recurringCompletions }, { data: plates }, { data: workshops }, { data: workshopMenuItems }] = await Promise.all([
+  const [{ data: courses }, { data: categories }, { data: completions }, { data: profile }, { data: visibleCats }, { data: recurringCompletions }, { data: plates }, { data: workshops }, { data: workshopCategories }] = await Promise.all([
     supabase.from('courses').select('*').eq('status', 'active').order('sort_order'),
-    supabase.from('menu_items').select('*, course:courses(*)').eq('status', 'active').order('title'),
+    supabase.from('categories').select('*, course:courses(*)').eq('status', 'active').order('title'),
     supabase.from('completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('visible_courses').select('course_id').eq('user_id', authUser.id),
     supabase.from('training_task_completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('plates').select('*').eq('trainee_id', authUser.id),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
-    supabase.from('workshop_menu_items').select('*'),
+    supabase.from('workshop_categorys').select('*'),
   ])
 
   const visibleCategoryIds = new Set((visibleCats ?? []).map(v => v.course_id))
-  const visibleMenuItems = (menuItems ?? []).filter(item => visibleCategoryIds.has(item.course_id))
-  const visibleCategories = (categories ?? []).filter(c => visibleCategoryIds.has(c.id))
+  const visibleCategorys = (categories ?? []).filter(item => visibleCategoryIds.has(item.course_id))
+  const visibleCourses = (courses ?? []).filter(c => visibleCategoryIds.has(c.id))
 
   return (
     <TraineeMenu
-      categories={visibleCategories}
-      menuItems={visibleMenuItems}
+      courses={visibleCourses}
+      categories={visibleCategorys}
       completions={completions ?? []}
       currentUser={profile as User}
       recurringCompletions={recurringCompletions ?? []}
       plates={plates ?? []}
       workshops={workshops ?? []}
-      workshopMenuItems={workshopMenuItems ?? []}
+      workshopCategories={workshopCategories ?? []}
     />
   )
 }

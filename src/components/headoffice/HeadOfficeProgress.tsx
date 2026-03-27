@@ -2,19 +2,19 @@
 
 import { useState, useMemo } from 'react'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import type { Boutique, User, Course, MenuItem, Completion, Plate, VisibleCourse } from '@/types'
+import type { Boutique, User, Course, Category, Completion, Plate, VisibleCourse } from '@/types'
 
 interface Props {
   boutiques: Boutique[]
   allUsers: User[]
-  categories: Course[]
-  menuItems: MenuItem[]
+  courses: Course[]
+  categories: Category[]
   completions: Completion[]
   plates?: Plate[]
   visibleCategories?: VisibleCourse[]
 }
 
-export function HeadOfficeProgress({ boutiques, allUsers, categories, menuItems, completions, plates = [], visibleCategories = [] }: Props) {
+export function HeadOfficeProgress({ boutiques, allUsers, courses, categories, completions, plates = [], visibleCategories = [] }: Props) {
   const [selectedBoutique, setSelectedBoutique] = useState<string | 'all'>('all')
 
   const employees = allUsers.filter(u => {
@@ -25,15 +25,15 @@ export function HeadOfficeProgress({ boutiques, allUsers, categories, menuItems,
 
   // Get assigned items for an employee (via plates or visible categories)
   const getAssignedItems = (userId: string) => {
-    const plateItemIds = new Set(plates.filter(p => p.trainee_id === userId).map(p => p.menu_item_id))
+    const plateItemIds = new Set(plates.filter(p => p.trainee_id === userId).map(p => p.category_id))
     const visibleCatIds = new Set(visibleCategories.filter(v => v.user_id === userId).map(v => v.course_id))
-    return menuItems.filter(m => plateItemIds.has(m.id) || visibleCatIds.has(m.course_id))
+    return categories.filter(m => plateItemIds.has(m.id) || visibleCatIds.has(m.course_id))
   }
 
   const getAssignedCategories = (userId: string) => {
     const assigned = getAssignedItems(userId)
     const catIds = new Set(assigned.map(m => m.course_id))
-    return categories.filter(c => catIds.has(c.id))
+    return courses.filter(c => catIds.has(c.id))
   }
 
   const getCategoryProgress = (userId: string, categoryId: string) => {
@@ -41,7 +41,7 @@ export function HeadOfficeProgress({ boutiques, allUsers, categories, menuItems,
     const categoryItems = assigned.filter(mi => mi.course_id === categoryId)
     if (categoryItems.length === 0) return { completed: 0, total: 0, pct: 0 }
     const completed = categoryItems.filter(mi =>
-      completions.some(c => c.trainee_id === userId && c.menu_item_id === mi.id)
+      completions.some(c => c.trainee_id === userId && c.category_id === mi.id)
     ).length
     return { completed, total: categoryItems.length, pct: Math.round((completed / categoryItems.length) * 100) }
   }
@@ -50,7 +50,7 @@ export function HeadOfficeProgress({ boutiques, allUsers, categories, menuItems,
     const assigned = getAssignedItems(userId)
     if (assigned.length === 0) return 0
     const completed = assigned.filter(mi =>
-      completions.some(c => c.trainee_id === userId && c.menu_item_id === mi.id)
+      completions.some(c => c.trainee_id === userId && c.category_id === mi.id)
     ).length
     return Math.round((completed / assigned.length) * 100)
   }

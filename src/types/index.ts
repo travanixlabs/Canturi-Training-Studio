@@ -2,7 +2,7 @@ export type UserRole = 'trainee' | 'manager' | 'head_office'
 
 export type TrainerType = 'Self' | 'Manager' | 'Self/Manager'
 
-export type MenuItemStatus = 'active' | 'hidden'
+export type ItemStatus = 'active' | 'hidden'
 
 export type DifficultyLevel = 'introductory' | 'intermediate' | 'advanced'
 
@@ -10,7 +10,6 @@ export interface Boutique {
   id: string
   name: string
   city: string
-
 }
 
 export interface User {
@@ -30,10 +29,10 @@ export interface Course {
   icon: string
   colour_hex: string
   sort_order: number
-  status: MenuItemStatus
+  status: ItemStatus
 }
 
-export interface MenuItem {
+export interface Category {
   id: string
   title: string
   description: string
@@ -44,7 +43,7 @@ export interface MenuItem {
   resource_link: string | null
   boutique_id: string | null
   created_at: string
-  status: MenuItemStatus
+  status: ItemStatus
   difficulty_level: DifficultyLevel | null
   is_recurring: boolean
   recurring_amount: number | null
@@ -55,12 +54,12 @@ export interface MenuItem {
 export interface Plate {
   id: string
   trainee_id: string
-  menu_item_id: string
+  category_id: string
   assigned_by: string
   date_assigned: string
   boutique_id: string
   workshop_id: string | null
-  menu_item?: MenuItem
+  category?: Category
   trainee?: User
   assigned_by_user?: User
 }
@@ -68,7 +67,7 @@ export interface Plate {
 export interface Completion {
   id: string
   plate_id: string | null
-  menu_item_id: string
+  category_id: string
   trainee_id: string
   trainer_id: string | null
   trainee_notes: string | null
@@ -79,7 +78,7 @@ export interface Completion {
   is_shadowing_moment: boolean
   created_at: string
   workshop_id: string | null
-  menu_item?: MenuItem
+  category?: Category
   trainee?: User
 }
 
@@ -87,7 +86,7 @@ export type SubcategoryType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
 
 export interface Subcategory {
   id: string
-  menu_item_id: string
+  category_id: string
   title: string
   type: SubcategoryType
   content: string
@@ -98,7 +97,7 @@ export interface Subcategory {
 
 export interface SubcategoryCompletion {
   id: string
-  subcourse_id: string
+  subcategory_id: string
   trainee_id: string
   completed_at: string
   workshop_id: string | null
@@ -107,7 +106,7 @@ export interface SubcategoryCompletion {
 export interface TrainingTaskCompletion {
   id: string
   trainee_id: string
-  menu_item_id: string
+  category_id: string
   completed_date: string
   notes: string | null
   created_at: string
@@ -122,12 +121,12 @@ export interface Workshop {
   created_at: string
 }
 
-export interface WorkshopMenuItem {
+export interface WorkshopCategory {
   id: string
   workshop_id: string
-  menu_item_id: string
+  category_id: string
   created_at: string
-  menu_item?: MenuItem
+  category?: Category
 }
 
 export interface VisibleCourse {

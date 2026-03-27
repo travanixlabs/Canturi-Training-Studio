@@ -7,23 +7,23 @@ import { TaskModal } from '@/components/ui/TaskModal'
 import { CourseCelebrationScreen } from '@/components/ui/CourseCelebrationScreen'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { MenuItem, Subcategory, SubcategoryCompletion, Completion, Plate, User, TrainingTaskCompletion } from '@/types'
+import type { Category, Subcategory, SubcategoryCompletion, Completion, Plate, User, TrainingTaskCompletion } from '@/types'
 import { todayAEDT } from '@/lib/dates'
 
 interface Props {
-  menuItem: MenuItem
+  categoryItem: Category
   modules: Subcategory[]
   moduleCompletions: SubcategoryCompletion[]
   existingCompletion: Completion | null
   plate: Plate | null
   currentUser: User
   recurringCompletions?: TrainingTaskCompletion[]
-  siblingItems?: MenuItem[]
+  siblingItems?: Category[]
   siblingCompletions?: Completion[]
   allPlates?: Plate[]
 }
 
-export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, existingCompletion, plate, currentUser, recurringCompletions: initialRC = [], siblingItems = [], siblingCompletions = [], allPlates = [] }: Props) {
+export function CourseDetail({ categoryItem, modules, moduleCompletions: initialMC, existingCompletion, plate, currentUser, recurringCompletions: initialRC = [], siblingItems = [], siblingCompletions = [], allPlates = [] }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -40,18 +40,18 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const hasModules = modules.length > 0
 
   // Check if completing this category finishes the entire course
-  const otherSiblings = siblingItems.filter(s => s.id !== menuItem.id && s.status === 'active')
-  const otherSiblingsDone = otherSiblings.every(s => siblingCompletions.some(c => c.menu_item_id === s.id))
+  const otherSiblings = siblingItems.filter(s => s.id !== categoryItem.id && s.status === 'active')
+  const otherSiblingsDone = otherSiblings.every(s => siblingCompletions.some(c => c.category_id === s.id))
   const willCompleteCourse = otherSiblings.length > 0 && otherSiblingsDone
-  const courseName = menuItem.course?.name ?? 'Course'
+  const courseName = categoryItem.course?.name ?? 'Course'
 
   // Session state
-  const isRecurringItem = menuItem.is_recurring && !!menuItem.recurring_amount
-  const recurringTotal = menuItem.recurring_amount ?? 0
+  const isRecurringItem = categoryItem.is_recurring && !!categoryItem.recurring_amount
+  const recurringTotal = categoryItem.recurring_amount ?? 0
   const recurringDone = recurringComps.length
   const recurringFullyComplete = isRecurringItem && recurringDone >= recurringTotal
   const todayStr = todayAEDT()
-  const assignedPlateDates = allPlates.filter(p => p.menu_item_id === menuItem.id && p.trainee_id === currentUser.id).map(p => p.date_assigned)
+  const assignedPlateDates = allPlates.filter(p => p.category_id === categoryItem.id && p.trainee_id === currentUser.id).map(p => p.date_assigned)
   const assignedSessionCount = recurringComps.filter(rc => assignedPlateDates.includes(rc.completed_date)).length
   const shadowedSessionCount = recurringDone - assignedSessionCount
 
@@ -108,7 +108,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
     setMarkingRecurring(true)
     const { data, error } = await supabase.from('training_task_completions').insert({
       trainee_id: currentUser.id,
-      menu_item_id: menuItem.id,
+      category_id: categoryItem.id,
       completed_date: todayStr,
       notes: sessionNotes.trim(),
       workshop_id: plate?.workshop_id ?? null,
@@ -141,15 +141,15 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
             <ArrowLeft size={20} />
           </button>
           <div className="flex-1 min-w-0">
-            {menuItem.course && (
-              <CourseBadge courseName={menuItem.course.name} icon={menuItem.course.icon} />
+            {categoryItem.course && (
+              <CourseBadge courseName={categoryItem.course.name} icon={categoryItem.course.icon} />
             )}
-            <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{menuItem.title}</h1>
+            <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{categoryItem.title}</h1>
           </div>
           <div className="flex items-center gap-2 text-xs text-charcoal/40 flex-shrink-0">
-            <span>{menuItem.time_needed}</span>
+            <span>{categoryItem.time_needed}</span>
             <span>·</span>
-            <span>{menuItem.trainer_type}</span>
+            <span>{categoryItem.trainer_type}</span>
           </div>
         </div>
 
@@ -305,13 +305,13 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
             ) : !hasModules ? (
               /* No modules — show description + complete button */
               <div>
-                <h2 className="font-serif text-xl text-charcoal mb-4">{menuItem.title}</h2>
+                <h2 className="font-serif text-xl text-charcoal mb-4">{categoryItem.title}</h2>
                 <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap mb-4">
-                  {menuItem.description}
+                  {categoryItem.description}
                 </div>
-                {menuItem.tags?.length > 0 && (
+                {categoryItem.tags?.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-6">
-                    {menuItem.tags.map(tag => (
+                    {categoryItem.tags.map(tag => (
                       <span key={tag} className="text-xs text-charcoal/40 bg-charcoal/5 px-2 py-0.5 rounded-full">{tag}</span>
                     ))}
                   </div>
@@ -345,9 +345,9 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                 </div>
                 <h2 className="font-serif text-xl text-charcoal mb-4">Training Task Details</h2>
 
-                {menuItem.training_task_content && (
+                {categoryItem.training_task_content && (
                   <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap mb-6">
-                    {menuItem.training_task_content}
+                    {categoryItem.training_task_content}
                   </div>
                 )}
 
@@ -462,7 +462,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
       {/* Completion popup */}
       {showCompleteModal && (
         <TaskModal
-          item={menuItem}
+          item={categoryItem}
           plate={plate}
           existingCompletion={existingCompletion}
           currentUser={currentUser}

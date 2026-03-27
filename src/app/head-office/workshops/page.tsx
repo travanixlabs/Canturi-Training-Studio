@@ -7,15 +7,15 @@ export default async function HeadOfficeWorkshopsPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: workshops }, { data: workshopMenuItems }] = await Promise.all([
+  const [{ data: workshops }, { data: workshopCategories }] = await Promise.all([
     supabase.from('workshops').select('*').order('created_at', { ascending: false }),
-    supabase.from('workshop_menu_items').select('*'),
+    supabase.from('workshop_categorys').select('*'),
   ])
 
   return (
     <WorkshopList
       workshops={workshops ?? []}
-      workshopMenuItems={workshopMenuItems ?? []}
+      workshopCategories={workshopCategories ?? []}
     />
   )
 }

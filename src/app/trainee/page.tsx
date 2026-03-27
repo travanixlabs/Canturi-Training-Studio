@@ -13,31 +13,31 @@ export default async function TraineePlatePage() {
     .from('plates')
     .select(`
       *,
-      menu_item:menu_items(*, course:courses(*))
+      category:categories(*, course:courses(*))
     `)
     .eq('trainee_id', authUser.id)
     .order('date_assigned', { ascending: true })
 
-  // Fetch all completions with menu_item join, all recurring completions, profile, workshops, and visibility
-  const [{ data: allCompletions }, { data: profile }, { data: allRecurringCompletions }, { data: workshops }, { data: workshopMenuItems }, { data: visibleCats }] = await Promise.all([
-    supabase.from('completions').select('*, menu_item:menu_items(*, course:courses(*))').eq('trainee_id', authUser.id),
+  // Fetch all completions with category join, all recurring completions, profile, workshops, and visibility
+  const [{ data: allCompletions }, { data: profile }, { data: allRecurringCompletions }, { data: workshops }, { data: workshopCategories }, { data: visibleCats }] = await Promise.all([
+    supabase.from('completions').select('*, category:categories(*, course:courses(*))').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('training_task_completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
-    supabase.from('workshop_menu_items').select('*'),
+    supabase.from('workshop_categorys').select('*'),
     supabase.from('visible_courses').select('course_id').eq('user_id', authUser.id),
   ])
 
   // Filter plates and completions to only visible categories
   const visibleCategoryIds = new Set((visibleCats ?? []).map(v => v.course_id))
-  const filteredPlates = (allPlates ?? []).filter(p => p.menu_item?.course_id && visibleCategoryIds.has(p.menu_item.course_id))
+  const filteredPlates = (allPlates ?? []).filter(p => p.category?.course_id && visibleCategoryIds.has(p.category.course_id))
   const filteredCompletions = (allCompletions ?? []).filter(c => {
-    const catId = (c.menu_item as any)?.course_id
+    const catId = (c.category as any)?.course_id
     return catId && visibleCategoryIds.has(catId)
   })
   const filteredRecurring = (allRecurringCompletions ?? []).filter(rc => {
-    const plate = (allPlates ?? []).find(p => p.menu_item_id === rc.menu_item_id)
-    const catId = plate?.menu_item?.course_id
+    const plate = (allPlates ?? []).find(p => p.category_id === rc.category_id)
+    const catId = plate?.category?.course_id
     return catId && visibleCategoryIds.has(catId)
   })
 
@@ -48,7 +48,7 @@ export default async function TraineePlatePage() {
       allRecurringCompletions={filteredRecurring}
       currentUser={profile as User}
       workshops={workshops ?? []}
-      workshopMenuItems={workshopMenuItems ?? []}
+      workshopCategories={workshopCategories ?? []}
     />
   )
 }

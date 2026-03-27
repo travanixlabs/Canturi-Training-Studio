@@ -4,11 +4,11 @@ import { useState, useTransition } from 'react'
 import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Course, MenuItem, MenuItemStatus, TrainerType, DifficultyLevel } from '@/types'
+import type { Course, Category, ItemStatus, TrainerType, DifficultyLevel } from '@/types'
 
 interface Props {
-  categories: Course[]
-  menuItems: MenuItem[]
+  courses: Course[]
+  categories: Category[]
 }
 
 const TRAINER_TYPES: TrainerType[] = ['Self', 'Manager', 'Self/Manager']
@@ -18,7 +18,7 @@ const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
   { value: 'advanced', label: 'Advanced' },
 ]
 
-const STATUS_CONFIG: Record<MenuItemStatus, { label: string; dot: string; text: string }> = {
+const STATUS_CONFIG: Record<ItemStatus, { label: string; dot: string; text: string }> = {
   active: { label: 'Active', dot: 'bg-green-500', text: 'text-green-700' },
   hidden: { label: 'Hidden', dot: 'bg-charcoal/30', text: 'text-charcoal/40' },
 }
@@ -63,13 +63,13 @@ const emptyCategoryForm = (): CategoryFormData => ({
   sort_order: '',
 })
 
-export function CourseEditor({ categories: initialCategories, menuItems: initialItems }: Props) {
-  const [categories, setCategories] = useState<Course[]>(initialCategories)
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(initialItems)
+export function CourseEditor({ courses: initialCourses, categories: initialItems }: Props) {
+  const [courses, setCourses] = useState<Course[]>(initialCourses)
+  const [categories, setCategorys] = useState<Category[]>(initialItems)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
   // Course modal
-  const [courseModal, setCourseModal] = useState<{ mode: 'add'; categoryId: string } | { mode: 'edit'; item: MenuItem } | null>(null)
+  const [courseModal, setCourseModal] = useState<{ mode: 'add'; categoryId: string } | { mode: 'edit'; item: Category } | null>(null)
   const [courseForm, setCourseForm] = useState<CourseFormData>(emptyCourseForm())
   const [courseError, setCourseError] = useState<string | null>(null)
   const [courseSaving, setCourseSaving] = useState(false)
@@ -84,7 +84,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null)
 
   // Delete confirmation
-  const [deleteTarget, setDeleteTarget] = useState<MenuItem | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
   const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<Course | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -110,7 +110,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     setCourseModal({ mode: 'add', categoryId })
   }
 
-  function openEditCourse(item: MenuItem) {
+  function openEditCourse(item: Category) {
     setCourseForm({
       title: item.title,
       description: item.description,
@@ -162,7 +162,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
 
     if (courseModal?.mode === 'add') {
       const { data, error } = await supabase
-        .from('menu_items')
+        .from('categories')
         .insert({ ...payload, status: 'active' })
         .select('*, course:courses(*)')
         .single()
@@ -173,10 +173,10 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         return
       }
 
-      setMenuItems(prev => [...prev, data as MenuItem])
+      setCategorys(prev => [...prev, data as Category])
     } else if (courseModal?.mode === 'edit') {
       const { data, error } = await supabase
-        .from('menu_items')
+        .from('categories')
         .update(payload)
         .eq('id', courseModal.item.id)
         .select('*, course:courses(*)')
@@ -188,7 +188,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         return
       }
 
-      setMenuItems(prev => prev.map(i => (i.id === courseModal.item.id ? (data as MenuItem) : i)))
+      setCategorys(prev => prev.map(i => (i.id === courseModal.item.id ? (data as Category) : i)))
     }
 
     setCourseSaving(false)
@@ -200,30 +200,30 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     if (!deleteTarget) return
     setDeleting(true)
 
-    const { error } = await supabase.from('menu_items').delete().eq('id', deleteTarget.id)
+    const { error } = await supabase.from('categories').delete().eq('id', deleteTarget.id)
     if (error) {
       setDeleting(false)
       return
     }
 
-    setMenuItems(prev => prev.filter(i => i.id !== deleteTarget.id))
+    setCategorys(prev => prev.filter(i => i.id !== deleteTarget.id))
     setDeleteTarget(null)
     setDeleting(false)
     startTransition(() => router.refresh())
   }
 
-  async function changeStatus(item: MenuItem, status: MenuItemStatus) {
+  async function changeStatus(item: Category, status: ItemStatus) {
     setStatusChanging(item.id)
 
     const { error } = await supabase
-      .from('menu_items')
+      .from('categories')
       .update({ status })
       .eq('id', item.id)
 
     if (error) {
       alert('Failed to update status: ' + error.message)
     } else {
-      setMenuItems(prev => prev.map(i => (i.id === item.id ? { ...i, status } : i)))
+      setCategorys(prev => prev.map(i => (i.id === item.id ? { ...i, status } : i)))
     }
 
     setStatusChanging(null)
@@ -255,13 +255,13 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         return
       }
 
-      setCategories(prev => prev.map(c => c.id === categoryModal.course.id ? { ...c, name: categoryForm.name.trim(), icon: categoryForm.icon.trim(), colour_hex: categoryForm.colour_hex } : c))
+      setCourses(prev => prev.map(c => c.id === categoryModal.course.id ? { ...c, name: categoryForm.name.trim(), icon: categoryForm.icon.trim(), colour_hex: categoryForm.colour_hex } : c))
     } else {
       const { data, error } = await supabase.from('courses').insert({
         name: categoryForm.name.trim(),
         icon: categoryForm.icon.trim(),
         colour_hex: categoryForm.colour_hex,
-        sort_order: categories.length + 1,
+        sort_order: courses.length + 1,
       }).select().single()
 
       if (error) {
@@ -270,7 +270,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         return
       }
 
-      setCategories(prev => [...prev, data as Course].sort((a, b) => a.sort_order - b.sort_order))
+      setCourses(prev => [...prev, data as Course].sort((a, b) => a.sort_order - b.sort_order))
     }
 
     setCategorySaving(false)
@@ -288,16 +288,16 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   async function handleDrop(targetCategoryId: string) {
     if (!draggedCategoryId || draggedCategoryId === targetCategoryId) return
 
-    const fromIdx = categories.findIndex(c => c.id === draggedCategoryId)
-    const toIdx = categories.findIndex(c => c.id === targetCategoryId)
+    const fromIdx = courses.findIndex(c => c.id === draggedCategoryId)
+    const toIdx = courses.findIndex(c => c.id === targetCategoryId)
     if (fromIdx === -1 || toIdx === -1) return
 
-    const reordered = [...categories]
+    const reordered = [...courses]
     const [moved] = reordered.splice(fromIdx, 1)
     reordered.splice(toIdx, 0, moved)
 
     const updated = reordered.map((c, i) => ({ ...c, sort_order: i + 1 }))
-    setCategories(updated)
+    setCourses(updated)
     setDraggedCategoryId(null)
 
     await Promise.all(
@@ -305,19 +305,19 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     )
   }
 
-  async function changeCategoryStatus(cat: Course, status: MenuItemStatus) {
+  async function changeCategoryStatus(cat: Course, status: ItemStatus) {
     const { error } = await supabase.from('courses').update({ status }).eq('id', cat.id)
     if (error) {
       alert('Failed to update course: ' + error.message)
       return
     }
-    setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, status } : c))
+    setCourses(prev => prev.map(c => c.id === cat.id ? { ...c, status } : c))
 
-    const catItems = menuItems.filter(i => i.course_id === cat.id)
+    const catItems = categories.filter(i => i.course_id === cat.id)
     for (const item of catItems) {
-      await supabase.from('menu_items').update({ status }).eq('id', item.id)
+      await supabase.from('categories').update({ status }).eq('id', item.id)
     }
-    setMenuItems(prev => prev.map(i => i.course_id === cat.id ? { ...i, status } : i))
+    setCategorys(prev => prev.map(i => i.course_id === cat.id ? { ...i, status } : i))
   }
 
   async function deleteCategory() {
@@ -325,18 +325,18 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     setDeleting(true)
 
     // Delete all categories in this course first
-    await supabase.from('menu_items').delete().eq('course_id', deleteCategoryTarget.id)
+    await supabase.from('categories').delete().eq('course_id', deleteCategoryTarget.id)
     await supabase.from('courses').delete().eq('id', deleteCategoryTarget.id)
 
-    setMenuItems(prev => prev.filter(i => i.course_id !== deleteCategoryTarget.id))
-    setCategories(prev => prev.filter(c => c.id !== deleteCategoryTarget.id))
+    setCategorys(prev => prev.filter(i => i.course_id !== deleteCategoryTarget.id))
+    setCourses(prev => prev.filter(c => c.id !== deleteCategoryTarget.id))
     setDeleting(false)
     setDeleteCategoryTarget(null)
     startTransition(() => router.refresh())
   }
 
   const itemsByCategory = (categoryId: string) =>
-    menuItems.filter(i => i.course_id === categoryId)
+    categories.filter(i => i.course_id === categoryId)
 
   return (
     <div className="px-5 py-6 max-w-3xl mx-auto">
@@ -344,7 +344,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="font-serif text-2xl text-charcoal">Course Menu</h1>
-          <p className="text-sm text-charcoal/40 mt-1">{menuItems.length} categories across {categories.length} courses</p>
+          <p className="text-sm text-charcoal/40 mt-1">{categories.length} categories across {courses.length} courses</p>
         </div>
         <button
           onClick={() => { setCategoryForm(emptyCategoryForm()); setCategoryError(null); setCategoryModal({ mode: 'add' }) }}
@@ -357,7 +357,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
 
       {/* Course list */}
       <div className="space-y-2">
-        {categories.map(category => {
+        {courses.map(category => {
           const items = itemsByCategory(category.id)
           const expanded = expandedCategories.has(category.id)
 
@@ -463,7 +463,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
           )
         })}
 
-        {categories.length === 0 && (
+        {courses.length === 0 && (
           <div className="card p-8 text-center">
             <p className="text-charcoal/40 text-sm">No courses yet. Add a course to get started.</p>
           </div>
@@ -525,7 +525,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                   onChange={e => setCourseForm(f => ({ ...f, course_id: e.target.value }))}
                 >
                   <option value="">Select a course…</option>
-                  {categories.map(c => (
+                  {courses.map(c => (
                     <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                   ))}
                 </select>
@@ -838,11 +838,11 @@ function CourseRow({
   onDelete,
   onChangeStatus,
 }: {
-  item: MenuItem
+  item: Category
   statusChanging: boolean
   onEdit: () => void
   onDelete: () => void
-  onChangeStatus: (status: MenuItemStatus) => void
+  onChangeStatus: (status: ItemStatus) => void
 }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false)
   const statusCfg = STATUS_CONFIG[item.status ?? 'active']
@@ -868,7 +868,7 @@ function CourseRow({
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowStatusMenu(false)} />
                 <div className="absolute left-0 top-full mt-1 bg-white border border-charcoal/10 rounded-xl shadow-lg z-20 py-1 min-w-[130px]">
-                  {(Object.keys(STATUS_CONFIG) as MenuItemStatus[]).map(s => (
+                  {(Object.keys(STATUS_CONFIG) as ItemStatus[]).map(s => (
                     <button
                       key={s}
                       onClick={() => {

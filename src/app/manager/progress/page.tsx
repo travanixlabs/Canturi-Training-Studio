@@ -14,10 +14,10 @@ export default async function TraineesPage() {
     await supabase.from('users').select('id').eq('boutique_id', manager.boutique_id).eq('role', 'trainee')
   ).data?.map(u => u.id) ?? []
 
-  const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: completions }, { data: plates }, { data: visibleCats }, { data: workshops }, { data: workshopMenuItems }, { data: recurringCompletions }] = await Promise.all([
+  const [{ data: trainees }, { data: courses }, { data: categories }, { data: completions }, { data: plates }, { data: visibleCats }, { data: workshops }, { data: workshopCategories }, { data: recurringCompletions }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
     supabase.from('courses').select('*').order('sort_order'),
-    supabase.from('menu_items').select('*').eq('status', 'active'),
+    supabase.from('categories').select('*').eq('status', 'active'),
     traineeIds.length > 0
       ? supabase.from('completions').select('*').in('trainee_id', traineeIds)
       : Promise.resolve({ data: [] }),
@@ -26,7 +26,7 @@ export default async function TraineesPage() {
       : Promise.resolve({ data: [] }),
     supabase.from('visible_courses').select('*'),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
-    supabase.from('workshop_menu_items').select('*'),
+    supabase.from('workshop_categorys').select('*'),
     traineeIds.length > 0
       ? supabase.from('training_task_completions').select('*').in('trainee_id', traineeIds)
       : Promise.resolve({ data: [] }),
@@ -35,13 +35,13 @@ export default async function TraineesPage() {
   return (
     <ManagerTrainees
       trainees={trainees ?? []}
+      courses={courses ?? []}
       categories={categories ?? []}
-      menuItems={menuItems ?? []}
       completions={completions ?? []}
       plates={plates ?? []}
       visibleCategories={visibleCats ?? []}
       workshops={workshops ?? []}
-      workshopMenuItems={workshopMenuItems ?? []}
+      workshopCategories={workshopCategories ?? []}
       recurringCompletions={recurringCompletions ?? []}
     />
   )

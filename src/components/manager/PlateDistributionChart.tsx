@@ -3,24 +3,24 @@
 import { useMemo, useState, useCallback } from 'react'
 import { COURSE_COLOURS } from '@/types'
 import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
-import type { Plate, Course, MenuItem, Workshop, WorkshopMenuItem } from '@/types'
+import type { Plate, Course, Category, Workshop, WorkshopCategory } from '@/types'
 
 interface Props {
   plates: Plate[]
-  categories: Course[]
-  menuItems: MenuItem[]
+  courses: Course[]
+  categories: Category[]
   workshops: Workshop[]
-  workshopMenuItems: WorkshopMenuItem[]
+  workshopCategories: WorkshopCategory[]
   traineeId: string
   onFilterChange?: (filter: { dates: Set<string>; courseIds: Set<string> }) => void
 }
 
 export function PlateDistributionChart({
   plates,
+  courses,
   categories,
-  menuItems,
   workshops,
-  workshopMenuItems,
+  workshopCategories,
   traineeId,
   onFilterChange,
 }: Props) {
@@ -44,9 +44,9 @@ export function PlateDistributionChart({
   // Get all menu item -> category mapping
   const itemToCategoryId = useMemo(() => {
     const map = new Map<string, string>()
-    for (const mi of menuItems) map.set(mi.id, mi.course_id)
+    for (const mi of categories) map.set(mi.id, mi.course_id)
     return map
-  }, [menuItems])
+  }, [categories])
 
   // Get trainee plates
   const traineePlates = useMemo(() =>
@@ -56,15 +56,15 @@ export function PlateDistributionChart({
 
   // Get active courses (categories that have items in any workshop)
   const activeCourses = useMemo(() => {
-    const wsItemIds = new Set(workshopMenuItems.map(wmi => wmi.menu_item_id))
+    const wsItemIds = new Set(workshopCategories.map(wmi => wmi.category_id))
     const courseIds = new Set<string>()
-    for (const mi of menuItems) {
+    for (const mi of categories) {
       if (wsItemIds.has(mi.id)) courseIds.add(mi.course_id)
     }
-    return categories
+    return courses
       .filter(c => courseIds.has(c.id))
       .sort((a, b) => a.sort_order - b.sort_order)
-  }, [categories, menuItems, workshopMenuItems])
+  }, [courses, categories, workshopCategories])
 
   // Build chart data: for each date, count items per course
   const chartData = useMemo(() => {
@@ -74,7 +74,7 @@ export function PlateDistributionChart({
       let total = 0
 
       for (const p of datePlates) {
-        const catId = itemToCategoryId.get(p.menu_item_id)
+        const catId = itemToCategoryId.get(p.category_id)
         if (catId) {
           courseCounts[catId] = (courseCounts[catId] ?? 0) + 1
           total++

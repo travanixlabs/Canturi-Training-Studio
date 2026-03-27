@@ -1,17 +1,17 @@
 'use client'
 
-import type { Boutique, User, MenuItem, Completion, Plate, VisibleCourse } from '@/types'
+import type { Boutique, User, Category, Completion, Plate, VisibleCourse } from '@/types'
 
 interface Props {
   boutiques: Boutique[]
   allUsers: User[]
-  menuItems: MenuItem[]
+  categories: Category[]
   completions: Completion[]
   plates?: Plate[]
   visibleCategories?: VisibleCourse[]
 }
 
-export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completions, plates = [], visibleCategories = [] }: Props) {
+export function HeadOfficeDashboard({ boutiques, allUsers, categories, completions, plates = [], visibleCategories = [] }: Props) {
   const getUsersForBoutique = (boutique: Boutique) =>
     allUsers.filter(u => u.boutique_id === boutique.id)
 
@@ -23,15 +23,15 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
 
   // Get assigned items for an employee (via plates or visible categories)
   const getAssignedItems = (userId: string) => {
-    const plateItemIds = new Set(plates.filter(p => p.trainee_id === userId).map(p => p.menu_item_id))
+    const plateItemIds = new Set(plates.filter(p => p.trainee_id === userId).map(p => p.category_id))
     const visibleCatIds = new Set(visibleCategories.filter(v => v.user_id === userId).map(v => v.course_id))
-    return menuItems.filter(m => plateItemIds.has(m.id) || visibleCatIds.has(m.course_id))
+    return categories.filter(m => plateItemIds.has(m.id) || visibleCatIds.has(m.course_id))
   }
 
   const personPct = (userId: string) => {
     const assigned = getAssignedItems(userId)
     if (assigned.length === 0) return 0
-    const done = assigned.filter(m => completions.some(c => c.trainee_id === userId && c.menu_item_id === m.id)).length
+    const done = assigned.filter(m => completions.some(c => c.trainee_id === userId && c.category_id === m.id)).length
     return Math.round((done / assigned.length) * 100)
   }
 
@@ -123,7 +123,7 @@ export function HeadOfficeDashboard({ boutiques, allUsers, menuItems, completion
         <div className="card divide-y divide-black/5">
           {recentActivity.map(completion => {
             const trainee = completion.trainee as unknown as User | undefined
-            const item = completion.menu_item as unknown as (MenuItem & { category?: { name: string } }) | undefined
+            const item = completion.category as unknown as (Category & { category?: { name: string } }) | undefined
             const boutique = boutiques.find(b => b.id === trainee?.boutique_id)
 
             return (

@@ -82,34 +82,34 @@ export function useDatePlateView(
   }, [availableDates, selectedDate])
 
   // Helper: get completion for a menu item
-  const getCompletion = (menuItemId: string) =>
-    allCompletions.find(c => c.menu_item_id === menuItemId) ?? null
+  const getCompletion = (categoryItemId: string) =>
+    allCompletions.find(c => c.category_id === categoryItemId) ?? null
 
   // Helper: recurring completions for an item
-  const getRecurringForItem = (menuItemId: string) =>
-    allRecurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === userId)
+  const getRecurringForItem = (categoryItemId: string) =>
+    allRecurringCompletions.filter(rc => rc.category_id === categoryItemId && rc.trainee_id === userId)
 
   // Helper: recurring count as of a date (snapshot)
-  const getRecurringCountAsOf = (menuItemId: string, asOfDate: string) =>
-    getRecurringForItem(menuItemId).filter(rc => rc.completed_date <= asOfDate).length
+  const getRecurringCountAsOf = (categoryItemId: string, asOfDate: string) =>
+    getRecurringForItem(categoryItemId).filter(rc => rc.completed_date <= asOfDate).length
 
   // Helper: was a session done on a specific date
-  const wasSessionDoneOn = (menuItemId: string, date: string) =>
-    getRecurringForItem(menuItemId).some(rc => rc.completed_date === date)
+  const wasSessionDoneOn = (categoryItemId: string, date: string) =>
+    getRecurringForItem(categoryItemId).some(rc => rc.completed_date === date)
 
   // Helper: recurring breakdown as of date
-  const getRecurringBreakdownAsOf = (menuItemId: string, asOfDate: string) => {
-    const rcsAsOf = getRecurringForItem(menuItemId).filter(rc => rc.completed_date <= asOfDate)
+  const getRecurringBreakdownAsOf = (categoryItemId: string, asOfDate: string) => {
+    const rcsAsOf = getRecurringForItem(categoryItemId).filter(rc => rc.completed_date <= asOfDate)
     const assignedDates = allPlates
-      .filter(p => p.menu_item_id === menuItemId && p.trainee_id === userId)
+      .filter(p => p.category_id === categoryItemId && p.trainee_id === userId)
       .map(p => p.date_assigned)
     const assigned = rcsAsOf.filter(rc => assignedDates.includes(rc.completed_date)).length
     return { assigned, shadowed: rcsAsOf.length - assigned }
   }
 
   // Helper: is recurring fully complete as of date
-  const isFullyCompleteAsOf = (menuItemId: string, recurringAmount: number, asOfDate: string) =>
-    getRecurringCountAsOf(menuItemId, asOfDate) >= recurringAmount
+  const isFullyCompleteAsOf = (categoryItemId: string, recurringAmount: number, asOfDate: string) =>
+    getRecurringCountAsOf(categoryItemId, asOfDate) >= recurringAmount
 
   // Build view for selected date
   const { remainingGroups, completedGroups, progress } = useMemo(() => {
@@ -120,7 +120,7 @@ export function useDatePlateView(
     const platesOnDate = allPlates.filter(p => p.date_assigned === selectedDate)
 
     for (const p of platesOnDate) {
-      const mi = p.menu_item
+      const mi = p.category
       if (!mi) continue
       const isRec = mi.is_recurring && !!mi.recurring_amount
 
@@ -147,7 +147,7 @@ export function useDatePlateView(
 
         if (doneOnThisDate || fullyComplete) {
           // Check if the session done on this date was shadowed (not on an assigned plate date)
-          const assignedDates = new Set(allPlates.filter(pp => pp.menu_item_id === mi.id && pp.trainee_id === userId).map(pp => pp.date_assigned))
+          const assignedDates = new Set(allPlates.filter(pp => pp.category_id === mi.id && pp.trainee_id === userId).map(pp => pp.date_assigned))
           const sessionShadowed = doneOnThisDate && !assignedDates.has(selectedDate)
           completed.push({ ...item, completed: true, shadowed: sessionShadowed })
         } else {
@@ -203,23 +203,23 @@ export function useDatePlateView(
     }
 
     // 2. Completions on this date for items NOT assigned on this date (shadowed or completed on this date)
-    const platesOnDateItemIds = new Set(platesOnDate.map(p => p.menu_item_id))
+    const platesOnDateItemIds = new Set(platesOnDate.map(p => p.category_id))
 
     // Non-recurring completions on selected date not already covered by plates
     for (const c of allCompletions) {
       if (c.completed_date !== selectedDate) continue
-      if (platesOnDateItemIds.has(c.menu_item_id)) continue
+      if (platesOnDateItemIds.has(c.category_id)) continue
       // Check if this item is recurring — if so, handled separately below
-      const mi = c.menu_item
+      const mi = c.category
       if (mi?.is_recurring && mi?.recurring_amount) continue
 
       // Non-recurring: shadowed = completed BEFORE the assigned date
-      const assignedPlate = allPlates.find(p => p.menu_item_id === c.menu_item_id && p.trainee_id === userId)
+      const assignedPlate = allPlates.find(p => p.category_id === c.category_id && p.trainee_id === userId)
       const assignedDate = assignedPlate?.date_assigned
       const isShadowedEarly = !!(assignedDate && c.completed_date < assignedDate)
 
       completed.push({
-        id: c.menu_item_id,
+        id: c.category_id,
         title: mi?.title ?? '',
         timeNeeded: mi?.time_needed ?? '',
         trainerType: mi?.trainer_type ?? '',
@@ -236,13 +236,13 @@ export function useDatePlateView(
     const seenRecurring = new Set<string>()
     for (const rc of allRecurringCompletions) {
       if (rc.completed_date !== selectedDate) continue
-      if (platesOnDateItemIds.has(rc.menu_item_id)) continue
-      if (seenRecurring.has(rc.menu_item_id)) continue
-      seenRecurring.add(rc.menu_item_id)
+      if (platesOnDateItemIds.has(rc.category_id)) continue
+      if (seenRecurring.has(rc.category_id)) continue
+      seenRecurring.add(rc.category_id)
 
-      // Find the menu_item from any plate that has it
-      const refPlate = allPlates.find(p => p.menu_item_id === rc.menu_item_id)
-      const mi = refPlate?.menu_item
+      // Find the category from any plate that has it
+      const refPlate = allPlates.find(p => p.category_id === rc.category_id)
+      const mi = refPlate?.category
       if (!mi) continue
 
       const recTotal = mi.recurring_amount ?? 0
@@ -266,13 +266,13 @@ export function useDatePlateView(
 
     // 3. Overdue items — only when viewing today
     if (isToday) {
-      const todayItemIds = new Set(platesOnDate.map(p => p.menu_item_id))
+      const todayItemIds = new Set(platesOnDate.map(p => p.category_id))
       const completedItemIds = new Set(completed.map(i => i.id))
       const remainingItemIds = new Set(remaining.map(i => i.id))
 
       for (const p of allPlates) {
         if (p.date_assigned >= today) continue
-        const mi = p.menu_item
+        const mi = p.category
         if (!mi) continue
         if (todayItemIds.has(mi.id)) continue
         if (completedItemIds.has(mi.id)) continue
@@ -322,7 +322,7 @@ export function useDatePlateView(
       // Also add past-assigned incomplete non-recurring items on current date
       for (const p of allPlates) {
         if (p.date_assigned >= today) continue
-        const mi = p.menu_item
+        const mi = p.category
         if (!mi || (mi.is_recurring && mi.recurring_amount)) continue
         if (remainingItemIds.has(mi.id)) continue
         if (completedItemIds.has(mi.id)) continue
@@ -360,9 +360,9 @@ export function useDatePlateView(
       const groups: Record<string, PlateGroup> = {}
       for (const item of items) {
         // Find the category from allPlates or allCompletions
-        const plate = allPlates.find(p => p.menu_item_id === item.id)
-        const comp = allCompletions.find(c => c.menu_item_id === item.id)
-        const cat = plate?.menu_item?.course ?? comp?.menu_item?.course ?? null
+        const plate = allPlates.find(p => p.category_id === item.id)
+        const comp = allCompletions.find(c => c.category_id === item.id)
+        const cat = plate?.category?.course ?? comp?.category?.course ?? null
         const key = cat?.id ?? 'uncategorised'
         if (!groups[key]) {
           groups[key] = {

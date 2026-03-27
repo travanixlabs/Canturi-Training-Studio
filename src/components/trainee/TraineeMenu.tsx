@@ -4,46 +4,46 @@ import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { COURSE_COLOURS } from '@/types'
-import type { Course, MenuItem, Completion, User, TrainingTaskCompletion, Plate, Workshop, WorkshopMenuItem } from '@/types'
+import type { Course, Category, Completion, User, TrainingTaskCompletion, Plate, Workshop, WorkshopCategory } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT } from '@/lib/dates'
 
 interface Props {
-  categories: Course[]
-  menuItems: MenuItem[]
+  courses: Course[]
+  categories: Category[]
   completions: Completion[]
   currentUser: User
   recurringCompletions?: TrainingTaskCompletion[]
   plates?: Plate[]
   workshops?: Workshop[]
-  workshopMenuItems?: WorkshopMenuItem[]
+  workshopCategories?: WorkshopCategory[]
 }
 
-export function TraineeMenu({ categories, menuItems, completions, currentUser, recurringCompletions = [], plates = [], workshops = [], workshopMenuItems = [] }: Props) {
+export function TraineeMenu({ courses, categories, completions, currentUser, recurringCompletions = [], plates = [], workshops = [], workshopCategories = [] }: Props) {
   const [search, setSearch] = useState('')
   const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const router = useRouter()
 
-  const isCompleted = (itemId: string) => completions.some(c => c.menu_item_id === itemId)
-  const getCompletion = (itemId: string) => completions.find(c => c.menu_item_id === itemId) ?? null
+  const isCompleted = (itemId: string) => completions.some(c => c.category_id === itemId)
+  const getCompletion = (itemId: string) => completions.find(c => c.category_id === itemId) ?? null
 
   const getRecurringCount = (itemId: string) =>
-    recurringCompletions.filter(rc => rc.menu_item_id === itemId && rc.trainee_id === currentUser.id).length
+    recurringCompletions.filter(rc => rc.category_id === itemId && rc.trainee_id === currentUser.id).length
 
   const getRecurringBreakdown = (itemId: string) => {
-    const rcs = recurringCompletions.filter(rc => rc.menu_item_id === itemId && rc.trainee_id === currentUser.id)
-    const plateDates = plates.filter(p => p.menu_item_id === itemId && p.trainee_id === currentUser.id).map(p => p.date_assigned)
+    const rcs = recurringCompletions.filter(rc => rc.category_id === itemId && rc.trainee_id === currentUser.id)
+    const plateDates = plates.filter(p => p.category_id === itemId && p.trainee_id === currentUser.id).map(p => p.date_assigned)
     const assigned = rcs.filter(rc => plateDates.includes(rc.completed_date)).length
     return { assigned, shadowed: rcs.length - assigned }
   }
 
   const todayStr = todayAEDT()
   const isDoneToday = (itemId: string) =>
-    recurringCompletions.some(rc => rc.menu_item_id === itemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
+    recurringCompletions.some(rc => rc.category_id === itemId && rc.trainee_id === currentUser.id && rc.completed_date === todayStr)
 
   const getAssignedDate = (itemId: string) =>
-    plates.find(p => p.menu_item_id === itemId && p.trainee_id === currentUser.id)?.date_assigned ?? null
+    plates.find(p => p.category_id === itemId && p.trainee_id === currentUser.id)?.date_assigned ?? null
 
   const isShadowedEarly = (itemId: string) => {
     const comp = getCompletion(itemId)
@@ -55,14 +55,14 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
     new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })
 
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return menuItems
+    if (!search.trim()) return categories
     const q = search.toLowerCase()
-    return menuItems.filter(item =>
+    return categories.filter(item =>
       item.title.toLowerCase().includes(q) ||
       item.description.toLowerCase().includes(q) ||
       item.tags?.some(t => t.toLowerCase().includes(q))
     )
-  }, [menuItems, search])
+  }, [categories, search])
 
   const isSearching = search.trim().length > 0
 
@@ -86,13 +86,13 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
 
   const workshopHierarchy = useMemo(() => {
     return workshops.map(ws => {
-      const itemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.menu_item_id))
-      const wsItems = menuItems.filter(mi => itemIds.has(mi.id))
+      const itemIds = new Set(workshopCategories.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.category_id))
+      const wsItems = categories.filter(mi => itemIds.has(mi.id))
       const catIds = [...new Set(wsItems.map(mi => mi.course_id))]
-      const wsCats = categories.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
-      return { workshop: ws, categories: wsCats, menuItemIds: itemIds }
+      const wsCats = courses.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
+      return { workshop: ws, categories: wsCats, categoryItemIds: itemIds }
     }).filter(ws => ws.categories.length > 0)
-  }, [workshops, workshopMenuItems, menuItems, categories])
+  }, [workshops, workshopCategories, courses, categories])
 
   function highlightText(text: string, query: string) {
     if (!query.trim()) return text
@@ -146,7 +146,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
             )}
             <div className="space-y-2">
               {filteredItems.map(item => (
-                <MenuItemCard
+                <CategoryCard
                   key={item.id}
                   item={item}
                   completed={isCompleted(item.id)}
@@ -162,9 +162,9 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
         {/* Workshop → Course → Category browse (when not searching) */}
         {!isSearching && (
           <div className="space-y-3">
-            {workshopHierarchy.map(({ workshop, categories: wsCats, menuItemIds }) => {
+            {workshopHierarchy.map(({ workshop, categories: wsCats, categoryItemIds }) => {
               const wsExpanded = expandedWorkshops.has(workshop.id)
-              const wsItems = menuItems.filter(mi => menuItemIds.has(mi.id))
+              const wsItems = categories.filter(mi => categoryItemIds.has(mi.id))
               const wsCompleted = wsItems.filter(i => isCompleted(i.id)).length
 
               const allCourseKeys = wsCats.map(c => `${workshop.id}-${c.id}`)
@@ -359,14 +359,14 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
   )
 }
 
-function MenuItemCard({
+function CategoryCard({
   item,
   completed,
   searchQuery,
   highlightText,
   onOpen,
 }: {
-  item: MenuItem
+  item: Category
   completed: boolean
   searchQuery: string
   highlightText: (text: string, query: string) => React.ReactNode

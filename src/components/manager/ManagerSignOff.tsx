@@ -5,17 +5,17 @@ import { CourseBadge } from '@/components/ui/CourseBadge'
 import { TaskModal } from '@/components/ui/TaskModal'
 import { StarRating } from '@/components/ui/StarRating'
 import { useRouter } from 'next/navigation'
-import type { User, Completion, MenuItem, Plate } from '@/types'
+import type { User, Completion, Category, Plate } from '@/types'
 
 interface Props {
   manager: User
   trainees: User[]
   completions: Completion[]
-  menuItems: MenuItem[]
+  categories: Category[]
   plates?: Plate[]
 }
 
-export function ManagerSignOff({ manager, trainees, completions: initialCompletions, menuItems, plates = [] }: Props) {
+export function ManagerSignOff({ manager, trainees, completions: initialCompletions, categories, plates = [] }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
@@ -33,7 +33,7 @@ export function ManagerSignOff({ manager, trainees, completions: initialCompleti
   // Find the plate for a completion (to show if shadowed early)
   const getPlateForCompletion = (completion: Completion) => {
     return plates.find(
-      p => p.menu_item_id === completion.menu_item_id && p.trainee_id === completion.trainee_id
+      p => p.category_id === completion.category_id && p.trainee_id === completion.trainee_id
     )
   }
 
@@ -128,9 +128,9 @@ export function ManagerSignOff({ manager, trainees, completions: initialCompleti
         )}
       </div>
 
-      {selectedCompletion?.menu_item && (
+      {selectedCompletion?.category && (
         <TaskModal
-          item={selectedCompletion.menu_item}
+          item={selectedCompletion.category}
           plate={null}
           existingCompletion={selectedCompletion}
           currentUser={manager}
@@ -155,7 +155,7 @@ function CompletionCard({
   onOpen: () => void
   mode: 'pending' | 'done'
 }) {
-  const item = completion.menu_item
+  const item = completion.category
   if (!item) return null
 
   // Check if completed before assigned date

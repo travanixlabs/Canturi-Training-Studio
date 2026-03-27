@@ -7,21 +7,21 @@ import { TaskModal } from '@/components/ui/TaskModal'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
-import type { User, Course, MenuItem, Plate, VisibleCourse, Completion, TrainingTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
+import type { User, Course, Category, Plate, VisibleCourse, Completion, TrainingTaskCompletion, Workshop, WorkshopCategory } from '@/types'
 import { PlateDistributionChart } from './PlateDistributionChart'
 
 interface Props {
   manager: User
   trainees: User[]
-  categories: Course[]
-  menuItems: MenuItem[]
+  courses: Course[]
+  categories: Category[]
   todayPlates: Plate[]
   visibleCategories?: VisibleCourse[]
   completions?: Completion[]
   recurringCompletions?: TrainingTaskCompletion[]
   showBoutique?: boolean
   workshops?: Workshop[]
-  workshopMenuItems?: WorkshopMenuItem[]
+  workshopCategories?: WorkshopCategory[]
 }
 
 // Generate next 14 days for date picker
@@ -40,7 +40,7 @@ function getUpcomingDates() {
   return dates
 }
 
-export function BuildPlate({ manager, trainees, categories, menuItems, todayPlates, visibleCategories: initialVisible = [], completions: allCompletions = [], recurringCompletions: initialRecurring = [], showBoutique, workshops = [], workshopMenuItems = [] }: Props) {
+export function BuildPlate({ manager, trainees, courses, categories, todayPlates, visibleCategories: initialVisible = [], completions: allCompletions = [], recurringCompletions: initialRecurring = [], showBoutique, workshops = [], workshopCategories = [] }: Props) {
   const [selectedTrainee, setSelectedTrainee] = useState<User | null>(
     trainees.length === 1 ? trainees[0] : null
   )
@@ -50,8 +50,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   const [plates, setPlates] = useState<Plate[]>(todayPlates)
   const [visibleCats, setVisibleCats] = useState<VisibleCourse[]>(initialVisible)
   const [isPending, startTransition] = useTransition()
-  const [datePicker, setDatePicker] = useState<{ items: MenuItem[]; anchorId: string; workshopId: string } | null>(null)
-  const [multiDatePicker, setMultiDatePicker] = useState<{ item: MenuItem; anchorId: string; workshopId: string } | null>(null)
+  const [datePicker, setDatePicker] = useState<{ items: Category[]; anchorId: string; workshopId: string } | null>(null)
+  const [multiDatePicker, setMultiDatePicker] = useState<{ item: Category; anchorId: string; workshopId: string } | null>(null)
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
   const [recurringCompletions, setRecurringCompletions] = useState<TrainingTaskCompletion[]>(initialRecurring)
   const [chartFilter, setChartFilter] = useState<{ dates: Set<string>; courseIds: Set<string> }>({ dates: new Set(), courseIds: new Set() })
@@ -69,29 +69,29 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     return visibleCats.some(v => v.course_id === categoryId && v.user_id === selectedTrainee?.id && v.workshop_id === workshopId)
   }
 
-  const isOnPlate = (menuItemId: string, workshopId: string, traineeId?: string) => {
+  const isOnPlate = (categoryItemId: string, workshopId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
-    return plates.some(p => p.menu_item_id === menuItemId && p.trainee_id === tid && p.workshop_id === workshopId)
+    return plates.some(p => p.category_id === categoryItemId && p.trainee_id === tid && p.workshop_id === workshopId)
   }
 
-  const isCompleted = (menuItemId: string, workshopId: string, traineeId?: string) => {
+  const isCompleted = (categoryItemId: string, workshopId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
-    return allCompletions.some(c => c.menu_item_id === menuItemId && c.trainee_id === tid && c.workshop_id === workshopId)
+    return allCompletions.some(c => c.category_id === categoryItemId && c.trainee_id === tid && c.workshop_id === workshopId)
   }
 
-  const getCompletion = (menuItemId: string, workshopId: string) => {
-    return allCompletions.find(c => c.menu_item_id === menuItemId && c.trainee_id === selectedTrainee?.id && c.workshop_id === workshopId)
+  const getCompletion = (categoryItemId: string, workshopId: string) => {
+    return allCompletions.find(c => c.category_id === categoryItemId && c.trainee_id === selectedTrainee?.id && c.workshop_id === workshopId)
   }
 
-  const getRecurringCount = (menuItemId: string, workshopId: string, traineeId?: string) => {
+  const getRecurringCount = (categoryItemId: string, workshopId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
-    return recurringCompletions.filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === tid && rc.workshop_id === workshopId).length
+    return recurringCompletions.filter(rc => rc.category_id === categoryItemId && rc.trainee_id === tid && rc.workshop_id === workshopId).length
   }
 
-  const getRecurringDates = (menuItemId: string, workshopId: string, traineeId?: string) => {
+  const getRecurringDates = (categoryItemId: string, workshopId: string, traineeId?: string) => {
     const tid = traineeId ?? selectedTrainee?.id
     return recurringCompletions
-      .filter(rc => rc.menu_item_id === menuItemId && rc.trainee_id === tid && rc.workshop_id === workshopId)
+      .filter(rc => rc.category_id === categoryItemId && rc.trainee_id === tid && rc.workshop_id === workshopId)
       .map(rc => rc.completed_date)
       .sort()
   }
@@ -100,7 +100,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     plates.filter(p => p.trainee_id === traineeId).length
 
   // Show date picker for a single item or multiple items (category)
-  function requestAssign(items: MenuItem[], anchorId: string, workshopId: string) {
+  function requestAssign(items: Category[], anchorId: string, workshopId: string) {
     if (!selectedTrainee) return
     // For a single recurring item, show multi-date picker
     if (items.length === 1 && items[0].is_recurring) {
@@ -118,7 +118,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     for (const item of datePicker.items) {
       // Remove existing plate for this item+trainee+workshop (allows re-assignment to new date)
       const existing = plates.find(
-        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === datePicker.workshopId
+        p => p.category_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === datePicker.workshopId
       )
       if (existing) {
         setPlates(prev => prev.filter(p => p.id !== existing.id))
@@ -127,7 +127,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
       const { data, error } = await supabase.from('plates').insert({
         trainee_id: selectedTrainee.id,
-        menu_item_id: item.id,
+        category_id: item.id,
         assigned_by: manager.id,
         date_assigned: date,
         boutique_id: selectedTrainee.boutique_id || manager.boutique_id,
@@ -154,13 +154,13 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     for (const date of Array.from(selectedDates).sort()) {
       // Skip if already has a plate for this item+trainee+date+workshop
       const alreadyExists = plates.some(
-        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.date_assigned === date && p.workshop_id === multiDatePicker.workshopId
+        p => p.category_id === item.id && p.trainee_id === selectedTrainee.id && p.date_assigned === date && p.workshop_id === multiDatePicker.workshopId
       )
       if (alreadyExists) continue
 
       const { data, error } = await supabase.from('plates').insert({
         trainee_id: selectedTrainee.id,
-        menu_item_id: item.id,
+        category_id: item.id,
         assigned_by: manager.id,
         date_assigned: date,
         boutique_id: selectedTrainee.boutique_id || manager.boutique_id,
@@ -180,18 +180,18 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     startTransition(() => router.refresh())
   }
 
-  async function removeFromPlate(item: MenuItem, workshopId: string) {
+  async function removeFromPlate(item: Category, workshopId: string) {
     if (!selectedTrainee) return
 
     if (item.is_recurring) {
       // For recurring items, only remove plates where there is NO recurring_task_completion for that date
       const traineeRecurringDates = new Set(
         recurringCompletions
-          .filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee.id && rc.workshop_id === workshopId)
+          .filter(rc => rc.category_id === item.id && rc.trainee_id === selectedTrainee.id && rc.workshop_id === workshopId)
           .map(rc => rc.completed_date)
       )
       const removable = plates.filter(
-        p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId && !traineeRecurringDates.has(p.date_assigned)
+        p => p.category_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId && !traineeRecurringDates.has(p.date_assigned)
       )
       if (removable.length === 0) return
       const removeIds = removable.map(p => p.id)
@@ -204,7 +204,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     }
 
     const existing = plates.find(
-      p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId
+      p => p.category_id === item.id && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId
     )
     if (existing) {
       setPlates(prev => prev.filter(p => p.id !== existing.id))
@@ -213,11 +213,11 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     }
   }
 
-  async function reassignItem(item: MenuItem, workshopId: string) {
+  async function reassignItem(item: Category, workshopId: string) {
     if (!selectedTrainee) return
     // Delete the completion record for this workshop
     await supabase.from('completions').delete()
-      .eq('menu_item_id', item.id)
+      .eq('category_id', item.id)
       .eq('trainee_id', selectedTrainee.id)
       .eq('workshop_id', workshopId)
     // Show date picker to reassign
@@ -238,9 +238,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
       await supabase.from('visible_courses').delete().eq('id', existing.id)
 
       // Delete plates for this category's items in this workshop
-      const catItemIds = menuItems.filter(mi => mi.course_id === categoryId).map(mi => mi.id)
+      const catItemIds = categories.filter(mi => mi.course_id === categoryId).map(mi => mi.id)
       const platesToDelete = plates.filter(p =>
-        catItemIds.includes(p.menu_item_id) && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId
+        catItemIds.includes(p.category_id) && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId
       )
       setPlates(prev => prev.filter(p => !platesToDelete.some(d => d.id === p.id)))
       for (const p of platesToDelete) {
@@ -249,13 +249,13 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
       // Delete completions for this category's items in this workshop
       await supabase.from('completions').delete()
-        .in('menu_item_id', catItemIds)
+        .in('category_id', catItemIds)
         .eq('trainee_id', selectedTrainee.id)
         .eq('workshop_id', workshopId)
 
       // Delete recurring completions for this category's items in this workshop
       await supabase.from('training_task_completions').delete()
-        .in('menu_item_id', catItemIds)
+        .in('category_id', catItemIds)
         .eq('trainee_id', selectedTrainee.id)
         .eq('workshop_id', workshopId)
 
@@ -277,8 +277,8 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   // Batch toggle: show/hide all courses in a workshop
   async function toggleWorkshopVisibility(workshopId: string) {
     if (!selectedTrainee) return
-    const itemIds = workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id)
-    const categoryIds = [...new Set(menuItems.filter(mi => itemIds.includes(mi.id)).map(mi => mi.course_id))]
+    const itemIds = workshopCategories.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.category_id)
+    const categoryIds = [...new Set(categories.filter(mi => itemIds.includes(mi.id)).map(mi => mi.course_id))]
     const allVisible = categoryIds.every(cid => isCategoryVisible(cid, workshopId))
 
     if (allVisible) {
@@ -321,22 +321,22 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   // Build workshop -> category hierarchy
   const workshopHierarchy = useMemo(() => {
     return workshops.map(ws => {
-      const itemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.menu_item_id))
-      const wsItems = menuItems.filter(mi => itemIds.has(mi.id))
+      const itemIds = new Set(workshopCategories.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.category_id))
+      const wsItems = categories.filter(mi => itemIds.has(mi.id))
       const catIds = [...new Set(wsItems.map(mi => mi.course_id))]
-      const wsCats = categories.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
-      return { workshop: ws, categories: wsCats, menuItemIds: itemIds }
+      const wsCats = courses.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
+      return { workshop: ws, categories: wsCats, categoryItemIds: itemIds }
     })
-  }, [workshops, workshopMenuItems, menuItems, categories])
+  }, [workshops, workshopCategories, courses, categories])
 
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return menuItems
+    if (!search.trim()) return categories
     const q = search.toLowerCase()
-    return menuItems.filter(item =>
+    return categories.filter(item =>
       item.title.toLowerCase().includes(q) ||
       item.tags?.some(t => t.toLowerCase().includes(q))
     )
-  }, [menuItems, search])
+  }, [categories, search])
 
   function toggleCategory(id: string) {
     setExpandedCategories(prev => {
@@ -351,9 +351,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
   // Chart filter: determine which items to show
   const hasChartFilter = chartFilter.dates.size > 0 || chartFilter.courseIds.size > 0
-  const isItemVisibleByChart = (menuItemId: string, workshopId: string) => {
+  const isItemVisibleByChart = (categoryItemId: string, workshopId: string) => {
     if (!hasChartFilter) return true
-    const mi = menuItems.find(m => m.id === menuItemId)
+    const mi = categories.find(m => m.id === categoryItemId)
     if (!mi) return true
 
     // Course filter
@@ -361,7 +361,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
     // Date filter: check if item is assigned on any of the selected dates
     if (chartFilter.dates.size > 0) {
-      const itemPlates = plates.filter(p => p.menu_item_id === menuItemId && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshopId)
+      const itemPlates = plates.filter(p => p.category_id === categoryItemId && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshopId)
       const hasMatchingDate = itemPlates.some(p => chartFilter.dates.has(p.date_assigned))
       if (!hasMatchingDate) return false
     }
@@ -374,9 +374,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     if (chartFilter.courseIds.size > 0) return chartFilter.courseIds.has(categoryId)
     // If only date filter, check if any items in this course are assigned on selected dates
     if (chartFilter.dates.size > 0) {
-      const courseItems = menuItems.filter(mi => mi.course_id === categoryId)
+      const courseItems = categories.filter(mi => mi.course_id === categoryId)
       return courseItems.some(mi => {
-        const itemPlates = plates.filter(p => p.menu_item_id === mi.id && p.trainee_id === selectedTrainee?.id)
+        const itemPlates = plates.filter(p => p.category_id === mi.id && p.trainee_id === selectedTrainee?.id)
         return itemPlates.some(p => chartFilter.dates.has(p.date_assigned))
       })
     }
@@ -394,10 +394,10 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
           <div className="flex-1 min-w-0">
             <PlateDistributionChart
               plates={plates}
+              courses={courses}
               categories={categories}
-              menuItems={menuItems}
               workshops={workshops}
-              workshopMenuItems={workshopMenuItems}
+              workshopCategories={workshopCategories}
               traineeId={selectedTrainee.id}
               onFilterChange={setChartFilter}
             />
@@ -573,9 +573,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
           {/* Workshop → Course → Category browse */}
           {(
             <div className="space-y-3">
-              {workshopHierarchy.map(({ workshop, categories: wsCats, menuItemIds }) => {
+              {workshopHierarchy.map(({ workshop, categories: wsCats, categoryItemIds }) => {
                 const wsExpanded = expandedWorkshops.has(workshop.id)
-                const wsItems = menuItems.filter(mi => menuItemIds.has(mi.id))
+                const wsItems = categories.filter(mi => categoryItemIds.has(mi.id))
                 const wsAssigned = wsItems.filter(i => isOnPlate(i.id, workshop.id)).length
                 const wsCatIds = wsCats.map(c => c.id)
                 const wsAllVisible = isEmployee ? wsCatIds.every(cid => isCategoryVisible(cid, workshop.id)) : true
@@ -761,22 +761,22 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                       )}
                                       <div className="divide-y divide-black/5">
                                         {nonRecurring.map(item => (
-                                          <MenuItemRow
+                                          <CategoryRow
                                             key={item.id}
                                             item={item}
                                             onPlate={isOnPlate(item.id, workshop.id)}
                                             completed={isCompleted(item.id, workshop.id)}
                                             completedDate={getCompletion(item.id, workshop.id)?.completed_date}
-                                            assignedDate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id)?.date_assigned}
+                                            assignedDate={plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id)?.date_assigned}
                                             onAssign={() => requestAssign([item], item.id, workshop.id)}
                                             onRemove={() => removeFromPlate(item, workshop.id)}
                                             compact
                                             onReassign={() => reassignItem(item, workshop.id)}
                                             completion={getCompletion(item.id, workshop.id)}
                                             currentUser={manager}
-                                            plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id) ?? null}
-                                            assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id).map(p => p.date_assigned)}
-                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id && rc.workshop_id === workshop.id).map(rc => rc.completed_date)}
+                                            plate={plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id) ?? null}
+                                            assignedPlateDates={plates.filter(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id).map(p => p.date_assigned)}
+                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.category_id === item.id && rc.trainee_id === selectedTrainee?.id && rc.workshop_id === workshop.id).map(rc => rc.completed_date)}
                                           />
                                         ))}
                                       </div>
@@ -789,7 +789,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                       </div>
                                       <div className="divide-y divide-black/5">
                                         {recurring.map(item => (
-                                          <MenuItemRow
+                                          <CategoryRow
                                             key={item.id}
                                             item={item}
                                             onPlate={isOnPlate(item.id, workshop.id)}
@@ -798,10 +798,10 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                             assignedDate={(() => {
                                               const todayStr = todayAEDT()
                                               const futureDates = plates
-                                                .filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id && p.date_assigned >= todayStr)
+                                                .filter(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id && p.date_assigned >= todayStr)
                                                 .map(p => p.date_assigned)
                                                 .sort()
-                                              return futureDates[0] ?? plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id)?.date_assigned
+                                              return futureDates[0] ?? plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id)?.date_assigned
                                             })()}
                                             onAssign={() => requestAssign([item], item.id, workshop.id)}
                                             onRemove={() => removeFromPlate(item, workshop.id)}
@@ -811,9 +811,9 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                                             onReassign={() => reassignItem(item, workshop.id)}
                                             completion={getCompletion(item.id, workshop.id)}
                                             currentUser={manager}
-                                            plate={plates.find(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id) ?? null}
-                                            assignedPlateDates={plates.filter(p => p.menu_item_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id).map(p => p.date_assigned)}
-                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.menu_item_id === item.id && rc.trainee_id === selectedTrainee?.id && rc.workshop_id === workshop.id).map(rc => rc.completed_date)}
+                                            plate={plates.find(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id) ?? null}
+                                            assignedPlateDates={plates.filter(p => p.category_id === item.id && p.trainee_id === selectedTrainee?.id && p.workshop_id === workshop.id).map(p => p.date_assigned)}
+                                            recurringCompletionDates={recurringCompletions.filter(rc => rc.category_id === item.id && rc.trainee_id === selectedTrainee?.id && rc.workshop_id === workshop.id).map(rc => rc.completed_date)}
                                           />
                                         ))}
                                       </div>
@@ -885,7 +885,7 @@ function PersonButton({
   )
 }
 
-function MenuItemRow({
+function CategoryRow({
   item,
   onPlate,
   completed = false,
@@ -903,7 +903,7 @@ function MenuItemRow({
   assignedPlateDates,
   recurringCompletionDates,
 }: {
-  item: MenuItem
+  item: Category
   onPlate: boolean
   completed?: boolean
   completedDate?: string

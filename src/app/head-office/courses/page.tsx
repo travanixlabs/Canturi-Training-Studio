@@ -7,15 +7,15 @@ export default async function HeadOfficeCoursesPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: categories }, { data: menuItems }] = await Promise.all([
+  const [{ data: courses }, { data: categories }] = await Promise.all([
     supabase.from('courses').select('*').order('sort_order'),
-    supabase.from('menu_items').select('*, course:courses(*)').order('title'),
+    supabase.from('categories').select('*, course:courses(*)').order('title'),
   ])
 
   return (
     <CourseEditor
+      courses={courses ?? []}
       categories={categories ?? []}
-      menuItems={menuItems ?? []}
     />
   )
 }

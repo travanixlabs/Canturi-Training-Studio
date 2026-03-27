@@ -3,21 +3,21 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
-import type { User, Course, MenuItem, Completion, Plate, VisibleCourse, Workshop, WorkshopMenuItem, TrainingTaskCompletion } from '@/types'
+import type { User, Course, Category, Completion, Plate, VisibleCourse, Workshop, WorkshopCategory, TrainingTaskCompletion } from '@/types'
 
 interface Props {
   trainees: User[]
-  categories: Course[]
-  menuItems: MenuItem[]
+  courses: Course[]
+  categories: Category[]
   completions: Completion[]
   plates?: Plate[]
   visibleCategories?: VisibleCourse[]
   workshops?: Workshop[]
-  workshopMenuItems?: WorkshopMenuItem[]
+  workshopCategories?: WorkshopCategory[]
   recurringCompletions?: TrainingTaskCompletion[]
 }
 
-export function ManagerTrainees({ trainees, categories, menuItems, completions, plates = [], visibleCategories = [], workshops = [], workshopMenuItems = [], recurringCompletions = [] }: Props) {
+export function ManagerTrainees({ trainees, courses, categories, completions, plates = [], visibleCategories = [], workshops = [], workshopCategories = [], recurringCompletions = [] }: Props) {
   const [selected, setSelected] = useState<User | 'all'>('all')
   const [expandedLevel1, setExpandedLevel1] = useState<Set<string>>(new Set())
   const [expandedLevel2, setExpandedLevel2] = useState<Set<string>>(new Set())
@@ -25,34 +25,34 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
 
   const workshopHierarchy = useMemo(() => {
     return workshops.map(ws => {
-      const itemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.menu_item_id))
-      const wsItems = menuItems.filter(mi => itemIds.has(mi.id))
+      const itemIds = new Set(workshopCategories.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.category_id))
+      const wsItems = categories.filter(mi => itemIds.has(mi.id))
       const catIds = [...new Set(wsItems.map(mi => mi.course_id))]
-      const wsCats = categories.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
+      const wsCats = courses.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
       return { workshop: ws, categories: wsCats, items: wsItems }
     })
-  }, [workshops, workshopMenuItems, menuItems, categories])
+  }, [workshops, workshopCategories, courses, categories])
 
   const getWorkshopCompletions = (traineeId: string, workshopId: string) => {
-    const wsItemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id))
-    return completions.filter(c => c.trainee_id === traineeId && wsItemIds.has(c.menu_item_id) && c.workshop_id === workshopId)
+    const wsItemIds = new Set(workshopCategories.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.category_id))
+    return completions.filter(c => c.trainee_id === traineeId && wsItemIds.has(c.category_id) && c.workshop_id === workshopId)
   }
 
   const getCourseCompletions = (traineeId: string, workshopId: string, categoryId: string) => {
-    const wsItemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id))
-    const catItems = menuItems.filter(mi => wsItemIds.has(mi.id) && mi.course_id === categoryId)
-    return catItems.filter(mi => completions.some(c => c.menu_item_id === mi.id && c.trainee_id === traineeId && c.workshop_id === workshopId))
+    const wsItemIds = new Set(workshopCategories.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.category_id))
+    const catItems = categories.filter(mi => wsItemIds.has(mi.id) && mi.course_id === categoryId)
+    return catItems.filter(mi => completions.some(c => c.category_id === mi.id && c.trainee_id === traineeId && c.workshop_id === workshopId))
   }
 
   // Detailed course breakdown: categories (non-recurring) + sessions (recurring)
   const getCourseBreakdown = (traineeId: string, workshopId: string, categoryId: string) => {
-    const wsItemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id))
-    const catItems = menuItems.filter(mi => wsItemIds.has(mi.id) && mi.course_id === categoryId)
+    const wsItemIds = new Set(workshopCategories.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.category_id))
+    const catItems = categories.filter(mi => wsItemIds.has(mi.id) && mi.course_id === categoryId)
     const nonRecurring = catItems.filter(mi => !mi.is_recurring)
     const recurring = catItems.filter(mi => mi.is_recurring && mi.recurring_amount)
 
     // Non-recurring: completed vs shadowed
-    const nonRecComps = completions.filter(c => c.trainee_id === traineeId && c.workshop_id === workshopId && nonRecurring.some(mi => mi.id === c.menu_item_id))
+    const nonRecComps = completions.filter(c => c.trainee_id === traineeId && c.workshop_id === workshopId && nonRecurring.some(mi => mi.id === c.category_id))
     const nrCompleted = nonRecComps.filter(c => !c.is_shadowing_moment).length
     const nrShadowed = nonRecComps.filter(c => c.is_shadowing_moment).length
     const nrTotal = nonRecurring.length
@@ -60,9 +60,9 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
 
     // Recurring: session counts
     const sessionTotal = recurring.reduce((sum, mi) => sum + (mi.recurring_amount ?? 0), 0)
-    const sessionRcs = recurringCompletions.filter(rc => rc.trainee_id === traineeId && rc.workshop_id === workshopId && recurring.some(mi => mi.id === rc.menu_item_id))
+    const sessionRcs = recurringCompletions.filter(rc => rc.trainee_id === traineeId && rc.workshop_id === workshopId && recurring.some(mi => mi.id === rc.category_id))
     // Determine which sessions were assigned (matched plate dates) vs shadowed
-    const plateDates = plates.filter(p => p.trainee_id === traineeId && p.workshop_id === workshopId && recurring.some(mi => mi.id === p.menu_item_id)).map(p => p.date_assigned)
+    const plateDates = plates.filter(p => p.trainee_id === traineeId && p.workshop_id === workshopId && recurring.some(mi => mi.id === p.category_id)).map(p => p.date_assigned)
     const sessionCompleted = sessionRcs.filter(rc => plateDates.includes(rc.completed_date)).length
     const sessionShadowed = sessionRcs.length - sessionCompleted
     const sessionToDo = Math.max(0, sessionTotal - sessionRcs.length)
@@ -75,7 +75,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
   }
 
   // Workshop-level aggregated breakdown
-  const getWorkshopBreakdown = (traineeId: string, workshopId: string, wsCats: Course[], wsItems: MenuItem[]) => {
+  const getWorkshopBreakdown = (traineeId: string, workshopId: string, wsCats: Course[], wsItems: Category[]) => {
     let nrTotal = 0, nrCompleted = 0, nrShadowed = 0
     let sTotal = 0, sCompleted = 0, sShadowed = 0
     let coursesCompleted = 0
@@ -97,7 +97,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
       if (catDone && sesDone && bd.categories.total > 0) coursesCompleted++
 
       // Ratings
-      const courseComps = completions.filter(c => c.trainee_id === traineeId && c.workshop_id === workshopId && wsItems.some(mi => mi.id === c.menu_item_id && mi.course_id === cat.id))
+      const courseComps = completions.filter(c => c.trainee_id === traineeId && c.workshop_id === workshopId && wsItems.some(mi => mi.id === c.category_id && mi.course_id === cat.id))
       for (const c of courseComps) {
         if (c.trainee_rating != null) allTraineeRatings.push(c.trainee_rating)
         if (c.trainer_rating != null) allTrainerRatings.push(c.trainer_rating)
@@ -364,7 +364,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
                                   const colour = cat.colour_hex ?? COURSE_COLOURS[cat.name] ?? '#C9A96E'
                                   const bd = getCourseBreakdown(trainee.id, workshop.id, cat.id)
                                   const catPct = bd.categories.total > 0 ? Math.round(((bd.categories.completed + bd.categories.shadowed) / bd.categories.total) * 100) : 0
-                                  const courseComps = completions.filter(c => c.trainee_id === trainee.id && c.workshop_id === workshop.id && menuItems.some(mi => mi.id === c.menu_item_id && mi.course_id === cat.id))
+                                  const courseComps = completions.filter(c => c.trainee_id === trainee.id && c.workshop_id === workshop.id && categories.some(mi => mi.id === c.category_id && mi.course_id === cat.id))
                                   const traineeRatings = courseComps.map(c => c.trainee_rating).filter((r): r is number => r != null)
                                   const trainerRatings = courseComps.map(c => c.trainer_rating).filter((r): r is number => r != null)
                                   const avgTrainee = traineeRatings.length > 0 ? (traineeRatings.reduce((a, b) => a + b, 0) / traineeRatings.length).toFixed(1) : null
@@ -491,7 +491,7 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
                           const colour = cat.colour_hex ?? COURSE_COLOURS[cat.name] ?? '#C9A96E'
                           const bd = getCourseBreakdown(trainee.id, workshop.id, cat.id)
                           const catPct = bd.categories.total > 0 ? Math.round(((bd.categories.completed + bd.categories.shadowed) / bd.categories.total) * 100) : 0
-                          const courseComps = completions.filter(c => c.trainee_id === trainee.id && c.workshop_id === workshop.id && menuItems.some(mi => mi.id === c.menu_item_id && mi.course_id === cat.id))
+                          const courseComps = completions.filter(c => c.trainee_id === trainee.id && c.workshop_id === workshop.id && categories.some(mi => mi.id === c.category_id && mi.course_id === cat.id))
                           const traineeRatings = courseComps.map(c => c.trainee_rating).filter((r): r is number => r != null)
                           const trainerRatings = courseComps.map(c => c.trainer_rating).filter((r): r is number => r != null)
                           const avgTrainee = traineeRatings.length > 0 ? (traineeRatings.reduce((a, b) => a + b, 0) / traineeRatings.length).toFixed(1) : null
