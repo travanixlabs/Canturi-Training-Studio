@@ -402,8 +402,17 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                     type="url"
                   />
                   {activeSubcategory.content && (
-                    <div className="mt-4 card overflow-hidden" style={{ height: '500px' }}>
-                      <iframe src={activeSubcategory.content} className="w-full h-full border-0" title={activeSubcategory.title} />
+                    <div className="mt-4 card p-4 flex items-center gap-3">
+                      <Globe size={16} className="text-charcoal/30 flex-shrink-0" />
+                      <a
+                        href={activeSubcategory.content}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-gold hover:text-gold/80 underline underline-offset-2 truncate"
+                      >
+                        {activeSubcategory.content}
+                      </a>
+                      <span className="text-xs text-charcoal/30 flex-shrink-0">Opens in new tab</span>
                     </div>
                   )}
                 </div>
