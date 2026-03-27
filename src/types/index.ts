@@ -45,38 +45,6 @@ export interface Category {
   course?: Course
 }
 
-export interface Plate {
-  id: string
-  trainee_id: string
-  category_id: string
-  assigned_by: string
-  date_assigned: string
-  boutique_id: string
-  workshop_id: string | null
-  category?: Category
-  trainee?: User
-  assigned_by_user?: User
-}
-
-export interface Completion {
-  id: string
-  plate_id: string | null
-  category_id: string
-  trainee_id: string
-  trainer_id: string | null
-  trainee_notes: string | null
-  trainer_notes: string | null
-  trainee_rating: number | null
-  trainer_rating: number | null
-  completed_date: string
-  is_shadowing_moment: boolean
-  created_at: string
-  workshop_id: string | null
-  category?: Category
-  trainee?: User
-}
-
-
 export interface Workshop {
   id: string
   name: string
@@ -91,15 +59,6 @@ export interface WorkshopCategory {
   category_id: string
   created_at: string
   category?: Category
-}
-
-export interface VisibleCourse {
-  id: string
-  user_id: string
-  course_id: string
-  enabled_by: string
-  created_at: string
-  workshop_id: string | null
 }
 
 // Course colour mapping
