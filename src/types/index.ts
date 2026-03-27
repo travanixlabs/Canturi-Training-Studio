@@ -54,6 +54,15 @@ export interface Subcategory {
   created_at: string
 }
 
+export interface TrainingTask {
+  id: string
+  subcategory_id: string
+  title: string
+  description: string
+  sort_order: number
+  created_at: string
+}
+
 export interface Workshop {
   id: string
   name: string

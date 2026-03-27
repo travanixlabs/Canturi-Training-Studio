@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, FileText, Globe, Image
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Category, Course, Subcategory, SubcategoryType } from '@/types'
+import type { Category, Course, Subcategory, SubcategoryType, TrainingTask } from '@/types'
 
 const SUBCATEGORY_TYPES: { value: SubcategoryType; label: string; icon: React.ReactNode }[] = [
   { value: 'text', label: 'Text', icon: <FileText size={16} /> },
@@ -19,9 +19,10 @@ interface Props {
   categoryItem: Category
   courses: Course[]
   subcategories: Subcategory[]
+  trainingTasks: TrainingTask[]
 }
 
-export function CourseContentEditor({ categoryItem: initialItem, courses, subcategories: initialSubcategories }: Props) {
+export function CourseContentEditor({ categoryItem: initialItem, courses, subcategories: initialSubcategories, trainingTasks: initialTrainingTasks }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -36,13 +37,39 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   const [showTypeSelector, setShowTypeSelector] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  // Training tasks
+  const [trainingTasks, setTrainingTasks] = useState<TrainingTask[]>(initialTrainingTasks)
+  const [selectedTrainingTaskId, setSelectedTrainingTaskId] = useState<string | null>(null)
+
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isFirstRender = useRef(true)
 
   const activeSubcategory = subcategories.find(s => s.id === selectedSubcategoryId)
+  const activeTrainingTask = trainingTasks.find(t => t.id === selectedTrainingTaskId)
   const course = courses.find(c => c.id === initialItem.course_id)
+
+  // Get training tasks for a specific subcategory
+  const getTasksForSubcategory = (subcategoryId: string) =>
+    trainingTasks.filter(t => t.subcategory_id === subcategoryId)
+
+  function selectSubcategory(id: string) {
+    setSelectedSubcategoryId(id)
+    setSelectedTrainingTaskId(null)
+    setEditingCategoryDetails(false)
+  }
+
+  function selectTrainingTask(id: string) {
+    setSelectedTrainingTaskId(id)
+    setEditingCategoryDetails(false)
+  }
+
+  function selectCategoryDetails() {
+    setEditingCategoryDetails(true)
+    setSelectedSubcategoryId(null)
+    setSelectedTrainingTaskId(null)
+  }
 
   const autoSave = useCallback(async () => {
     if (!title.trim() || !description.trim()) return
@@ -139,6 +166,34 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     setUploading(false)
   }
 
+  async function addTrainingTask(subcategoryId: string) {
+    const existing = getTasksForSubcategory(subcategoryId)
+    const { data, error } = await supabase.from('training_tasks').insert({
+      subcategory_id: subcategoryId,
+      title: `Training Task ${existing.length + 1}`,
+      description: '',
+      sort_order: existing.length,
+    }).select().single()
+
+    if (!error && data) {
+      setTrainingTasks(prev => [...prev, data as TrainingTask])
+      selectTrainingTask(data.id)
+    }
+  }
+
+  async function updateTrainingTask(id: string, updates: Partial<TrainingTask>) {
+    setTrainingTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
+    await supabase.from('training_tasks').update(updates).eq('id', id)
+  }
+
+  async function deleteTrainingTask(id: string) {
+    setTrainingTasks(prev => prev.filter(t => t.id !== id))
+    await supabase.from('training_tasks').delete().eq('id', id)
+    if (selectedTrainingTaskId === id) {
+      setSelectedTrainingTaskId(null)
+    }
+  }
+
   function handleBack() {
     router.push('/head-office/courses')
   }
@@ -169,7 +224,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
           {/* Mobile: horizontal strip */}
           <div className="lg:hidden px-4 py-3 flex gap-2 overflow-x-auto">
             <button
-              onClick={() => { setEditingCategoryDetails(true); setSelectedSubcategoryId(null) }}
+              onClick={selectCategoryDetails}
               className={`px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border transition-all ${
                 editingCategoryDetails
                   ? 'border-gold bg-gold/10 text-gold'
@@ -181,9 +236,9 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
             {subcategories.map((sub, i) => (
               <button
                 key={sub.id}
-                onClick={() => { setSelectedSubcategoryId(sub.id); setEditingCategoryDetails(false) }}
+                onClick={() => selectSubcategory(sub.id)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium flex-shrink-0 border transition-all ${
-                  selectedSubcategoryId === sub.id && !editingCategoryDetails
+                  selectedSubcategoryId === sub.id && !editingCategoryDetails && !selectedTrainingTaskId
                     ? 'border-gold bg-gold/10 text-gold'
                     : 'border-charcoal/10 text-charcoal/50'
                 }`}
@@ -203,7 +258,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
           {/* Desktop: vertical list */}
           <div className="hidden lg:block p-4">
             <button
-              onClick={() => { setEditingCategoryDetails(true); setSelectedSubcategoryId(null) }}
+              onClick={selectCategoryDetails}
               className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all mb-3 ${
                 editingCategoryDetails
                   ? 'bg-gold/10 text-gold'
@@ -219,35 +274,76 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
             </p>
 
             <div className="space-y-1">
-              {subcategories.map((sub, i) => (
-                <div key={sub.id} className="group flex items-center gap-1">
-                  <button
-                    onClick={() => { setSelectedSubcategoryId(sub.id); setEditingCategoryDetails(false) }}
-                    className={`flex-1 text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
-                      selectedSubcategoryId === sub.id && !editingCategoryDetails
-                        ? 'bg-gold/10 text-gold'
-                        : 'hover:bg-charcoal/3 text-charcoal/70'
-                    }`}
-                  >
-                    <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs flex-shrink-0">
-                      {i + 1}
-                    </span>
-                    <span className="text-sm truncate">{sub.title}</span>
-                  </button>
+              {subcategories.map((sub, i) => {
+                const isSelected = selectedSubcategoryId === sub.id && !editingCategoryDetails && !selectedTrainingTaskId
+                const subTasks = getTasksForSubcategory(sub.id)
+                const isExpanded = selectedSubcategoryId === sub.id
 
-                  <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
-                    <button onClick={() => moveSubcategory(sub.id, 'up')} className="p-1 text-charcoal/20 hover:text-charcoal/50">
-                      <ChevronUp size={12} />
-                    </button>
-                    <button onClick={() => moveSubcategory(sub.id, 'down')} className="p-1 text-charcoal/20 hover:text-charcoal/50">
-                      <ChevronDown size={12} />
-                    </button>
-                    <button onClick={() => deleteSubcategory(sub.id)} className="p-1 text-charcoal/20 hover:text-red-500">
-                      <Trash2 size={12} />
-                    </button>
+                return (
+                  <div key={sub.id}>
+                    <div className="group flex items-center gap-1">
+                      <button
+                        onClick={() => selectSubcategory(sub.id)}
+                        className={`flex-1 text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
+                          isSelected
+                            ? 'bg-gold/10 text-gold'
+                            : 'hover:bg-charcoal/3 text-charcoal/70'
+                        }`}
+                      >
+                        <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs flex-shrink-0">
+                          {i + 1}
+                        </span>
+                        <span className="text-sm truncate">{sub.title}</span>
+                      </button>
+
+                      <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
+                        <button onClick={() => moveSubcategory(sub.id, 'up')} className="p-1 text-charcoal/20 hover:text-charcoal/50">
+                          <ChevronUp size={12} />
+                        </button>
+                        <button onClick={() => moveSubcategory(sub.id, 'down')} className="p-1 text-charcoal/20 hover:text-charcoal/50">
+                          <ChevronDown size={12} />
+                        </button>
+                        <button onClick={() => deleteSubcategory(sub.id)} className="p-1 text-charcoal/20 hover:text-red-500">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Training tasks + add button below selected subcategory */}
+                    {isExpanded && (
+                      <div className="ml-6 pl-3 border-l border-charcoal/10 mt-1 mb-2 space-y-1">
+                        {subTasks.map(task => (
+                          <div key={task.id} className="group/task flex items-center gap-1">
+                            <button
+                              onClick={() => selectTrainingTask(task.id)}
+                              className={`flex-1 text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-all text-xs ${
+                                selectedTrainingTaskId === task.id
+                                  ? 'bg-blue-50 text-blue-600'
+                                  : 'hover:bg-charcoal/3 text-charcoal/50'
+                              }`}
+                            >
+                              <span className="truncate">{task.title}</span>
+                            </button>
+                            <button
+                              onClick={() => deleteTrainingTask(task.id)}
+                              className="hidden group-hover/task:block p-1 text-charcoal/20 hover:text-red-500 flex-shrink-0"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => addTrainingTask(sub.id)}
+                          className="w-full px-3 py-2 rounded-lg flex items-center gap-2 border border-dashed border-charcoal/10 text-charcoal/30 hover:border-blue-300 hover:text-blue-500 transition-all text-xs"
+                        >
+                          <Plus size={10} />
+                          <span>Add training task</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <button
@@ -305,8 +401,16 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
             </div>
           )}
 
+          {/* Training task editor */}
+          {activeTrainingTask && !editingCategoryDetails && (
+            <TrainingTaskEditor
+              task={activeTrainingTask}
+              onUpdate={(updates) => updateTrainingTask(activeTrainingTask.id, updates)}
+            />
+          )}
+
           {/* Subcategory content editor */}
-          {activeSubcategory && !editingCategoryDetails && (
+          {activeSubcategory && !editingCategoryDetails && !selectedTrainingTaskId && (
             <div>
               <div className="flex items-center gap-2 mb-1">
                 {SUBCATEGORY_TYPES.find(t => t.value === activeSubcategory.type)?.icon}
@@ -568,6 +672,66 @@ function VideoEditor({
       <div className="mt-3">
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
         <input className="input" value={subcategory.content} onChange={e => onUpdate({ content: e.target.value })} placeholder="Caption" />
+      </div>
+    </div>
+  )
+}
+
+function TrainingTaskEditor({
+  task,
+  onUpdate,
+}: {
+  task: TrainingTask
+  onUpdate: (updates: Partial<TrainingTask>) => void
+}) {
+  const [title, setTitle] = useState(task.title)
+  const [taskDescription, setTaskDescription] = useState(task.description)
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const taskSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isFirstTaskRender = useRef(true)
+
+  // Reset state when switching between tasks
+  useEffect(() => {
+    setTitle(task.title)
+    setTaskDescription(task.description)
+    isFirstTaskRender.current = true
+  }, [task.id])
+
+  useEffect(() => {
+    if (isFirstTaskRender.current) {
+      isFirstTaskRender.current = false
+      return
+    }
+    if (taskSaveTimer.current) clearTimeout(taskSaveTimer.current)
+    taskSaveTimer.current = setTimeout(() => {
+      if (!title.trim()) return
+      setSaveStatus('saving')
+      onUpdate({ title, description: taskDescription })
+      setSaveStatus('saved')
+      setTimeout(() => setSaveStatus('idle'), 2000)
+    }, 800)
+    return () => { if (taskSaveTimer.current) clearTimeout(taskSaveTimer.current) }
+  }, [title, taskDescription])
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h2 className="font-serif text-xl text-charcoal">Training Task</h2>
+        {saveStatus !== 'idle' && (
+          <span className="text-xs text-charcoal/40">
+            {saveStatus === 'saving' ? 'Saving...' : 'Saved'}
+          </span>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>
+        <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="Training task title" />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description</label>
+        <textarea className="textarea" rows={4} value={taskDescription} onChange={e => setTaskDescription(e.target.value)} placeholder="Describe what the trainee needs to do..." />
       </div>
     </div>
   )
