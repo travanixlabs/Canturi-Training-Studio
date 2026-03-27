@@ -11,7 +11,7 @@ export default async function EditWorkshopPage({ params }: { params: Promise<{ i
   const [{ data: workshop }, { data: courses }, { data: categories }, { data: workshopCourses }] = await Promise.all([
     supabase.from('workshops').select('*').eq('id', id).single(),
     supabase.from('courses').select('*').eq('status', 'active').order('sort_order'),
-    supabase.from('categories').select('*').eq('status', 'active').order('title'),
+    supabase.from('categories').select('*').order('title'),
     supabase.from('workshop_courses').select('*').eq('workshop_id', id),
   ])
 

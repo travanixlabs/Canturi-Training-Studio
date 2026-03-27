@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Course, Category, ItemStatus, TrainerType, DifficultyLevel } from '@/types'
+import type { Course, Category, TrainerType, DifficultyLevel } from '@/types'
 
 interface Props {
   courses: Course[]
@@ -17,11 +17,6 @@ const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
   { value: 'intermediate', label: 'Intermediate' },
   { value: 'advanced', label: 'Advanced' },
 ]
-
-const STATUS_CONFIG: Record<ItemStatus, { label: string; dot: string; text: string }> = {
-  active: { label: 'Active', dot: 'bg-green-500', text: 'text-green-700' },
-  hidden: { label: 'Hidden', dot: 'bg-charcoal/30', text: 'text-charcoal/40' },
-}
 
 interface CourseFormData {
   title: string
@@ -81,7 +76,6 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
   const [deleting, setDeleting] = useState(false)
 
   // Status change pending
-  const [statusChanging, setStatusChanging] = useState<string | null>(null)
 
   const [, startTransition] = useTransition()
   const router = useRouter()
@@ -146,7 +140,7 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     if (courseModal?.mode === 'add') {
       const { data, error } = await supabase
         .from('categories')
-        .insert({ ...payload, status: 'active' })
+        .insert(payload)
         .select('*, course:courses(*)')
         .single()
 
@@ -193,23 +187,6 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     setDeleteTarget(null)
     setDeleting(false)
     startTransition(() => router.refresh())
-  }
-
-  async function changeStatus(item: Category, status: ItemStatus) {
-    setStatusChanging(item.id)
-
-    const { error } = await supabase
-      .from('categories')
-      .update({ status })
-      .eq('id', item.id)
-
-    if (error) {
-      alert('Failed to update status: ' + error.message)
-    } else {
-      setCategorys(prev => prev.map(i => (i.id === item.id ? { ...i, status } : i)))
-    }
-
-    setStatusChanging(null)
   }
 
   async function saveCategory() {
@@ -288,19 +265,13 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     )
   }
 
-  async function changeCategoryStatus(cat: Course, status: ItemStatus) {
+  async function changeCourseStatus(cat: Course, status: 'active' | 'hidden') {
     const { error } = await supabase.from('courses').update({ status }).eq('id', cat.id)
     if (error) {
       alert('Failed to update course: ' + error.message)
       return
     }
     setCourses(prev => prev.map(c => c.id === cat.id ? { ...c, status } : c))
-
-    const catItems = categories.filter(i => i.course_id === cat.id)
-    for (const item of catItems) {
-      await supabase.from('categories').update({ status }).eq('id', item.id)
-    }
-    setCategorys(prev => prev.map(i => i.course_id === cat.id ? { ...i, status } : i))
   }
 
   async function deleteCategory() {
@@ -391,7 +362,7 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
                 </button>
 
                 <button
-                  onClick={() => changeCategoryStatus(category, category.status === 'hidden' ? 'active' : 'hidden')}
+                  onClick={() => changeCourseStatus(category, category.status === 'hidden' ? 'active' : 'hidden')}
                   className="p-2 text-charcoal/25 hover:text-charcoal/50 transition-colors"
                   title={category.status === 'hidden' ? 'Show course' : 'Hide course'}
                 >
@@ -433,10 +404,8 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
                       <CourseRow
                         key={item.id}
                         item={item}
-                        statusChanging={statusChanging === item.id}
                         onEdit={() => router.push(`/head-office/courses/${item.id}`)}
                         onDelete={() => setDeleteTarget(item)}
-                        onChangeStatus={(status) => changeStatus(item, status)}
                       />
                     ))
                   )}
@@ -760,61 +729,17 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
 
 function CourseRow({
   item,
-  statusChanging,
   onEdit,
   onDelete,
-  onChangeStatus,
 }: {
   item: Category
-  statusChanging: boolean
   onEdit: () => void
   onDelete: () => void
-  onChangeStatus: (status: ItemStatus) => void
 }) {
-  const [showStatusMenu, setShowStatusMenu] = useState(false)
-  const statusCfg = STATUS_CONFIG[item.status ?? 'active']
-
   return (
-    <div className={`px-5 py-3.5 flex items-start gap-3 ${''}`}>
+    <div className="px-5 py-3.5 flex items-start gap-3">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-[14px] font-medium text-charcoal leading-snug">{item.title}</p>
-          {/* Status badge */}
-          <div className="relative">
-            <button
-              onClick={() => setShowStatusMenu(s => !s)}
-              disabled={statusChanging}
-              className={`flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full border border-transparent hover:border-charcoal/10 transition-all ${statusCfg.text}`}
-              title="Change status"
-            >
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${statusCfg.dot}`} />
-              {statusChanging ? '…' : statusCfg.label}
-            </button>
-
-            {showStatusMenu && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowStatusMenu(false)} />
-                <div className="absolute left-0 top-full mt-1 bg-white border border-charcoal/10 rounded-xl shadow-lg z-20 py-1 min-w-[130px]">
-                  {(Object.keys(STATUS_CONFIG) as ItemStatus[]).map(s => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        onChangeStatus(s)
-                        setShowStatusMenu(false)
-                      }}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-charcoal/5 transition-colors ${
-                        s === (item.status ?? 'active') ? 'font-medium' : ''
-                      }`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_CONFIG[s].dot}`} />
-                      {STATUS_CONFIG[s].label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <p className="text-[14px] font-medium text-charcoal leading-snug">{item.title}</p>
         {item.description && (
           <p className="text-xs text-charcoal/40 mt-0.5 line-clamp-1">{item.description}</p>
         )}
@@ -844,23 +769,6 @@ function CourseRow({
         >
           <Pencil size={14} />
         </button>
-        {(item.status ?? 'active') === 'hidden' ? (
-          <button
-            onClick={() => onChangeStatus('active')}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-green-600 hover:bg-green-50 transition-all"
-            title="Show category"
-          >
-            <Eye size={14} />
-          </button>
-        ) : (
-          <button
-            onClick={() => onChangeStatus('hidden')}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-charcoal/60 hover:bg-charcoal/5 transition-all"
-            title="Hide category"
-          >
-            <EyeOff size={14} />
-          </button>
-        )}
         <button
           onClick={onDelete}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-red-500 hover:bg-red-50 transition-all"

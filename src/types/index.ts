@@ -40,7 +40,6 @@ export interface Category {
   tags: string[]
   trainer_type: TrainerType
   created_at: string
-  status: ItemStatus
   difficulty_level: DifficultyLevel | null
   course?: Course
 }
