@@ -24,7 +24,7 @@ export interface User {
   boutique?: Boutique
 }
 
-export interface Category {
+export interface Course {
   id: string
   name: string
   icon: string
@@ -37,7 +37,7 @@ export interface MenuItem {
   id: string
   title: string
   description: string
-  category_id: string
+  course_id: string
   tags: string[]
   time_needed: string
   trainer_type: TrainerType
@@ -49,7 +49,7 @@ export interface MenuItem {
   is_recurring: boolean
   recurring_amount: number | null
   training_task_content: string | null
-  category?: Category
+  course?: Course
 }
 
 export interface Plate {
@@ -98,7 +98,7 @@ export interface Subcategory {
 
 export interface SubcategoryCompletion {
   id: string
-  subcategory_id: string
+  subcourse_id: string
   trainee_id: string
   completed_at: string
   workshop_id: string | null
@@ -130,17 +130,17 @@ export interface WorkshopMenuItem {
   menu_item?: MenuItem
 }
 
-export interface VisibleCategory {
+export interface VisibleCourse {
   id: string
   user_id: string
-  category_id: string
+  course_id: string
   enabled_by: string
   created_at: string
   workshop_id: string | null
 }
 
-// Category colour mapping
-export const CATEGORY_COLOURS: Record<string, string> = {
+// Course colour mapping
+export const COURSE_COLOURS: Record<string, string> = {
   'Services': '#8B6355',
   'Product Knowledge': '#4A6B8A',
   'Boutique': '#6B8C6B',
@@ -150,7 +150,7 @@ export const CATEGORY_COLOURS: Record<string, string> = {
   'Client Experience': '#9A6B70',
 }
 
-export const CATEGORY_BG_COLOURS: Record<string, string> = {
+export const COURSE_BG_COLOURS: Record<string, string> = {
   'Services': '#F5EDE9',
   'Product Knowledge': '#E8F0F7',
   'Boutique': '#EBF3EB',

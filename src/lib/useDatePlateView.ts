@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { todayAEDT } from '@/lib/dates'
-import { CATEGORY_COLOURS } from '@/types'
-import type { Plate, Completion, TrainingTaskCompletion, Category } from '@/types'
+import { COURSE_COLOURS } from '@/types'
+import type { Plate, Completion, TrainingTaskCompletion, Course } from '@/types'
 
 export interface PlateItemInfo {
   id: string
@@ -25,7 +25,7 @@ export interface PlateItemInfo {
 }
 
 export interface PlateGroup {
-  category: Category | null
+  course: Course | null
   colour: string
   items: PlateItemInfo[]
 }
@@ -362,18 +362,18 @@ export function useDatePlateView(
         // Find the category from allPlates or allCompletions
         const plate = allPlates.find(p => p.menu_item_id === item.id)
         const comp = allCompletions.find(c => c.menu_item_id === item.id)
-        const cat = plate?.menu_item?.category ?? comp?.menu_item?.category ?? null
+        const cat = plate?.menu_item?.course ?? comp?.menu_item?.course ?? null
         const key = cat?.id ?? 'uncategorised'
         if (!groups[key]) {
           groups[key] = {
-            category: cat,
-            colour: cat ? CATEGORY_COLOURS[cat.name] ?? cat.colour_hex : '#C9A96E',
+            course: cat,
+            colour: cat ? COURSE_COLOURS[cat.name] ?? cat.colour_hex : '#C9A96E',
             items: [],
           }
         }
         groups[key].items.push(item)
       }
-      return Object.values(groups).sort((a, b) => (a.category?.sort_order ?? 99) - (b.category?.sort_order ?? 99))
+      return Object.values(groups).sort((a, b) => (a.course?.sort_order ?? 99) - (b.course?.sort_order ?? 99))
     }
 
     const totalItems = dedupRemaining.length + dedupCompleted.length

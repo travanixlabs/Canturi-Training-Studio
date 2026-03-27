@@ -21,10 +21,10 @@ export default async function ManagerPlatePage() {
 
   const [{ data: trainees }, { data: categories }, { data: menuItems }, { data: allPlates }, { data: visibleCats }, { data: completions }, { data: recurringCompletions }, { data: workshops }, { data: workshopMenuItems }] = await Promise.all([
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
-    supabase.from('categories').select('*').eq('status', 'active').order('sort_order'),
-    supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active').order('title'),
+    supabase.from('courses').select('*').eq('status', 'active').order('sort_order'),
+    supabase.from('menu_items').select('*, course:courses(*)').eq('status', 'active').order('title'),
     supabase.from('plates').select('*'),
-    supabase.from('visible_categories').select('*'),
+    supabase.from('visible_courses').select('*'),
     supabase.from('completions').select('*'),
     supabase.from('training_task_completions').select('*'),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),

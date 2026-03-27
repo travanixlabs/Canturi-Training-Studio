@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { CategoryBadge } from '@/components/ui/CategoryBadge'
+import { CourseBadge } from '@/components/ui/CourseBadge'
 import { TaskModal } from '@/components/ui/TaskModal'
 import { StarRating } from '@/components/ui/StarRating'
 import { useRouter } from 'next/navigation'
@@ -169,8 +169,8 @@ function CompletionCard({
     >
       <div className="flex items-start gap-3">
         <div className="flex-1">
-          {item.category && (
-            <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
+          {item.course && (
+            <CourseBadge courseName={item.course.name} icon={item.course.icon} />
           )}
           <p className="font-medium text-charcoal text-[15px] mt-1.5 leading-snug">{item.title}</p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">

@@ -8,18 +8,18 @@ export default async function TraineeProgressPage() {
   if (!authUser) redirect('/login')
 
   const [{ data: categories }, { data: menuItems }, { data: completions }, { data: visibleCats }, { data: workshops }, { data: workshopMenuItems }, { data: recurringCompletions }, { data: plates }] = await Promise.all([
-    supabase.from('categories').select('*').eq('status', 'active').order('sort_order'),
-    supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active'),
+    supabase.from('courses').select('*').eq('status', 'active').order('sort_order'),
+    supabase.from('menu_items').select('*, course:courses(*)').eq('status', 'active'),
     supabase.from('completions').select('*').eq('trainee_id', authUser.id),
-    supabase.from('visible_categories').select('category_id').eq('user_id', authUser.id),
+    supabase.from('visible_courses').select('course_id').eq('user_id', authUser.id),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
     supabase.from('workshop_menu_items').select('*'),
     supabase.from('training_task_completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('plates').select('*').eq('trainee_id', authUser.id),
   ])
 
-  const visibleCategoryIds = new Set((visibleCats ?? []).map(v => v.category_id))
-  const visibleMenuItems = (menuItems ?? []).filter(item => visibleCategoryIds.has(item.category_id))
+  const visibleCategoryIds = new Set((visibleCats ?? []).map(v => v.course_id))
+  const visibleMenuItems = (menuItems ?? []).filter(item => visibleCategoryIds.has(item.course_id))
   const visibleCategories = (categories ?? []).filter(c => visibleCategoryIds.has(c.id))
 
   return (

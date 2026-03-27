@@ -13,11 +13,11 @@ export default async function HeadOfficePage() {
     supabase.from('menu_items').select('*').eq('status', 'active'),
     supabase
       .from('completions')
-      .select('*, menu_item:menu_items(title, category:categories(name)), trainee:users!completions_trainee_id_fkey(name, boutique_id)')
+      .select('*, menu_item:menu_items(title, course:courses(name)), trainee:users!completions_trainee_id_fkey(name, boutique_id)')
       .order('created_at', { ascending: false })
       .limit(50),
     supabase.from('plates').select('*'),
-    supabase.from('visible_categories').select('*'),
+    supabase.from('visible_courses').select('*'),
   ])
 
   return (

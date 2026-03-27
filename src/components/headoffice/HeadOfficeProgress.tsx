@@ -2,16 +2,16 @@
 
 import { useState, useMemo } from 'react'
 import { ProgressBar } from '@/components/ui/ProgressBar'
-import type { Boutique, User, Category, MenuItem, Completion, Plate, VisibleCategory } from '@/types'
+import type { Boutique, User, Course, MenuItem, Completion, Plate, VisibleCourse } from '@/types'
 
 interface Props {
   boutiques: Boutique[]
   allUsers: User[]
-  categories: Category[]
+  categories: Course[]
   menuItems: MenuItem[]
   completions: Completion[]
   plates?: Plate[]
-  visibleCategories?: VisibleCategory[]
+  visibleCategories?: VisibleCourse[]
 }
 
 export function HeadOfficeProgress({ boutiques, allUsers, categories, menuItems, completions, plates = [], visibleCategories = [] }: Props) {
@@ -26,19 +26,19 @@ export function HeadOfficeProgress({ boutiques, allUsers, categories, menuItems,
   // Get assigned items for an employee (via plates or visible categories)
   const getAssignedItems = (userId: string) => {
     const plateItemIds = new Set(plates.filter(p => p.trainee_id === userId).map(p => p.menu_item_id))
-    const visibleCatIds = new Set(visibleCategories.filter(v => v.user_id === userId).map(v => v.category_id))
-    return menuItems.filter(m => plateItemIds.has(m.id) || visibleCatIds.has(m.category_id))
+    const visibleCatIds = new Set(visibleCategories.filter(v => v.user_id === userId).map(v => v.course_id))
+    return menuItems.filter(m => plateItemIds.has(m.id) || visibleCatIds.has(m.course_id))
   }
 
   const getAssignedCategories = (userId: string) => {
     const assigned = getAssignedItems(userId)
-    const catIds = new Set(assigned.map(m => m.category_id))
+    const catIds = new Set(assigned.map(m => m.course_id))
     return categories.filter(c => catIds.has(c.id))
   }
 
   const getCategoryProgress = (userId: string, categoryId: string) => {
     const assigned = getAssignedItems(userId)
-    const categoryItems = assigned.filter(mi => mi.category_id === categoryId)
+    const categoryItems = assigned.filter(mi => mi.course_id === categoryId)
     if (categoryItems.length === 0) return { completed: 0, total: 0, pct: 0 }
     const completed = categoryItems.filter(mi =>
       completions.some(c => c.trainee_id === userId && c.menu_item_id === mi.id)

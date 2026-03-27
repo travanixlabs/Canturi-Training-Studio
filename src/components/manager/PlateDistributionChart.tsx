@@ -1,13 +1,13 @@
 'use client'
 
 import { useMemo, useState, useCallback } from 'react'
-import { CATEGORY_COLOURS } from '@/types'
+import { COURSE_COLOURS } from '@/types'
 import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
-import type { Plate, Category, MenuItem, Workshop, WorkshopMenuItem } from '@/types'
+import type { Plate, Course, MenuItem, Workshop, WorkshopMenuItem } from '@/types'
 
 interface Props {
   plates: Plate[]
-  categories: Category[]
+  categories: Course[]
   menuItems: MenuItem[]
   workshops: Workshop[]
   workshopMenuItems: WorkshopMenuItem[]
@@ -44,7 +44,7 @@ export function PlateDistributionChart({
   // Get all menu item -> category mapping
   const itemToCategoryId = useMemo(() => {
     const map = new Map<string, string>()
-    for (const mi of menuItems) map.set(mi.id, mi.category_id)
+    for (const mi of menuItems) map.set(mi.id, mi.course_id)
     return map
   }, [menuItems])
 
@@ -59,7 +59,7 @@ export function PlateDistributionChart({
     const wsItemIds = new Set(workshopMenuItems.map(wmi => wmi.menu_item_id))
     const courseIds = new Set<string>()
     for (const mi of menuItems) {
-      if (wsItemIds.has(mi.id)) courseIds.add(mi.category_id)
+      if (wsItemIds.has(mi.id)) courseIds.add(mi.course_id)
     }
     return categories
       .filter(c => courseIds.has(c.id))
@@ -160,7 +160,7 @@ export function PlateDistributionChart({
                     const count = courseCounts[course.id] ?? 0
                     if (count === 0) return null
                     const pct = (count / total) * 100
-                    const colour = course.colour_hex ?? CATEGORY_COLOURS[course.name] ?? '#C9A96E'
+                    const colour = course.colour_hex ?? COURSE_COLOURS[course.name] ?? '#C9A96E'
                     const isCourseGreyed = hasCourseFilter && !selectedCourses.has(course.id)
 
                     return (
@@ -199,7 +199,7 @@ export function PlateDistributionChart({
       {/* Legend */}
       <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-3">
         {activeCourses.map(course => {
-          const colour = course.colour_hex ?? CATEGORY_COLOURS[course.name] ?? '#C9A96E'
+          const colour = course.colour_hex ?? COURSE_COLOURS[course.name] ?? '#C9A96E'
           const isSelected = selectedCourses.has(course.id)
           const isGreyed = hasCourseFilter && !isSelected
 

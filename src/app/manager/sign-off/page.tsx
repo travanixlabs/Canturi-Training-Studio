@@ -22,10 +22,10 @@ export default async function SignOffPage() {
     supabase.from('users').select('*').eq('boutique_id', manager.boutique_id).eq('role', 'trainee'),
     supabase
       .from('completions')
-      .select('*, menu_item:menu_items(*, category:categories(*)), trainee:users!completions_trainee_id_fkey(*)')
+      .select('*, menu_item:menu_items(*, course:courses(*)), trainee:users!completions_trainee_id_fkey(*)')
       .in('trainee_id', traineeIds)
       .order('created_at', { ascending: false }),
-    supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active'),
+    supabase.from('menu_items').select('*, course:courses(*)').eq('status', 'active'),
     supabase.from('plates').select('*').in('trainee_id', traineeIds),
   ])
 

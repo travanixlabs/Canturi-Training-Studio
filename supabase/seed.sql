@@ -10,9 +10,9 @@ insert into public.boutiques (id, name, city) values
   ('11111111-0000-0000-0000-000000000003', 'Canturi Brisbane', 'Brisbane');
 
 -- ─────────────────────────────────────────
--- CATEGORIES
+-- COURSES
 -- ─────────────────────────────────────────
-insert into public.categories (id, name, icon, colour_hex, sort_order) values
+insert into public.courses (id, name, icon, colour_hex, sort_order) values
   ('22222222-0000-0000-0000-000000000001', 'Services', '✦', '#8B6355', 1),
   ('22222222-0000-0000-0000-000000000002', 'Product Knowledge', '◈', '#4A6B8A', 2),
   ('22222222-0000-0000-0000-000000000003', 'Boutique', '⌂', '#6B8C6B', 3),
@@ -24,7 +24,7 @@ insert into public.categories (id, name, icon, colour_hex, sort_order) values
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Services
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Ultrasonic Clean',
     'Learn to operate the ultrasonic cleaning machine safely. Understand which pieces can and cannot go in — no pearls, emeralds, treated stones, or glued settings. Demonstrate correct solution levels and cycle times.',
@@ -79,7 +79,7 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Product Knowledge
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Canturi Collections Overview',
     'Deep-dive into all current Canturi collections — design philosophy, signature elements, price architecture, and target client profiles. Be able to speak fluently about each collection without referencing notes.',
@@ -124,7 +124,7 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Boutique
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Opening Procedure',
     'Complete the full boutique opening sequence — safe access, case setup, lighting, display refresh, POS login, and morning team briefing. Be able to open independently within your first two weeks.',
@@ -159,7 +159,7 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Administration
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'RECAP System',
     'Learn the RECAP CRM system — creating client profiles, logging interactions, adding purchase history, and running client lookup. Every client interaction should be recorded same day.',
@@ -194,7 +194,7 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Diamonds
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'The 4Cs — Cut, Colour, Clarity, Carat',
     'Master the 4Cs framework and be able to explain each C to a client in plain, engaging language. Know how Canturi uses the 4Cs in sourcing decisions and how to guide a client through trade-offs.',
@@ -229,7 +229,7 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Deliveries
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'Receiving Stock',
     'Full stock receiving process — signing off delivery, checking contents against the packing slip, condition assessment, photography, and entering new stock into the system accurately.',
@@ -254,7 +254,7 @@ insert into public.menu_items (title, description, category_id, tags, time_neede
 -- ─────────────────────────────────────────
 -- MENU ITEMS — Client Experience
 -- ─────────────────────────────────────────
-insert into public.menu_items (title, description, category_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
+insert into public.menu_items (title, description, course_id, tags, time_needed, trainer_type, priority_level, is_recurring) values
   (
     'The Canturi Welcome',
     'The first 60 seconds of a client''s visit sets the tone. Learn the Canturi welcome — eye contact, greeting, offer of water, and how to read whether a client wants to browse or be guided.',

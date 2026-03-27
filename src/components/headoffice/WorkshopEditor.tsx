@@ -2,14 +2,14 @@
 
 import { useState, useMemo } from 'react'
 import { ArrowLeft, Search, X, ChevronDown, ChevronUp, Check, Plus } from 'lucide-react'
-import { CategoryBadge } from '@/components/ui/CategoryBadge'
+import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Workshop, Category, MenuItem, WorkshopMenuItem } from '@/types'
+import type { Workshop, Course, MenuItem, WorkshopMenuItem } from '@/types'
 
 interface Props {
   workshop: Workshop
-  categories: Category[]
+  categories: Course[]
   menuItems: MenuItem[]
   workshopMenuItems: WorkshopMenuItem[]
 }
@@ -48,7 +48,7 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
         item.title.toLowerCase().includes(q) ||
         item.description.toLowerCase().includes(q) ||
         item.tags?.some(t => t.toLowerCase().includes(q)) ||
-        item.category?.name.toLowerCase().includes(q)
+        item.course?.name.toLowerCase().includes(q)
       )
     }
     return applyFilter(items)
@@ -100,7 +100,7 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
   }
 
   async function toggleAllInCategory(categoryId: string) {
-    const items = menuItems.filter(i => i.category_id === categoryId)
+    const items = menuItems.filter(i => i.course_id === categoryId)
     const allAssigned = items.every(i => assignedIds.has(i.id))
     setTogglingAll(categoryId)
 
@@ -265,11 +265,11 @@ export function WorkshopEditor({ workshop: initialWorkshop, categories, menuItem
         </div>
       )}
 
-      {/* Category browse (when not searching) */}
+      {/* Course browse (when not searching) */}
       {!search.trim() && (
         <div className="space-y-3">
           {categories.map(category => {
-            const allItems = menuItems.filter(i => i.category_id === category.id)
+            const allItems = menuItems.filter(i => i.course_id === category.id)
             const items = applyFilter(allItems)
             if (allItems.length === 0) return null
             if (items.length === 0 && filter !== 'all') return null
@@ -373,8 +373,8 @@ function CourseToggleRow({
         {assigned && <Check size={12} />}
       </span>
       <div className="flex-1">
-        {showCategory && item.category && (
-          <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
+        {showCategory && item.course && (
+          <CourseBadge courseName={item.course.name} icon={item.course.icon} />
         )}
         <p className="text-[14px] text-charcoal leading-snug">{item.title}</p>
         {item.is_recurring && item.recurring_amount && (

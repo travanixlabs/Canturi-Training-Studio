@@ -4,10 +4,10 @@ import { useState, useTransition } from 'react'
 import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Category, MenuItem, MenuItemStatus, TrainerType, DifficultyLevel } from '@/types'
+import type { Course, MenuItem, MenuItemStatus, TrainerType, DifficultyLevel } from '@/types'
 
 interface Props {
-  categories: Category[]
+  categories: Course[]
   menuItems: MenuItem[]
 }
 
@@ -26,7 +26,7 @@ const STATUS_CONFIG: Record<MenuItemStatus, { label: string; dot: string; text: 
 interface CourseFormData {
   title: string
   description: string
-  category_id: string
+  course_id: string
   tags: string
   time_needed: string
   trainer_type: TrainerType
@@ -46,7 +46,7 @@ interface CategoryFormData {
 const emptyCourseForm = (): CourseFormData => ({
   title: '',
   description: '',
-  category_id: '',
+  course_id: '',
   tags: '',
   time_needed: '',
   trainer_type: '' as TrainerType,
@@ -64,7 +64,7 @@ const emptyCategoryForm = (): CategoryFormData => ({
 })
 
 export function CourseEditor({ categories: initialCategories, menuItems: initialItems }: Props) {
-  const [categories, setCategories] = useState<Category[]>(initialCategories)
+  const [categories, setCategories] = useState<Course[]>(initialCategories)
   const [menuItems, setMenuItems] = useState<MenuItem[]>(initialItems)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
@@ -74,8 +74,8 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   const [courseError, setCourseError] = useState<string | null>(null)
   const [courseSaving, setCourseSaving] = useState(false)
 
-  // Category modal
-  const [categoryModal, setCategoryModal] = useState<{ mode: 'add' } | { mode: 'edit'; category: Category } | null>(null)
+  // Course modal
+  const [categoryModal, setCategoryModal] = useState<{ mode: 'add' } | { mode: 'edit'; course: Course } | null>(null)
   const [categoryForm, setCategoryForm] = useState<CategoryFormData>(emptyCategoryForm())
   const [categoryError, setCategoryError] = useState<string | null>(null)
   const [categorySaving, setCategorySaving] = useState(false)
@@ -85,7 +85,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<MenuItem | null>(null)
-  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<Category | null>(null)
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<Course | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   // Status change pending
@@ -105,7 +105,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   }
 
   function openAddCourse(categoryId: string) {
-    setCourseForm({ ...emptyCourseForm(), category_id: categoryId })
+    setCourseForm({ ...emptyCourseForm(), course_id: categoryId })
     setCourseError(null)
     setCourseModal({ mode: 'add', categoryId })
   }
@@ -114,7 +114,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     setCourseForm({
       title: item.title,
       description: item.description,
-      category_id: item.category_id,
+      course_id: item.course_id,
       tags: (item.tags ?? []).join(', '),
       time_needed: item.time_needed,
       trainer_type: item.trainer_type,
@@ -135,7 +135,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   async function saveCourse() {
     if (!courseForm.title.trim()) { setCourseError('Title is required.'); return }
     if (!courseForm.description.trim()) { setCourseError('Description is required.'); return }
-    if (!courseForm.category_id) { setCourseError('Course is required.'); return }
+    if (!courseForm.course_id) { setCourseError('Course is required.'); return }
     if (!courseForm.tags.trim()) { setCourseError('Tags are required.'); return }
     if (!courseForm.trainer_type) { setCourseError('Trainer type is required.'); return }
     if (!courseForm.difficulty_level) { setCourseError('Difficulty level is required.'); return }
@@ -147,7 +147,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     const payload = {
       title: courseForm.title.trim(),
       description: courseForm.description.trim(),
-      category_id: courseForm.category_id,
+      course_id: courseForm.course_id,
       tags: courseForm.tags
         .split(',')
         .map(t => t.trim())
@@ -164,7 +164,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
       const { data, error } = await supabase
         .from('menu_items')
         .insert({ ...payload, status: 'active' })
-        .select('*, category:categories(*)')
+        .select('*, course:courses(*)')
         .single()
 
       if (error) {
@@ -179,7 +179,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         .from('menu_items')
         .update(payload)
         .eq('id', courseModal.item.id)
-        .select('*, category:categories(*)')
+        .select('*, course:courses(*)')
         .single()
 
       if (error) {
@@ -243,11 +243,11 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     setCategoryError(null)
 
     if (categoryModal?.mode === 'edit') {
-      const { error } = await supabase.from('categories').update({
+      const { error } = await supabase.from('courses').update({
         name: categoryForm.name.trim(),
         icon: categoryForm.icon.trim(),
         colour_hex: categoryForm.colour_hex,
-      }).eq('id', categoryModal.category.id)
+      }).eq('id', categoryModal.course.id)
 
       if (error) {
         setCategoryError('Failed to update. ' + error.message)
@@ -255,9 +255,9 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         return
       }
 
-      setCategories(prev => prev.map(c => c.id === categoryModal.category.id ? { ...c, name: categoryForm.name.trim(), icon: categoryForm.icon.trim(), colour_hex: categoryForm.colour_hex } : c))
+      setCategories(prev => prev.map(c => c.id === categoryModal.course.id ? { ...c, name: categoryForm.name.trim(), icon: categoryForm.icon.trim(), colour_hex: categoryForm.colour_hex } : c))
     } else {
-      const { data, error } = await supabase.from('categories').insert({
+      const { data, error } = await supabase.from('courses').insert({
         name: categoryForm.name.trim(),
         icon: categoryForm.icon.trim(),
         colour_hex: categoryForm.colour_hex,
@@ -270,7 +270,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         return
       }
 
-      setCategories(prev => [...prev, data as Category].sort((a, b) => a.sort_order - b.sort_order))
+      setCategories(prev => [...prev, data as Course].sort((a, b) => a.sort_order - b.sort_order))
     }
 
     setCategorySaving(false)
@@ -279,10 +279,10 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     startTransition(() => router.refresh())
   }
 
-  function openEditCategory(cat: Category) {
+  function openEditCategory(cat: Course) {
     setCategoryForm({ name: cat.name, icon: cat.icon, colour_hex: cat.colour_hex, sort_order: '' })
     setCategoryError(null)
-    setCategoryModal({ mode: 'edit', category: cat })
+    setCategoryModal({ mode: 'edit', course: cat })
   }
 
   async function handleDrop(targetCategoryId: string) {
@@ -301,23 +301,23 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     setDraggedCategoryId(null)
 
     await Promise.all(
-      updated.map(c => supabase.from('categories').update({ sort_order: c.sort_order }).eq('id', c.id))
+      updated.map(c => supabase.from('courses').update({ sort_order: c.sort_order }).eq('id', c.id))
     )
   }
 
-  async function changeCategoryStatus(cat: Category, status: MenuItemStatus) {
-    const { error } = await supabase.from('categories').update({ status }).eq('id', cat.id)
+  async function changeCategoryStatus(cat: Course, status: MenuItemStatus) {
+    const { error } = await supabase.from('courses').update({ status }).eq('id', cat.id)
     if (error) {
       alert('Failed to update course: ' + error.message)
       return
     }
     setCategories(prev => prev.map(c => c.id === cat.id ? { ...c, status } : c))
 
-    const catItems = menuItems.filter(i => i.category_id === cat.id)
+    const catItems = menuItems.filter(i => i.course_id === cat.id)
     for (const item of catItems) {
       await supabase.from('menu_items').update({ status }).eq('id', item.id)
     }
-    setMenuItems(prev => prev.map(i => i.category_id === cat.id ? { ...i, status } : i))
+    setMenuItems(prev => prev.map(i => i.course_id === cat.id ? { ...i, status } : i))
   }
 
   async function deleteCategory() {
@@ -325,10 +325,10 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
     setDeleting(true)
 
     // Delete all categories in this course first
-    await supabase.from('menu_items').delete().eq('category_id', deleteCategoryTarget.id)
-    await supabase.from('categories').delete().eq('id', deleteCategoryTarget.id)
+    await supabase.from('menu_items').delete().eq('course_id', deleteCategoryTarget.id)
+    await supabase.from('courses').delete().eq('id', deleteCategoryTarget.id)
 
-    setMenuItems(prev => prev.filter(i => i.category_id !== deleteCategoryTarget.id))
+    setMenuItems(prev => prev.filter(i => i.course_id !== deleteCategoryTarget.id))
     setCategories(prev => prev.filter(c => c.id !== deleteCategoryTarget.id))
     setDeleting(false)
     setDeleteCategoryTarget(null)
@@ -336,7 +336,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
   }
 
   const itemsByCategory = (categoryId: string) =>
-    menuItems.filter(i => i.category_id === categoryId)
+    menuItems.filter(i => i.course_id === categoryId)
 
   return (
     <div className="px-5 py-6 max-w-3xl mx-auto">
@@ -355,7 +355,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         </button>
       </div>
 
-      {/* Category list */}
+      {/* Course list */}
       <div className="space-y-2">
         {categories.map(category => {
           const items = itemsByCategory(category.id)
@@ -371,7 +371,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
               onDragOver={e => e.preventDefault()}
               onDrop={() => handleDrop(category.id)}
             >
-              {/* Category header */}
+              {/* Course header */}
               <div className="flex items-center">
                 {/* Drag handle */}
                 <div className="pl-3 pr-1 py-4 cursor-grab active:cursor-grabbing text-charcoal/20 hover:text-charcoal/40">
@@ -478,7 +478,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
             {/* Header */}
             <div className="sticky top-0 bg-white border-b border-black/5 px-5 py-4 flex items-center justify-between rounded-t-2xl z-10">
               <h2 className="font-serif text-xl text-charcoal">
-                {courseModal.mode === 'add' ? 'Add Category' : 'Edit Category'}
+                {courseModal.mode === 'add' ? 'Add Course' : 'Edit Course'}
               </h2>
               <button onClick={closeCourseModal} className="text-charcoal/40 hover:text-charcoal p-1 -mr-1 transition-colors">
                 <X size={20} />
@@ -514,15 +514,15 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
                 />
               </div>
 
-              {/* Category */}
+              {/* Course */}
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
                   Course <span className="text-red-400">*</span>
                 </label>
                 <select
                   className="input"
-                  value={courseForm.category_id}
-                  onChange={e => setCourseForm(f => ({ ...f, category_id: e.target.value }))}
+                  value={courseForm.course_id}
+                  onChange={e => setCourseForm(f => ({ ...f, course_id: e.target.value }))}
                 >
                   <option value="">Select a course…</option>
                   {categories.map(c => (
@@ -675,7 +675,7 @@ export function CourseEditor({ categories: initialCategories, menuItems: initial
         </div>
       )}
 
-      {/* Category form modal */}
+      {/* Course form modal */}
       {categoryModal && (
         <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
           <div

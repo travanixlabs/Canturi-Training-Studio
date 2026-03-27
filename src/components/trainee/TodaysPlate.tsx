@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
-import { CATEGORY_COLOURS } from '@/types'
-import type { Plate, Completion, User, Category, TrainingTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
+import { COURSE_COLOURS } from '@/types'
+import type { Plate, Completion, User, Course, TrainingTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, formatDateShort } from '@/lib/dates'
 import { useDatePlateView } from '@/lib/useDatePlateView'
@@ -248,7 +248,7 @@ function WorkshopSection({
   const totalItems = courseGroups.reduce((sum, g) => sum + g.items.length, 0)
   const completedItems = courseGroups.reduce((sum, g) => sum + g.items.filter(i => i.completed || i.completedOnOtherDate).length, 0)
 
-  const allCoursesExpanded = courseGroups.length > 0 && courseGroups.every(g => expandedCourses.has(g.category?.id ?? 'none'))
+  const allCoursesExpanded = courseGroups.length > 0 && courseGroups.every(g => expandedCourses.has(g.course?.id ?? 'none'))
 
   function toggleExpandAll(e: React.MouseEvent) {
     e.stopPropagation()
@@ -256,7 +256,7 @@ function WorkshopSection({
       setExpandedCourses(new Set())
       setExpanded(false)
     } else {
-      setExpandedCourses(new Set(courseGroups.map(g => g.category?.id ?? 'none')))
+      setExpandedCourses(new Set(courseGroups.map(g => g.course?.id ?? 'none')))
       setExpanded(true)
     }
   }
@@ -290,11 +290,11 @@ function WorkshopSection({
       {expanded && (
         <div className="border-t border-black/5">
           {courseGroups.map(group => {
-            const courseId = group.category?.id ?? 'none'
+            const courseId = group.course?.id ?? 'none'
             return (
               <CourseGroup
                 key={courseId}
-                category={group.category}
+                course={group.course}
                 colour={group.colour}
                 items={group.items}
                 onItemClick={onItemClick}
@@ -317,14 +317,14 @@ function WorkshopSection({
 }
 
 function CourseGroup({
-  category,
+  course,
   colour,
   items,
   onItemClick,
   forceExpanded,
   onToggle,
 }: {
-  category: Category | null
+  course: Course | null
   colour: string
   items: PlateItemInfo[]
   onItemClick: (itemId: string) => void
@@ -352,10 +352,10 @@ function CourseGroup({
           className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
           style={{ backgroundColor: colour + '20', color: colour }}
         >
-          {category?.icon ?? '◈'}
+          {course?.icon ?? '◈'}
         </span>
         <div className="flex-1">
-          <p className="font-medium text-charcoal text-[14px]">{category?.name ?? 'Other'}</p>
+          <p className="font-medium text-charcoal text-[14px]">{course?.name ?? 'Other'}</p>
           <p className="text-xs text-charcoal/40 mt-0.5">{completedCount}/{items.length} complete</p>
         </div>
         <div className="flex items-center gap-3">

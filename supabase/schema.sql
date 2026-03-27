@@ -47,9 +47,9 @@ create policy "Head office can view all users" on public.users
   );
 
 -- ─────────────────────────────────────────
--- CATEGORIES
+-- COURSES
 -- ─────────────────────────────────────────
-create table public.categories (
+create table public.courses (
   id uuid primary key default uuid_generate_v4(),
   name text not null unique,
   icon text not null default '✦',
@@ -57,8 +57,8 @@ create table public.categories (
   sort_order integer not null default 0
 );
 
-alter table public.categories enable row level security;
-create policy "Categories are viewable by authenticated users" on public.categories
+alter table public.courses enable row level security;
+create policy "Courses are viewable by authenticated users" on public.courses
   for select using (auth.role() = 'authenticated');
 
 -- ─────────────────────────────────────────
@@ -68,7 +68,7 @@ create table public.menu_items (
   id uuid primary key default uuid_generate_v4(),
   title text not null,
   description text not null default '',
-  category_id uuid not null references public.categories(id),
+  course_id uuid not null references public.courses(id),
   tags text[] default '{}',
   time_needed text default '15 min',
   trainer_type text not null default 'Self' check (trainer_type in ('Self', 'Manager', 'Self/Manager')),

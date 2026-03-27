@@ -2,21 +2,21 @@
 
 import { useState, useMemo, useTransition } from 'react'
 import { Search, X, ChevronDown, ChevronUp, Plus, Check, Calendar } from 'lucide-react'
-import { CategoryBadge } from '@/components/ui/CategoryBadge'
+import { CourseBadge } from '@/components/ui/CourseBadge'
 import { TaskModal } from '@/components/ui/TaskModal'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
-import type { User, Category, MenuItem, Plate, VisibleCategory, Completion, TrainingTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
+import type { User, Course, MenuItem, Plate, VisibleCourse, Completion, TrainingTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
 import { PlateDistributionChart } from './PlateDistributionChart'
 
 interface Props {
   manager: User
   trainees: User[]
-  categories: Category[]
+  categories: Course[]
   menuItems: MenuItem[]
   todayPlates: Plate[]
-  visibleCategories?: VisibleCategory[]
+  visibleCategories?: VisibleCourse[]
   completions?: Completion[]
   recurringCompletions?: TrainingTaskCompletion[]
   showBoutique?: boolean
@@ -48,7 +48,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [plates, setPlates] = useState<Plate[]>(todayPlates)
-  const [visibleCats, setVisibleCats] = useState<VisibleCategory[]>(initialVisible)
+  const [visibleCats, setVisibleCats] = useState<VisibleCourse[]>(initialVisible)
   const [isPending, startTransition] = useTransition()
   const [datePicker, setDatePicker] = useState<{ items: MenuItem[]; anchorId: string; workshopId: string } | null>(null)
   const [multiDatePicker, setMultiDatePicker] = useState<{ item: MenuItem; anchorId: string; workshopId: string } | null>(null)
@@ -66,7 +66,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   })
 
   const isCategoryVisible = (categoryId: string, workshopId: string) => {
-    return visibleCats.some(v => v.category_id === categoryId && v.user_id === selectedTrainee?.id && v.workshop_id === workshopId)
+    return visibleCats.some(v => v.course_id === categoryId && v.user_id === selectedTrainee?.id && v.workshop_id === workshopId)
   }
 
   const isOnPlate = (menuItemId: string, workshopId: string, traineeId?: string) => {
@@ -229,16 +229,16 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     if (!selectedTrainee) return
 
     const existing = visibleCats.find(
-      v => v.category_id === categoryId && v.user_id === selectedTrainee.id && v.workshop_id === workshopId
+      v => v.course_id === categoryId && v.user_id === selectedTrainee.id && v.workshop_id === workshopId
     )
 
     if (existing) {
       // Hiding: also delete plates and completions for this category+workshop
       setVisibleCats(prev => prev.filter(v => v.id !== existing.id))
-      await supabase.from('visible_categories').delete().eq('id', existing.id)
+      await supabase.from('visible_courses').delete().eq('id', existing.id)
 
       // Delete plates for this category's items in this workshop
-      const catItemIds = menuItems.filter(mi => mi.category_id === categoryId).map(mi => mi.id)
+      const catItemIds = menuItems.filter(mi => mi.course_id === categoryId).map(mi => mi.id)
       const platesToDelete = plates.filter(p =>
         catItemIds.includes(p.menu_item_id) && p.trainee_id === selectedTrainee.id && p.workshop_id === workshopId
       )
@@ -261,15 +261,15 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
 
       startTransition(() => router.refresh())
     } else {
-      const { data, error } = await supabase.from('visible_categories').insert({
+      const { data, error } = await supabase.from('visible_courses').insert({
         user_id: selectedTrainee.id,
-        category_id: categoryId,
+        course_id: categoryId,
         enabled_by: manager.id,
         workshop_id: workshopId,
       }).select().single()
 
       if (!error && data) {
-        setVisibleCats(prev => [...prev, data as VisibleCategory])
+        setVisibleCats(prev => [...prev, data as VisibleCourse])
       }
     }
   }
@@ -278,27 +278,27 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   async function toggleWorkshopVisibility(workshopId: string) {
     if (!selectedTrainee) return
     const itemIds = workshopMenuItems.filter(wmi => wmi.workshop_id === workshopId).map(wmi => wmi.menu_item_id)
-    const categoryIds = [...new Set(menuItems.filter(mi => itemIds.includes(mi.id)).map(mi => mi.category_id))]
+    const categoryIds = [...new Set(menuItems.filter(mi => itemIds.includes(mi.id)).map(mi => mi.course_id))]
     const allVisible = categoryIds.every(cid => isCategoryVisible(cid, workshopId))
 
     if (allVisible) {
-      // Hide all — delete visible_categories, plates, completions for this workshop
+      // Hide all — delete visible_courses, plates, completions for this workshop
       for (const cid of categoryIds) {
         await toggleCategoryVisibility(cid, workshopId)
       }
     } else {
       // Show all missing
-      const existing = new Set(visibleCats.filter(v => v.user_id === selectedTrainee.id && v.workshop_id === workshopId).map(v => v.category_id))
+      const existing = new Set(visibleCats.filter(v => v.user_id === selectedTrainee.id && v.workshop_id === workshopId).map(v => v.course_id))
       const toAdd = categoryIds.filter(cid => !existing.has(cid))
       for (const cid of toAdd) {
-        const { data, error } = await supabase.from('visible_categories').insert({
+        const { data, error } = await supabase.from('visible_courses').insert({
           user_id: selectedTrainee.id,
-          category_id: cid,
+          course_id: cid,
           enabled_by: manager.id,
           workshop_id: workshopId,
         }).select().single()
         if (!error && data) {
-          setVisibleCats(prev => [...prev, data as VisibleCategory])
+          setVisibleCats(prev => [...prev, data as VisibleCourse])
         }
       }
     }
@@ -323,7 +323,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     return workshops.map(ws => {
       const itemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.menu_item_id))
       const wsItems = menuItems.filter(mi => itemIds.has(mi.id))
-      const catIds = [...new Set(wsItems.map(mi => mi.category_id))]
+      const catIds = [...new Set(wsItems.map(mi => mi.course_id))]
       const wsCats = categories.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
       return { workshop: ws, categories: wsCats, menuItemIds: itemIds }
     })
@@ -357,7 +357,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     if (!mi) return true
 
     // Course filter
-    if (chartFilter.courseIds.size > 0 && !chartFilter.courseIds.has(mi.category_id)) return false
+    if (chartFilter.courseIds.size > 0 && !chartFilter.courseIds.has(mi.course_id)) return false
 
     // Date filter: check if item is assigned on any of the selected dates
     if (chartFilter.dates.size > 0) {
@@ -374,7 +374,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
     if (chartFilter.courseIds.size > 0) return chartFilter.courseIds.has(categoryId)
     // If only date filter, check if any items in this course are assigned on selected dates
     if (chartFilter.dates.size > 0) {
-      const courseItems = menuItems.filter(mi => mi.category_id === categoryId)
+      const courseItems = menuItems.filter(mi => mi.course_id === categoryId)
       return courseItems.some(mi => {
         const itemPlates = plates.filter(p => p.menu_item_id === mi.id && p.trainee_id === selectedTrainee?.id)
         return itemPlates.some(p => chartFilter.dates.has(p.date_assigned))
@@ -665,7 +665,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
                     {wsExpanded && (
                       <div className="border-t border-black/5">
                         {wsCats.filter(c => isCourseVisibleByChart(c.id)).map(category => {
-                          const catItems = wsItems.filter(i => i.category_id === category.id && isItemVisibleByChart(i.id, workshop.id))
+                          const catItems = wsItems.filter(i => i.course_id === category.id && isItemVisibleByChart(i.id, workshop.id))
                           const nonRecurring = catItems.filter(i => !i.is_recurring)
                           const recurring = catItems.filter(i => i.is_recurring)
                           const catExpanded = expandedCategories.has(`${workshop.id}-${category.id}`)
@@ -941,8 +941,8 @@ function MenuItemRow({
         : (completed ? (shadowedEarly ? 'bg-blue-50/50' : 'bg-green-50/50') : isOverdue ? 'bg-yellow-50/50' : '')
     }`}>
       <div className="flex-1">
-        {!compact && item.category && (
-          <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
+        {!compact && item.course && (
+          <CourseBadge courseName={item.course.name} icon={item.course.icon} />
         )}
         <p className={`text-[14px] text-charcoal leading-snug ${!compact ? 'mt-1' : ''}`}>{item.title}</p>
         {isRecurringItem ? (

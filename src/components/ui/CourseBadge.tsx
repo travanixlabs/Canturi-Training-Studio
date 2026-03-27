@@ -1,14 +1,14 @@
-import { CATEGORY_COLOURS, CATEGORY_BG_COLOURS } from '@/types'
+import { COURSE_COLOURS, COURSE_BG_COLOURS } from '@/types'
 
 interface Props {
-  categoryName: string
+  courseName: string
   icon?: string
   size?: 'sm' | 'md'
 }
 
-export function CategoryBadge({ categoryName, icon, size = 'sm' }: Props) {
-  const colour = CATEGORY_COLOURS[categoryName] ?? '#C9A96E'
-  const bg = CATEGORY_BG_COLOURS[categoryName] ?? '#FAF3E8'
+export function CourseBadge({ courseName, icon, size = 'sm' }: Props) {
+  const colour = COURSE_COLOURS[courseName] ?? '#C9A96E'
+  const bg = COURSE_BG_COLOURS[courseName] ?? '#FAF3E8'
 
   return (
     <span
@@ -16,7 +16,7 @@ export function CategoryBadge({ categoryName, icon, size = 'sm' }: Props) {
       style={{ color: colour, backgroundColor: bg }}
     >
       {icon && <span>{icon}</span>}
-      {categoryName}
+      {courseName}
     </span>
   )
 }

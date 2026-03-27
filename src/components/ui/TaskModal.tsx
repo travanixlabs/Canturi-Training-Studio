@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { X, Clock, Users, RotateCcw } from 'lucide-react'
-import { CategoryBadge } from './CategoryBadge'
+import { CourseBadge } from './CourseBadge'
 import { StarRating } from './StarRating'
 import { CelebrationScreen } from './CelebrationScreen'
 import { createClient } from '@/lib/supabase/client'
@@ -169,10 +169,10 @@ export function TaskModal({ item, plate, existingCompletion, currentUser, mode, 
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-black/5 px-5 py-4 flex items-start justify-between rounded-t-2xl">
           <div className="flex-1 pr-4">
-            {item.category && (
-              <CategoryBadge
-                categoryName={item.category.name}
-                icon={item.category.icon}
+            {item.course && (
+              <CourseBadge
+                courseName={item.course.name}
+                icon={item.course.icon}
               />
             )}
             <h2 className="font-serif text-xl text-charcoal mt-2 leading-tight">{item.title}</h2>

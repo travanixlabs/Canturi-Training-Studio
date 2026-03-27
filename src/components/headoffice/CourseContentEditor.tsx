@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { ArrowLeft, Plus, Save, Trash2, ChevronUp, ChevronDown, Check, BookOpen, FileText, Globe, Image, Video, FileUp, Upload } from 'lucide-react'
-import { CategoryBadge } from '@/components/ui/CategoryBadge'
+import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { MenuItem, Subcategory, SubcategoryType, Category, TrainerType, DifficultyLevel } from '@/types'
+import type { MenuItem, Subcategory, SubcategoryType, Course, TrainerType, DifficultyLevel } from '@/types'
 
 const SUBCATEGORY_TYPES: { value: SubcategoryType; label: string; icon: React.ReactNode }[] = [
   { value: 'text', label: 'Text', icon: <FileText size={16} /> },
@@ -25,7 +25,7 @@ const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
 interface Props {
   menuItem: MenuItem
   initialModules: Subcategory[]
-  categories: Category[]
+  categories: Course[]
 }
 
 export function CourseContentEditor({ menuItem: initialItem, initialModules, categories }: Props) {
@@ -35,7 +35,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
   // Course fields
   const [title, setTitle] = useState(initialItem.title)
   const [description, setDescription] = useState(initialItem.description)
-  const [categoryId, setCategoryId] = useState(initialItem.category_id)
+  const [categoryId, setCategoryId] = useState(initialItem.course_id)
   const [tags, setTags] = useState(initialItem.tags?.join(', ') ?? '')
   const [timeNeeded, setTimeNeeded] = useState(initialItem.time_needed)
   const [trainerType, setTrainerType] = useState<TrainerType>(initialItem.trainer_type)
@@ -71,7 +71,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     await supabase.from('menu_items').update({
       title,
       description,
-      category_id: categoryId,
+      course_id: categoryId,
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
       time_needed: timeNeeded,
       trainer_type: trainerType,
@@ -176,9 +176,9 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
         </button>
         <div className="flex-1 min-w-0">
           {category && (
-            <CategoryBadge categoryName={category.name} icon={category.icon} />
+            <CourseBadge courseName={category.name} icon={category.icon} />
           )}
-          <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{title || 'Untitled Category'}</h1>
+          <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{title || 'Untitled Course'}</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -204,7 +204,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
                   : 'border-charcoal/10 text-charcoal/50'
               }`}
             >
-              Category Details
+              Course Details
             </button>
             {modules.map((mod, i) => (
               <button
@@ -239,7 +239,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
               }`}
             >
               <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs">⚙</span>
-              <span className="text-sm font-medium">Category Details</span>
+              <span className="text-sm font-medium">Course Details</span>
             </button>
 
             <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-3">
@@ -333,7 +333,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
           {/* Course details editor */}
           {editingCourseDetails && (
             <div className="space-y-5">
-              <h2 className="font-serif text-xl text-charcoal">Category Details</h2>
+              <h2 className="font-serif text-xl text-charcoal">Course Details</h2>
 
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>

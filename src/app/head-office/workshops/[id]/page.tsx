@@ -10,8 +10,8 @@ export default async function EditWorkshopPage({ params }: { params: Promise<{ i
 
   const [{ data: workshop }, { data: categories }, { data: menuItems }, { data: workshopMenuItems }] = await Promise.all([
     supabase.from('workshops').select('*').eq('id', id).single(),
-    supabase.from('categories').select('*').eq('status', 'active').order('sort_order'),
-    supabase.from('menu_items').select('*, category:categories(*)').eq('status', 'active').order('title'),
+    supabase.from('courses').select('*').eq('status', 'active').order('sort_order'),
+    supabase.from('menu_items').select('*, course:courses(*)').eq('status', 'active').order('title'),
     supabase.from('workshop_menu_items').select('*').eq('workshop_id', id),
   ])
 

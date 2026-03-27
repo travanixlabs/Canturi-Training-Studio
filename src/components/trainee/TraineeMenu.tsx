@@ -2,14 +2,14 @@
 
 import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
-import { CategoryBadge } from '@/components/ui/CategoryBadge'
-import { CATEGORY_COLOURS } from '@/types'
-import type { Category, MenuItem, Completion, User, TrainingTaskCompletion, Plate, Workshop, WorkshopMenuItem } from '@/types'
+import { CourseBadge } from '@/components/ui/CourseBadge'
+import { COURSE_COLOURS } from '@/types'
+import type { Course, MenuItem, Completion, User, TrainingTaskCompletion, Plate, Workshop, WorkshopMenuItem } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT } from '@/lib/dates'
 
 interface Props {
-  categories: Category[]
+  categories: Course[]
   menuItems: MenuItem[]
   completions: Completion[]
   currentUser: User
@@ -88,7 +88,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
     return workshops.map(ws => {
       const itemIds = new Set(workshopMenuItems.filter(wmi => wmi.workshop_id === ws.id).map(wmi => wmi.menu_item_id))
       const wsItems = menuItems.filter(mi => itemIds.has(mi.id))
-      const catIds = [...new Set(wsItems.map(mi => mi.category_id))]
+      const catIds = [...new Set(wsItems.map(mi => mi.course_id))]
       const wsCats = categories.filter(c => catIds.includes(c.id)).sort((a, b) => a.sort_order - b.sort_order)
       return { workshop: ws, categories: wsCats, menuItemIds: itemIds }
     }).filter(ws => ws.categories.length > 0)
@@ -226,7 +226,7 @@ export function TraineeMenu({ categories, menuItems, completions, currentUser, r
                   {wsExpanded && (
                     <div className="border-t border-black/5">
                       {wsCats.map(category => {
-                        const catItems = wsItems.filter(i => i.category_id === category.id)
+                        const catItems = wsItems.filter(i => i.course_id === category.id)
                         const catKey = `${workshop.id}-${category.id}`
                         const catExpanded = expandedCategories.has(catKey)
                         const completedCount = catItems.filter(i => isCompleted(i.id)).length
@@ -372,7 +372,7 @@ function MenuItemCard({
   highlightText: (text: string, query: string) => React.ReactNode
   onOpen: () => void
 }) {
-  const colour = item.category ? CATEGORY_COLOURS[item.category.name] ?? '#C9A96E' : '#C9A96E'
+  const colour = item.course ? COURSE_COLOURS[item.course.name] ?? '#C9A96E' : '#C9A96E'
 
   return (
     <button
@@ -384,8 +384,8 @@ function MenuItemCard({
         style={{ backgroundColor: colour }}
       />
       <div className="pl-3">
-        {item.category && (
-          <CategoryBadge categoryName={item.category.name} icon={item.category.icon} />
+        {item.course && (
+          <CourseBadge courseName={item.course.name} icon={item.course.icon} />
         )}
         <p className="font-medium text-charcoal text-[15px] mt-1.5 leading-snug">
           {highlightText(item.title, searchQuery)}

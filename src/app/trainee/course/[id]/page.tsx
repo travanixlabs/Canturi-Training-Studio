@@ -10,7 +10,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
   if (!authUser) redirect('/login')
 
   const [{ data: menuItem }, { data: modules }, { data: moduleCompletions }, { data: completion }, { data: profile }, { data: plate }, { data: recurringCompletions }] = await Promise.all([
-    supabase.from('menu_items').select('*, category:categories(*)').eq('id', id).single(),
+    supabase.from('menu_items').select('*, course:courses(*)').eq('id', id).single(),
     supabase.from('subcategories').select('*').eq('menu_item_id', id).order('sort_order'),
     supabase.from('subcategory_completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('completions').select('*').eq('menu_item_id', id).eq('trainee_id', authUser.id).maybeSingle(),
@@ -23,7 +23,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ i
 
   // Fetch sibling items in same course (category) to detect course completion
   const [{ data: siblingItems }, { data: siblingCompletions }, { data: allPlates }] = await Promise.all([
-    supabase.from('menu_items').select('id, status, is_recurring, recurring_amount').eq('category_id', menuItem.category_id).eq('status', 'active'),
+    supabase.from('menu_items').select('id, status, is_recurring, recurring_amount').eq('course_id', menuItem.course_id).eq('status', 'active'),
     supabase.from('completions').select('id, menu_item_id').eq('trainee_id', authUser.id),
     supabase.from('plates').select('*').eq('trainee_id', authUser.id).eq('menu_item_id', id),
   ])

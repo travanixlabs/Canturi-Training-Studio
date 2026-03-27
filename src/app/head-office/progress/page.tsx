@@ -10,11 +10,11 @@ export default async function HeadOfficeProgressPage() {
   const [{ data: boutiques }, { data: allUsers }, { data: categories }, { data: menuItems }, { data: completions }, { data: plates }, { data: visibleCats }] = await Promise.all([
     supabase.from('boutiques').select('*').order('city'),
     supabase.from('users').select('*, boutique:boutiques(*)'),
-    supabase.from('categories').select('*').order('sort_order'),
+    supabase.from('courses').select('*').order('sort_order'),
     supabase.from('menu_items').select('*').eq('status', 'active'),
     supabase.from('completions').select('*'),
     supabase.from('plates').select('*'),
-    supabase.from('visible_categories').select('*'),
+    supabase.from('visible_courses').select('*'),
   ])
 
   return (

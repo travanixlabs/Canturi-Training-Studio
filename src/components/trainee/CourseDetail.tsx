@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { ArrowLeft, Check, BookOpen } from 'lucide-react'
-import { CategoryBadge } from '@/components/ui/CategoryBadge'
+import { CourseBadge } from '@/components/ui/CourseBadge'
 import { TaskModal } from '@/components/ui/TaskModal'
 import { CourseCelebrationScreen } from '@/components/ui/CourseCelebrationScreen'
 import { createClient } from '@/lib/supabase/client'
@@ -43,7 +43,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const otherSiblings = siblingItems.filter(s => s.id !== menuItem.id && s.status === 'active')
   const otherSiblingsDone = otherSiblings.every(s => siblingCompletions.some(c => c.menu_item_id === s.id))
   const willCompleteCourse = otherSiblings.length > 0 && otherSiblingsDone
-  const courseName = menuItem.category?.name ?? 'Course'
+  const courseName = menuItem.course?.name ?? 'Course'
 
   // Session state
   const isRecurringItem = menuItem.is_recurring && !!menuItem.recurring_amount
@@ -56,7 +56,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const shadowedSessionCount = recurringDone - assignedSessionCount
 
   const isModuleComplete = (moduleId: string) =>
-    completedModules.some(mc => mc.subcategory_id === moduleId && mc.trainee_id === currentUser.id)
+    completedModules.some(mc => mc.subcourse_id === moduleId && mc.trainee_id === currentUser.id)
 
   const completedCount = useMemo(
     () => modules.filter(m => isModuleComplete(m.id)).length,
@@ -73,14 +73,14 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   }, [selectedModuleId, modules, completedModules, viewingRecurringTask])
 
   async function toggleModuleComplete(moduleId: string) {
-    const existing = completedModules.find(mc => mc.subcategory_id === moduleId && mc.trainee_id === currentUser.id)
+    const existing = completedModules.find(mc => mc.subcourse_id === moduleId && mc.trainee_id === currentUser.id)
 
     if (existing) {
       setCompletedModules(prev => prev.filter(mc => mc.id !== existing.id))
       await supabase.from('subcategory_completions').delete().eq('id', existing.id)
     } else {
       const { data, error } = await supabase.from('subcategory_completions').insert({
-        subcategory_id: moduleId,
+        subcourse_id: moduleId,
         trainee_id: currentUser.id,
         workshop_id: plate?.workshop_id ?? null,
       }).select().single()
@@ -141,8 +141,8 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
             <ArrowLeft size={20} />
           </button>
           <div className="flex-1 min-w-0">
-            {menuItem.category && (
-              <CategoryBadge categoryName={menuItem.category.name} icon={menuItem.category.icon} />
+            {menuItem.course && (
+              <CourseBadge courseName={menuItem.course.name} icon={menuItem.course.icon} />
             )}
             <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{menuItem.title}</h1>
           </div>

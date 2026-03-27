@@ -8,8 +8,8 @@ export default async function HeadOfficeCoursesPage() {
   if (!authUser) redirect('/login')
 
   const [{ data: categories }, { data: menuItems }] = await Promise.all([
-    supabase.from('categories').select('*').order('sort_order'),
-    supabase.from('menu_items').select('*, category:categories(*)').order('title'),
+    supabase.from('courses').select('*').order('sort_order'),
+    supabase.from('menu_items').select('*, course:courses(*)').order('title'),
   ])
 
   return (
