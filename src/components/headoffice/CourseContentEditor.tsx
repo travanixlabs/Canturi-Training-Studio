@@ -437,28 +437,12 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
               {/* Video */}
               {activeSubcategory.type === 'video' && (
-                <div>
-                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Video</label>
-                  {activeSubcategory.file_url ? (
-                    <div className="space-y-3">
-                      <video src={activeSubcategory.file_url} controls className="max-w-full rounded-xl" />
-                      <button onClick={() => updateSubcategory(activeSubcategory.id, { file_url: null })} className="text-xs text-red-500 hover:text-red-700">
-                        Remove video
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
-                      <Upload size={24} className="text-charcoal/30" />
-                      <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload a video'}</p>
-                      <p className="text-xs text-charcoal/25">MP4, WebM, MOV</p>
-                      <input type="file" accept="video/*" className="hidden" onChange={e => e.target.files?.[0] && handleFileUpload(activeSubcategory.id, e.target.files[0])} />
-                    </label>
-                  )}
-                  <div className="mt-3">
-                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description (optional)</label>
-                    <input className="input" value={activeSubcategory.content} onChange={e => updateSubcategory(activeSubcategory.id, { content: e.target.value })} placeholder="Video description" />
-                  </div>
-                </div>
+                <VideoEditor
+                  subcategory={activeSubcategory}
+                  uploading={uploading}
+                  onUpdate={(updates) => updateSubcategory(activeSubcategory.id, updates)}
+                  onFileUpload={(file) => handleFileUpload(activeSubcategory.id, file)}
+                />
               )}
 
               {/* PDF */}
@@ -521,6 +505,111 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function VideoEditor({
+  subcategory,
+  uploading,
+  onUpdate,
+  onFileUpload,
+}: {
+  subcategory: Subcategory
+  uploading: boolean
+  onUpdate: (updates: Partial<Subcategory>) => void
+  onFileUpload: (file: File) => void
+}) {
+  // Determine mode: if file_url exists it's an upload, otherwise check if content looks like a URL
+  const hasUpload = !!subcategory.file_url
+  const isEmbedMode = !hasUpload && (subcategory.content.startsWith('http') || subcategory.content === '')
+  const [mode, setMode] = useState<'upload' | 'embed'>(hasUpload ? 'upload' : isEmbedMode ? 'embed' : 'upload')
+
+  function switchMode(newMode: 'upload' | 'embed') {
+    setMode(newMode)
+    if (newMode === 'embed') {
+      onUpdate({ file_url: null })
+    } else {
+      onUpdate({ content: '' })
+    }
+  }
+
+  // Convert YouTube/Vimeo URLs to embed format
+  function getEmbedUrl(url: string): string {
+    // YouTube
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+    // Vimeo
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
+    return url
+  }
+
+  return (
+    <div>
+      {/* Mode toggle */}
+      <div className="flex items-center gap-2 mb-4">
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider">Video</label>
+        <div className="flex bg-charcoal/5 rounded-lg p-0.5 ml-auto">
+          <button
+            onClick={() => switchMode('upload')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+              mode === 'upload' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40 hover:text-charcoal/60'
+            }`}
+          >
+            Upload
+          </button>
+          <button
+            onClick={() => switchMode('embed')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+              mode === 'embed' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40 hover:text-charcoal/60'
+            }`}
+          >
+            Embed Link
+          </button>
+        </div>
+      </div>
+
+      {mode === 'upload' ? (
+        <>
+          {subcategory.file_url ? (
+            <div className="space-y-3">
+              <video src={subcategory.file_url} controls className="max-w-full rounded-xl" />
+              <button onClick={() => onUpdate({ file_url: null })} className="text-xs text-red-500 hover:text-red-700">
+                Remove video
+              </button>
+            </div>
+          ) : (
+            <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
+              <Upload size={24} className="text-charcoal/30" />
+              <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload a video'}</p>
+              <p className="text-xs text-charcoal/25">MP4, WebM, MOV</p>
+              <input type="file" accept="video/*" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0])} />
+            </label>
+          )}
+        </>
+      ) : (
+        <>
+          <input
+            className="input"
+            value={subcategory.content}
+            onChange={e => onUpdate({ content: e.target.value })}
+            placeholder="Paste a YouTube, Vimeo, or video URL..."
+            type="url"
+          />
+          {subcategory.content && (
+            <div className="mt-4 card overflow-hidden" style={{ height: '400px' }}>
+              <iframe
+                src={getEmbedUrl(subcategory.content)}
+                className="w-full h-full border-0"
+                title={subcategory.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
