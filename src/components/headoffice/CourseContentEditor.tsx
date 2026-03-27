@@ -345,25 +345,29 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                   <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Webpage URL</label>
                   <input
                     className="input"
-                    value={activeSubcategory.content}
-                    onChange={e => updateSubcategory(activeSubcategory.id, { content: e.target.value })}
+                    value={activeSubcategory.file_url ?? ''}
+                    onChange={e => updateSubcategory(activeSubcategory.id, { file_url: e.target.value || null })}
                     placeholder="https://example.com"
                     type="url"
                   />
-                  {activeSubcategory.content && (
+                  {activeSubcategory.file_url && (
                     <div className="mt-4 card p-4 flex items-center gap-3">
                       <Globe size={16} className="text-charcoal/30 flex-shrink-0" />
                       <a
-                        href={activeSubcategory.content}
+                        href={activeSubcategory.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-gold hover:text-gold/80 underline underline-offset-2 truncate"
                       >
-                        {activeSubcategory.content}
+                        {activeSubcategory.file_url}
                       </a>
                       <span className="text-xs text-charcoal/30 flex-shrink-0">Opens in new tab</span>
                     </div>
                   )}
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
+                    <input className="input" value={activeSubcategory.content} onChange={e => updateSubcategory(activeSubcategory.id, { content: e.target.value })} placeholder="Caption" />
+                  </div>
                 </div>
               )}
 
@@ -478,26 +482,18 @@ function VideoEditor({
   onUpdate: (updates: Partial<Subcategory>) => void
   onFileUpload: (file: File) => void
 }) {
-  // Determine mode: if file_url exists it's an upload, otherwise check if content looks like a URL
-  const hasUpload = !!subcategory.file_url
-  const isEmbedMode = !hasUpload && (subcategory.content.startsWith('http') || subcategory.content === '')
-  const [mode, setMode] = useState<'upload' | 'embed'>(hasUpload ? 'upload' : isEmbedMode ? 'embed' : 'upload')
+  const hasUploadedFile = !!subcategory.file_url && !subcategory.file_url.startsWith('http://') || (!!subcategory.file_url && subcategory.file_url.includes('supabase'))
+  const [mode, setMode] = useState<'upload' | 'embed'>(hasUploadedFile ? 'upload' : subcategory.file_url ? 'embed' : 'upload')
 
   function switchMode(newMode: 'upload' | 'embed') {
     setMode(newMode)
-    if (newMode === 'embed') {
-      onUpdate({ file_url: null })
-    } else {
-      onUpdate({ content: '' })
-    }
+    onUpdate({ file_url: null })
   }
 
   // Convert YouTube/Vimeo URLs to embed format
   function getEmbedUrl(url: string): string {
-    // YouTube
     const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
-    // Vimeo
     const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
     if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
     return url
@@ -550,15 +546,15 @@ function VideoEditor({
         <>
           <input
             className="input"
-            value={subcategory.content}
-            onChange={e => onUpdate({ content: e.target.value })}
+            value={subcategory.file_url ?? ''}
+            onChange={e => onUpdate({ file_url: e.target.value || null })}
             placeholder="Paste a YouTube, Vimeo, or video URL..."
             type="url"
           />
-          {subcategory.content && (
+          {subcategory.file_url && (
             <div className="mt-4 card overflow-hidden" style={{ height: '400px' }}>
               <iframe
-                src={getEmbedUrl(subcategory.content)}
+                src={getEmbedUrl(subcategory.file_url)}
                 className="w-full h-full border-0"
                 title={subcategory.title}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -568,6 +564,11 @@ function VideoEditor({
           )}
         </>
       )}
+
+      <div className="mt-3">
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
+        <input className="input" value={subcategory.content} onChange={e => onUpdate({ content: e.target.value })} placeholder="Caption" />
+      </div>
     </div>
   )
 }
