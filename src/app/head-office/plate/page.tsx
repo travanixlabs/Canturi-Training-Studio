@@ -26,7 +26,7 @@ export default async function HeadOfficePlatePage() {
     supabase.from('plates').select('*'),
     supabase.from('visible_categories').select('*'),
     supabase.from('completions').select('*'),
-    supabase.from('recurring_task_completions').select('*'),
+    supabase.from('training_task_completions').select('*'),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
     supabase.from('workshop_menu_items').select('*'),
   ])

@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { CATEGORY_COLOURS } from '@/types'
-import type { Plate, Completion, User, Category, RecurringTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
+import type { Plate, Completion, User, Category, TrainingTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, formatDateShort } from '@/lib/dates'
 import { useDatePlateView } from '@/lib/useDatePlateView'
@@ -13,7 +13,7 @@ import { DateNavigation } from './DateNavigation'
 interface Props {
   allPlates: Plate[]
   allCompletions: Completion[]
-  allRecurringCompletions: RecurringTaskCompletion[]
+  allRecurringCompletions: TrainingTaskCompletion[]
   currentUser: User
   workshops?: Workshop[]
   workshopMenuItems?: WorkshopMenuItem[]

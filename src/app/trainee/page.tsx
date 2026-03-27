@@ -22,7 +22,7 @@ export default async function TraineePlatePage() {
   const [{ data: allCompletions }, { data: profile }, { data: allRecurringCompletions }, { data: workshops }, { data: workshopMenuItems }, { data: visibleCats }] = await Promise.all([
     supabase.from('completions').select('*, menu_item:menu_items(*, category:categories(*))').eq('trainee_id', authUser.id),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
-    supabase.from('recurring_task_completions').select('*').eq('trainee_id', authUser.id),
+    supabase.from('training_task_completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
     supabase.from('workshop_menu_items').select('*'),
     supabase.from('visible_categories').select('category_id').eq('user_id', authUser.id),

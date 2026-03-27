@@ -48,7 +48,7 @@ export interface MenuItem {
   difficulty_level: DifficultyLevel | null
   is_recurring: boolean
   recurring_amount: number | null
-  recurring_task_content: string | null
+  training_task_content: string | null
   category?: Category
 }
 
@@ -83,28 +83,28 @@ export interface Completion {
   trainee?: User
 }
 
-export type ModuleType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
+export type SubcategoryType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
 
-export interface Module {
+export interface Subcategory {
   id: string
   menu_item_id: string
   title: string
-  type: ModuleType
+  type: SubcategoryType
   content: string
   file_url: string | null
   sort_order: number
   created_at: string
 }
 
-export interface ModuleCompletion {
+export interface SubcategoryCompletion {
   id: string
-  module_id: string
+  subcategory_id: string
   trainee_id: string
   completed_at: string
   workshop_id: string | null
 }
 
-export interface RecurringTaskCompletion {
+export interface TrainingTaskCompletion {
   id: string
   trainee_id: string
   menu_item_id: string

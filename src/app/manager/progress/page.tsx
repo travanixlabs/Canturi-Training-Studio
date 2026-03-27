@@ -28,7 +28,7 @@ export default async function TraineesPage() {
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
     supabase.from('workshop_menu_items').select('*'),
     traineeIds.length > 0
-      ? supabase.from('recurring_task_completions').select('*').in('trainee_id', traineeIds)
+      ? supabase.from('training_task_completions').select('*').in('trainee_id', traineeIds)
       : Promise.resolve({ data: [] }),
   ])
 

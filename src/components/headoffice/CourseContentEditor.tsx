@@ -5,9 +5,9 @@ import { ArrowLeft, Plus, Save, Trash2, ChevronUp, ChevronDown, Check, BookOpen,
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { MenuItem, Module, ModuleType, Category, TrainerType, DifficultyLevel } from '@/types'
+import type { MenuItem, Subcategory, SubcategoryType, Category, TrainerType, DifficultyLevel } from '@/types'
 
-const MODULE_TYPES: { value: ModuleType; label: string; icon: React.ReactNode }[] = [
+const SUBCATEGORY_TYPES: { value: SubcategoryType; label: string; icon: React.ReactNode }[] = [
   { value: 'text', label: 'Text', icon: <FileText size={16} /> },
   { value: 'webpage', label: 'Webpage', icon: <Globe size={16} /> },
   { value: 'image', label: 'Image', icon: <Image size={16} /> },
@@ -24,7 +24,7 @@ const DIFFICULTY_LEVELS: { value: DifficultyLevel; label: string }[] = [
 
 interface Props {
   menuItem: MenuItem
-  initialModules: Module[]
+  initialModules: Subcategory[]
   categories: Category[]
 }
 
@@ -42,11 +42,11 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
   const [priorityLevel, setPriorityLevel] = useState<DifficultyLevel | ''>(initialItem.difficulty_level ?? '')
   const [isRecurring, setIsRecurring] = useState(initialItem.is_recurring)
   const [recurringAmount, setRecurringAmount] = useState((initialItem as any).recurring_amount ?? 1)
-  const [recurringTaskContent, setRecurringTaskContent] = useState((initialItem as any).recurring_task_content ?? '')
+  const [recurringTaskContent, setRecurringTaskContent] = useState((initialItem as any).training_task_content ?? '')
   const [editingRecurringTask, setEditingRecurringTask] = useState(false)
 
   // Modules
-  const [modules, setModules] = useState<Module[]>(initialModules)
+  const [modules, setModules] = useState<Subcategory[]>(initialModules)
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(modules[0]?.id ?? null)
   const [editingCourseDetails, setEditingCourseDetails] = useState(modules.length === 0)
   const [showTypeSelector, setShowTypeSelector] = useState(false)
@@ -78,17 +78,18 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
       difficulty_level: priorityLevel || null,
       is_recurring: isRecurring,
       recurring_amount: isRecurring ? recurringAmount : null,
-      recurring_task_content: isRecurring ? recurringTaskContent : null,
+      training_task_content: isRecurring ? recurringTaskContent : null,
     }).eq('id', initialItem.id)
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
-  async function addModule(type: ModuleType) {
+  async function addModule(type: SubcategoryType) {
     const newOrder = modules.length
-    const typeLabel = MODULE_TYPES.find(t => t.value === type)?.label ?? type
-    const { data, error } = await supabase.from('modules').insert({
+    const typeLabel = SUBCATEGORY_TYPES.find(t => t.value === type)?.label ?? type
+    // Note: storage bucket remains 'module-files' (Supabase storage bucket rename requires recreation)
+    const { data, error } = await supabase.from('subcategories').insert({
       menu_item_id: initialItem.id,
       title: `${typeLabel} ${newOrder + 1}`,
       type,
@@ -98,7 +99,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     }).select().single()
 
     if (!error && data) {
-      setModules(prev => [...prev, data as Module])
+      setModules(prev => [...prev, data as Subcategory])
       setSelectedModuleId(data.id)
       setEditingCourseDetails(false)
       setShowTypeSelector(false)
@@ -129,14 +130,14 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     setUploading(false)
   }
 
-  async function updateModule(moduleId: string, updates: Partial<Module>) {
+  async function updateModule(moduleId: string, updates: Partial<Subcategory>) {
     setModules(prev => prev.map(m => m.id === moduleId ? { ...m, ...updates } : m))
-    await supabase.from('modules').update(updates).eq('id', moduleId)
+    await supabase.from('subcategories').update(updates).eq('id', moduleId)
   }
 
   async function deleteModule(moduleId: string) {
     setModules(prev => prev.filter(m => m.id !== moduleId))
-    await supabase.from('modules').delete().eq('id', moduleId)
+    await supabase.from('subcategories').delete().eq('id', moduleId)
     if (selectedModuleId === moduleId) {
       setSelectedModuleId(modules.find(m => m.id !== moduleId)?.id ?? null)
     }
@@ -156,7 +157,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
     setModules(updated)
 
     await Promise.all(
-      updated.map(m => supabase.from('modules').update({ sort_order: m.sort_order }).eq('id', m.id))
+      updated.map(m => supabase.from('subcategories').update({ sort_order: m.sort_order }).eq('id', m.id))
     )
   }
 
@@ -191,7 +192,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
       </div>
 
       <div className="flex flex-col lg:flex-row">
-        {/* Module sidebar — mirrors CourseDetail */}
+        {/* Subcategory sidebar — mirrors CourseDetail */}
         <div className="lg:w-72 lg:min-h-[calc(100vh-57px)] lg:border-r border-b lg:border-b-0 border-black/5 bg-white">
           {/* Mobile: horizontal strip */}
           <div className="lg:hidden px-4 py-3 flex gap-2 overflow-x-auto">
@@ -289,7 +290,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             {/* Type selector */}
             {showTypeSelector && (
               <div className="mt-2 space-y-1">
-                {MODULE_TYPES.map(t => (
+                {SUBCATEGORY_TYPES.map(t => (
                   <button
                     key={t.value}
                     onClick={() => addModule(t.value)}
@@ -429,13 +430,13 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
             </div>
           )}
 
-          {/* Module content editor */}
+          {/* Subcategory content editor */}
           {activeModule && !editingCourseDetails && (
             <div>
               <div className="flex items-center gap-2 mb-1">
-                {MODULE_TYPES.find(t => t.value === (activeModule.type ?? 'text'))?.icon}
+                {SUBCATEGORY_TYPES.find(t => t.value === (activeModule.type ?? 'text'))?.icon}
                 <p className="text-xs text-charcoal/40 uppercase tracking-wider">
-                  {MODULE_TYPES.find(t => t.value === (activeModule.type ?? 'text'))?.label} · Subcategory {modules.indexOf(activeModule) + 1} of {modules.length}
+                  {SUBCATEGORY_TYPES.find(t => t.value === (activeModule.type ?? 'text'))?.label} · Subcategory {modules.indexOf(activeModule) + 1} of {modules.length}
                 </p>
               </div>
 
@@ -637,7 +638,7 @@ export function CourseContentEditor({ menuItem: initialItem, initialModules, cat
               <p className="font-serif text-lg text-charcoal/60 mb-2">No subcategories yet</p>
               <p className="text-sm text-charcoal/40 mb-6">Add subcategories to build out the category content.</p>
               <div className="flex flex-wrap justify-center gap-2">
-                {MODULE_TYPES.map(t => (
+                {SUBCATEGORY_TYPES.map(t => (
                   <button key={t.value} onClick={() => addModule(t.value)} className="btn-outline inline-flex items-center gap-2 text-sm">
                     {t.icon} {t.label}
                   </button>

@@ -14,7 +14,7 @@ export default async function TraineeProgressPage() {
     supabase.from('visible_categories').select('category_id').eq('user_id', authUser.id),
     supabase.from('workshops').select('*').eq('status', 'active').order('name'),
     supabase.from('workshop_menu_items').select('*'),
-    supabase.from('recurring_task_completions').select('*').eq('trainee_id', authUser.id),
+    supabase.from('training_task_completions').select('*').eq('trainee_id', authUser.id),
     supabase.from('plates').select('*').eq('trainee_id', authUser.id),
   ])
 

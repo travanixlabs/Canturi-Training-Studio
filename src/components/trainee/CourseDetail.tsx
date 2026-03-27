@@ -7,17 +7,17 @@ import { TaskModal } from '@/components/ui/TaskModal'
 import { CourseCelebrationScreen } from '@/components/ui/CourseCelebrationScreen'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { MenuItem, Module, ModuleCompletion, Completion, Plate, User, RecurringTaskCompletion } from '@/types'
+import type { MenuItem, Subcategory, SubcategoryCompletion, Completion, Plate, User, TrainingTaskCompletion } from '@/types'
 import { todayAEDT } from '@/lib/dates'
 
 interface Props {
   menuItem: MenuItem
-  modules: Module[]
-  moduleCompletions: ModuleCompletion[]
+  modules: Subcategory[]
+  moduleCompletions: SubcategoryCompletion[]
   existingCompletion: Completion | null
   plate: Plate | null
   currentUser: User
-  recurringCompletions?: RecurringTaskCompletion[]
+  recurringCompletions?: TrainingTaskCompletion[]
   siblingItems?: MenuItem[]
   siblingCompletions?: Completion[]
   allPlates?: Plate[]
@@ -28,10 +28,10 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const supabase = createClient()
 
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null)
-  const [completedModules, setCompletedModules] = useState<ModuleCompletion[]>(initialMC)
+  const [completedModules, setCompletedModules] = useState<SubcategoryCompletion[]>(initialMC)
   const [showCompleteModal, setShowCompleteModal] = useState(false)
   const [courseCompleted, setCourseCompleted] = useState(!!existingCompletion)
-  const [recurringComps, setRecurringComps] = useState<RecurringTaskCompletion[]>(initialRC)
+  const [recurringComps, setRecurringComps] = useState<TrainingTaskCompletion[]>(initialRC)
   const [markingRecurring, setMarkingRecurring] = useState(false)
   const [showCourseCelebration, setShowCourseCelebration] = useState(false)
   const [viewingRecurringTask, setViewingRecurringTask] = useState(false)
@@ -56,7 +56,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   const shadowedSessionCount = recurringDone - assignedSessionCount
 
   const isModuleComplete = (moduleId: string) =>
-    completedModules.some(mc => mc.module_id === moduleId && mc.trainee_id === currentUser.id)
+    completedModules.some(mc => mc.subcategory_id === moduleId && mc.trainee_id === currentUser.id)
 
   const completedCount = useMemo(
     () => modules.filter(m => isModuleComplete(m.id)).length,
@@ -73,20 +73,20 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   }, [selectedModuleId, modules, completedModules, viewingRecurringTask])
 
   async function toggleModuleComplete(moduleId: string) {
-    const existing = completedModules.find(mc => mc.module_id === moduleId && mc.trainee_id === currentUser.id)
+    const existing = completedModules.find(mc => mc.subcategory_id === moduleId && mc.trainee_id === currentUser.id)
 
     if (existing) {
       setCompletedModules(prev => prev.filter(mc => mc.id !== existing.id))
-      await supabase.from('module_completions').delete().eq('id', existing.id)
+      await supabase.from('subcategory_completions').delete().eq('id', existing.id)
     } else {
-      const { data, error } = await supabase.from('module_completions').insert({
-        module_id: moduleId,
+      const { data, error } = await supabase.from('subcategory_completions').insert({
+        subcategory_id: moduleId,
         trainee_id: currentUser.id,
         workshop_id: plate?.workshop_id ?? null,
       }).select().single()
 
       if (!error && data) {
-        setCompletedModules(prev => [...prev, data as ModuleCompletion])
+        setCompletedModules(prev => [...prev, data as SubcategoryCompletion])
         // Auto-advance to next incomplete module
         const currentIdx = modules.findIndex(m => m.id === moduleId)
         const nextIncomplete = modules.find((m, i) => i > currentIdx && !isModuleComplete(m.id) && m.id !== moduleId)
@@ -106,7 +106,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
   async function markSessionDone() {
     if (markingRecurring || !sessionNotes.trim()) return
     setMarkingRecurring(true)
-    const { data, error } = await supabase.from('recurring_task_completions').insert({
+    const { data, error } = await supabase.from('training_task_completions').insert({
       trainee_id: currentUser.id,
       menu_item_id: menuItem.id,
       completed_date: todayStr,
@@ -114,7 +114,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
       workshop_id: plate?.workshop_id ?? null,
     }).select().single()
     if (!error && data) {
-      setRecurringComps(prev => [...prev, data as RecurringTaskCompletion])
+      setRecurringComps(prev => [...prev, data as TrainingTaskCompletion])
       setSessionNotes('')
     } else if (error) {
       alert('Failed to save session: ' + error.message)
@@ -154,7 +154,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
         </div>
 
         <div className="flex flex-col lg:flex-row">
-          {/* Module sidebar */}
+          {/* Subcategory sidebar */}
           {hasModules && (
             <div className="lg:w-72 lg:min-h-[calc(100vh-57px)] lg:border-r border-b lg:border-b-0 border-black/5 bg-white">
               {/* Mobile: horizontal strip */}
@@ -272,7 +272,7 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                   {activeModule.content || 'No content added yet.'}
                 </div>
 
-                {/* Module completion toggle */}
+                {/* Subcategory completion toggle */}
                 {!courseCompleted && (
                   <button
                     onClick={() => toggleModuleComplete(activeModule.id)}
@@ -345,9 +345,9 @@ export function CourseDetail({ menuItem, modules, moduleCompletions: initialMC, 
                 </div>
                 <h2 className="font-serif text-xl text-charcoal mb-4">Training Task Details</h2>
 
-                {menuItem.recurring_task_content && (
+                {menuItem.training_task_content && (
                   <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap mb-6">
-                    {menuItem.recurring_task_content}
+                    {menuItem.training_task_content}
                   </div>
                 )}
 

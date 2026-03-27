@@ -7,7 +7,7 @@ import { TaskModal } from '@/components/ui/TaskModal'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { todayAEDT, toDateStringAEDT } from '@/lib/dates'
-import type { User, Category, MenuItem, Plate, VisibleCategory, Completion, RecurringTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
+import type { User, Category, MenuItem, Plate, VisibleCategory, Completion, TrainingTaskCompletion, Workshop, WorkshopMenuItem } from '@/types'
 import { PlateDistributionChart } from './PlateDistributionChart'
 
 interface Props {
@@ -18,7 +18,7 @@ interface Props {
   todayPlates: Plate[]
   visibleCategories?: VisibleCategory[]
   completions?: Completion[]
-  recurringCompletions?: RecurringTaskCompletion[]
+  recurringCompletions?: TrainingTaskCompletion[]
   showBoutique?: boolean
   workshops?: Workshop[]
   workshopMenuItems?: WorkshopMenuItem[]
@@ -53,7 +53,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
   const [datePicker, setDatePicker] = useState<{ items: MenuItem[]; anchorId: string; workshopId: string } | null>(null)
   const [multiDatePicker, setMultiDatePicker] = useState<{ item: MenuItem; anchorId: string; workshopId: string } | null>(null)
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set())
-  const [recurringCompletions, setRecurringCompletions] = useState<RecurringTaskCompletion[]>(initialRecurring)
+  const [recurringCompletions, setRecurringCompletions] = useState<TrainingTaskCompletion[]>(initialRecurring)
   const [chartFilter, setChartFilter] = useState<{ dates: Set<string>; courseIds: Set<string> }>({ dates: new Set(), courseIds: new Set() })
   const router = useRouter()
   const supabase = createClient()
@@ -254,7 +254,7 @@ export function BuildPlate({ manager, trainees, categories, menuItems, todayPlat
         .eq('workshop_id', workshopId)
 
       // Delete recurring completions for this category's items in this workshop
-      await supabase.from('recurring_task_completions').delete()
+      await supabase.from('training_task_completions').delete()
         .in('menu_item_id', catItemIds)
         .eq('trainee_id', selectedTrainee.id)
         .eq('workshop_id', workshopId)

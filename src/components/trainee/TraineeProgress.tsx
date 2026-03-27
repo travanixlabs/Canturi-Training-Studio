@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { CATEGORY_COLOURS } from '@/types'
-import type { Category, MenuItem, Completion, Workshop, WorkshopMenuItem, RecurringTaskCompletion, Plate } from '@/types'
+import type { Category, MenuItem, Completion, Workshop, WorkshopMenuItem, TrainingTaskCompletion, Plate } from '@/types'
 
 interface Props {
   categories: Category[]
@@ -11,7 +11,7 @@ interface Props {
   completions: Completion[]
   workshops?: Workshop[]
   workshopMenuItems?: WorkshopMenuItem[]
-  recurringCompletions?: RecurringTaskCompletion[]
+  recurringCompletions?: TrainingTaskCompletion[]
   plates?: Plate[]
 }
 

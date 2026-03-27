@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { CATEGORY_COLOURS } from '@/types'
-import type { User, Category, MenuItem, Completion, Plate, VisibleCategory, Workshop, WorkshopMenuItem, RecurringTaskCompletion } from '@/types'
+import type { User, Category, MenuItem, Completion, Plate, VisibleCategory, Workshop, WorkshopMenuItem, TrainingTaskCompletion } from '@/types'
 
 interface Props {
   trainees: User[]
@@ -14,7 +14,7 @@ interface Props {
   visibleCategories?: VisibleCategory[]
   workshops?: Workshop[]
   workshopMenuItems?: WorkshopMenuItem[]
-  recurringCompletions?: RecurringTaskCompletion[]
+  recurringCompletions?: TrainingTaskCompletion[]
 }
 
 export function ManagerTrainees({ trainees, categories, menuItems, completions, plates = [], visibleCategories = [], workshops = [], workshopMenuItems = [], recurringCompletions = [] }: Props) {

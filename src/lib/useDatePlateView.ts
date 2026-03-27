@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { todayAEDT } from '@/lib/dates'
 import { CATEGORY_COLOURS } from '@/types'
-import type { Plate, Completion, RecurringTaskCompletion, Category } from '@/types'
+import type { Plate, Completion, TrainingTaskCompletion, Category } from '@/types'
 
 export interface PlateItemInfo {
   id: string
@@ -45,7 +45,7 @@ export interface DatePlateView {
 export function useDatePlateView(
   allPlates: Plate[],
   allCompletions: Completion[],
-  allRecurringCompletions: RecurringTaskCompletion[],
+  allRecurringCompletions: TrainingTaskCompletion[],
   selectedDate: string,
   userId: string,
 ): DatePlateView {

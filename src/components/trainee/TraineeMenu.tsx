@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { CategoryBadge } from '@/components/ui/CategoryBadge'
 import { CATEGORY_COLOURS } from '@/types'
-import type { Category, MenuItem, Completion, User, RecurringTaskCompletion, Plate, Workshop, WorkshopMenuItem } from '@/types'
+import type { Category, MenuItem, Completion, User, TrainingTaskCompletion, Plate, Workshop, WorkshopMenuItem } from '@/types'
 import { useRouter } from 'next/navigation'
 import { todayAEDT } from '@/lib/dates'
 
@@ -13,7 +13,7 @@ interface Props {
   menuItems: MenuItem[]
   completions: Completion[]
   currentUser: User
-  recurringCompletions?: RecurringTaskCompletion[]
+  recurringCompletions?: TrainingTaskCompletion[]
   plates?: Plate[]
   workshops?: Workshop[]
   workshopMenuItems?: WorkshopMenuItem[]
