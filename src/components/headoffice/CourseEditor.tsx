@@ -503,11 +503,10 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
                   Course <span className="text-red-400">*</span>
                 </label>
                 <select
-                  className="input"
+                  className="input bg-charcoal/3 cursor-not-allowed"
                   value={courseForm.course_id}
-                  onChange={e => setCourseForm(f => ({ ...f, course_id: e.target.value }))}
+                  disabled
                 >
-                  <option value="">Select a course…</option>
                   {courses.map(c => (
                     <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                   ))}
