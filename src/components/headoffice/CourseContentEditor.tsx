@@ -586,8 +586,18 @@ function VideoEditor({
   onUpdate: (updates: Partial<Subcategory>) => void
   onFileUpload: (file: File) => void
 }) {
-  const hasUploadedFile = !!subcategory.file_url && !subcategory.file_url.startsWith('http://') || (!!subcategory.file_url && subcategory.file_url.includes('supabase'))
-  const [mode, setMode] = useState<'upload' | 'embed'>(hasUploadedFile ? 'upload' : subcategory.file_url ? 'embed' : 'upload')
+  function detectMode(url: string | null): 'upload' | 'embed' {
+    if (!url) return 'upload'
+    if (url.includes('supabase') || url.includes('module-files')) return 'upload'
+    return 'embed'
+  }
+
+  const [mode, setMode] = useState<'upload' | 'embed'>(detectMode(subcategory.file_url))
+
+  // Sync mode when subcategory changes (navigating away and back)
+  useEffect(() => {
+    setMode(detectMode(subcategory.file_url))
+  }, [subcategory.id])
 
   function switchMode(newMode: 'upload' | 'embed') {
     setMode(newMode)
