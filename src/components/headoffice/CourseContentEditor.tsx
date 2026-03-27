@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { ArrowLeft, Save, Check, Plus, Trash2, ChevronUp, ChevronDown, FileText, Globe, Image, Video, FileUp, Upload } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, FileText, Globe, Image, Video, FileUp, Upload } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -46,20 +46,17 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   const [showTypeSelector, setShowTypeSelector] = useState(false)
   const [uploading, setUploading] = useState(false)
 
-  // State
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
+  // Auto-save state
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isFirstRender = useRef(true)
 
   const activeSubcategory = subcategories.find(s => s.id === selectedSubcategoryId)
   const course = courses.find(c => c.id === initialItem.course_id)
 
-  async function saveCategory() {
-    if (!title.trim()) { alert('Title is required.'); return }
-    if (!description.trim()) { alert('Description is required.'); return }
-    if (!tags.trim()) { alert('Tags are required.'); return }
-    if (!trainerType) { alert('Trainer type is required.'); return }
-    if (!priorityLevel) { alert('Difficulty level is required.'); return }
-    setSaving(true)
+  const autoSave = useCallback(async () => {
+    if (!title.trim() || !description.trim()) return
+    setSaveStatus('saving')
     await supabase.from('categories').update({
       title,
       description,
@@ -67,10 +64,19 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       trainer_type: trainerType,
       difficulty_level: priorityLevel || null,
     }).eq('id', initialItem.id)
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
+    setSaveStatus('saved')
+    setTimeout(() => setSaveStatus('idle'), 2000)
+  }, [title, description, tags, trainerType, priorityLevel])
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => { autoSave() }, 800)
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
+  }, [title, description, tags, trainerType, priorityLevel])
 
   async function addSubcategory(type: SubcategoryType) {
     const newOrder = subcategories.length
@@ -163,15 +169,11 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
           )}
           <h1 className="font-serif text-lg text-charcoal leading-tight truncate mt-0.5">{title || 'Untitled Category'}</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={saveCategory}
-            disabled={saving}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-gold text-white hover:bg-gold/90 transition-colors"
-          >
-            {saved ? <><Check size={14} /> Saved</> : saving ? 'Saving...' : <><Save size={14} /> Save</>}
-          </button>
-        </div>
+        {saveStatus !== 'idle' && (
+          <span className="text-xs text-charcoal/40 flex-shrink-0">
+            {saveStatus === 'saving' ? 'Saving...' : 'Saved'}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row">
