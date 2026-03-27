@@ -50,16 +50,16 @@ export interface Subcategory {
   created_at: string
 }
 
-export type TrainingTaskType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
-
 export interface TrainingTask {
   id: string
   subcategory_id: string
   title: string
-  type: TrainingTaskType
-  content: string
-  file_url: string | null
   description: string
+  content: string
+  webpage_url: string | null
+  image_url: string | null
+  video_url: string | null
+  pdf_url: string | null
   sort_order: number
   created_at: string
 }

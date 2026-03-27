@@ -1,19 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, FileText, Globe, Image, Video, FileUp, Upload } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Globe, Upload } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Category, Course, Subcategory, TrainingTask, TrainingTaskType } from '@/types'
-
-const TRAINING_TASK_TYPES: { value: TrainingTaskType; label: string; icon: React.ReactNode }[] = [
-  { value: 'text', label: 'Text', icon: <FileText size={16} /> },
-  { value: 'webpage', label: 'Webpage', icon: <Globe size={16} /> },
-  { value: 'image', label: 'Image', icon: <Image size={16} /> },
-  { value: 'video', label: 'Video', icon: <Video size={16} /> },
-  { value: 'pdf', label: 'PDF', icon: <FileUp size={16} /> },
-]
+import type { Category, Course, Subcategory, TrainingTask } from '@/types'
 
 interface Props {
   categoryItem: Category
@@ -39,7 +31,6 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   // Training tasks
   const [trainingTasks, setTrainingTasks] = useState<TrainingTask[]>(initialTrainingTasks)
   const [selectedTrainingTaskId, setSelectedTrainingTaskId] = useState<string | null>(null)
-  const [showTaskTypeSelector, setShowTaskTypeSelector] = useState<string | null>(null) // subcategory_id or null
 
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -138,27 +129,23 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     )
   }
 
-  async function addTrainingTask(subcategoryId: string, type: TrainingTaskType) {
+  async function addTrainingTask(subcategoryId: string) {
     const existing = getTasksForSubcategory(subcategoryId)
-    const typeLabel = TRAINING_TASK_TYPES.find(t => t.value === type)?.label ?? type
     const { data, error } = await supabase.from('training_tasks').insert({
       subcategory_id: subcategoryId,
-      title: `${typeLabel} ${existing.length + 1}`,
-      type,
-      content: '',
-      file_url: null,
+      title: `Training Task ${existing.length + 1}`,
       description: '',
+      content: '',
       sort_order: existing.length,
     }).select().single()
 
     if (!error && data) {
       setTrainingTasks(prev => [...prev, data as TrainingTask])
       selectTrainingTask(data.id)
-      setShowTaskTypeSelector(null)
     }
   }
 
-  async function handleTaskFileUpload(taskId: string, file: File) {
+  async function handleTaskFileUpload(taskId: string, file: File, field: 'image_url' | 'video_url' | 'pdf_url') {
     setUploading(true)
     const ext = file.name.split('.').pop()
     const path = `training-tasks/${taskId}/${Date.now()}.${ext}`
@@ -177,7 +164,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       .from('module-files')
       .getPublicUrl(path)
 
-    await updateTrainingTask(taskId, { file_url: urlData.publicUrl })
+    await updateTrainingTask(taskId, { [field]: urlData.publicUrl })
     setUploading(false)
   }
 
@@ -333,29 +320,13 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                           </div>
                         ))}
                         {isExpanded && (
-                          <>
-                            <button
-                              onClick={() => setShowTaskTypeSelector(showTaskTypeSelector === sub.id ? null : sub.id)}
-                              className="w-full px-3 py-2 rounded-lg flex items-center gap-2 border border-dashed border-charcoal/10 text-charcoal/30 hover:border-blue-300 hover:text-blue-500 transition-all text-xs"
-                            >
-                              <Plus size={10} />
-                              <span>Add training task</span>
-                            </button>
-                            {showTaskTypeSelector === sub.id && (
-                              <div className="space-y-0.5 mt-1">
-                                {TRAINING_TASK_TYPES.map(t => (
-                                  <button
-                                    key={t.value}
-                                    onClick={() => addTrainingTask(sub.id, t.value)}
-                                    className="w-full text-left px-3 py-1.5 rounded-lg flex items-center gap-2 hover:bg-blue-50 text-charcoal/50 hover:text-blue-600 transition-all text-xs"
-                                  >
-                                    {t.icon}
-                                    <span>{t.label}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </>
+                          <button
+                            onClick={() => addTrainingTask(sub.id)}
+                            className="w-full px-3 py-2 rounded-lg flex items-center gap-2 border border-dashed border-charcoal/10 text-charcoal/30 hover:border-blue-300 hover:text-blue-500 transition-all text-xs"
+                          >
+                            <Plus size={10} />
+                            <span>Add training task</span>
+                          </button>
                         )}
                       </div>
                     )}
@@ -409,7 +380,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
               task={activeTrainingTask}
               uploading={uploading}
               onUpdate={(updates) => updateTrainingTask(activeTrainingTask.id, updates)}
-              onFileUpload={(file) => handleTaskFileUpload(activeTrainingTask.id, file)}
+              onFileUpload={(file, field) => handleTaskFileUpload(activeTrainingTask.id, file, field)}
             />
           )}
 
@@ -469,21 +440,23 @@ function TrainingTaskEditor({
   task: TrainingTask
   uploading: boolean
   onUpdate: (updates: Partial<TrainingTask>) => void
-  onFileUpload: (file: File) => void
+  onFileUpload: (file: File, field: 'image_url' | 'video_url' | 'pdf_url') => void
 }) {
-  const typeCfg = TRAINING_TASK_TYPES.find(t => t.value === task.type)
+  function getEmbedUrl(url: string): string {
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
+    return url
+  }
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-1">
-        {typeCfg?.icon}
-        <p className="text-xs text-charcoal/40 uppercase tracking-wider">
-          {typeCfg?.label} · Training Task
-        </p>
-      </div>
+    <div className="space-y-6">
+      <p className="text-xs text-charcoal/40 uppercase tracking-wider">Training Task</p>
 
-      <div className="mb-4">
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Training task title</label>
+      {/* Title */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>
         <input
           className="input font-serif text-xl"
           value={task.title}
@@ -492,7 +465,8 @@ function TrainingTaskEditor({
         />
       </div>
 
-      <div className="mb-4">
+      {/* Description */}
+      <div>
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description</label>
         <textarea
           className="textarea"
@@ -503,177 +477,109 @@ function TrainingTaskEditor({
         />
       </div>
 
-      {/* Text */}
-      {task.type === 'text' && (
-        <div>
-          <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Content</label>
-          <textarea
-            className="textarea font-sans text-sm leading-relaxed"
-            rows={12}
-            value={task.content}
-            onChange={e => onUpdate({ content: e.target.value })}
-            placeholder="Write the training task content here."
-          />
-        </div>
-      )}
+      {/* Content (text) */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Content</label>
+        <textarea
+          className="textarea font-sans text-sm leading-relaxed"
+          rows={8}
+          value={task.content}
+          onChange={e => onUpdate({ content: e.target.value })}
+          placeholder="Additional text content..."
+        />
+      </div>
 
-      {/* Webpage */}
-      {task.type === 'webpage' && (
-        <div>
-          <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Webpage URL</label>
-          <input
-            className="input"
-            value={task.file_url ?? ''}
-            onChange={e => onUpdate({ file_url: e.target.value || null })}
-            placeholder="https://example.com"
-            type="url"
-          />
-          {task.file_url && (
-            <div className="mt-4 card p-4 flex items-center gap-3">
-              <Globe size={16} className="text-charcoal/30 flex-shrink-0" />
-              <a href={task.file_url} target="_blank" rel="noopener noreferrer" className="text-sm text-gold hover:text-gold/80 underline underline-offset-2 truncate">
-                {task.file_url}
-              </a>
-              <span className="text-xs text-charcoal/30 flex-shrink-0">Opens in new tab</span>
-            </div>
-          )}
-          <div className="mt-3">
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
-            <input className="input" value={task.content} onChange={e => onUpdate({ content: e.target.value })} placeholder="Caption" />
+      {/* Webpage URL */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Webpage URL</label>
+        <input
+          className="input"
+          value={task.webpage_url ?? ''}
+          onChange={e => onUpdate({ webpage_url: e.target.value || null })}
+          placeholder="https://example.com"
+          type="url"
+        />
+        {task.webpage_url && (
+          <div className="mt-2 card p-3 flex items-center gap-3">
+            <Globe size={14} className="text-charcoal/30 flex-shrink-0" />
+            <a href={task.webpage_url} target="_blank" rel="noopener noreferrer" className="text-sm text-gold hover:text-gold/80 underline underline-offset-2 truncate">
+              {task.webpage_url}
+            </a>
+            <span className="text-xs text-charcoal/30 flex-shrink-0">Opens in new tab</span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Image */}
-      {task.type === 'image' && (
-        <div>
-          <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Image</label>
-          {task.file_url ? (
-            <div className="space-y-3">
-              <img src={task.file_url} alt={task.title} className="max-w-full rounded-xl border border-black/5" />
-              <button onClick={() => onUpdate({ file_url: null })} className="text-xs text-red-500 hover:text-red-700">Remove image</button>
-            </div>
-          ) : (
-            <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
-              <Upload size={24} className="text-charcoal/30" />
-              <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload an image'}</p>
-              <p className="text-xs text-charcoal/25">PNG, JPEG, WebP</p>
-              <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0])} />
-            </label>
-          )}
-          <div className="mt-3">
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
-            <input className="input" value={task.content} onChange={e => onUpdate({ content: e.target.value })} placeholder="Caption" />
-          </div>
-        </div>
-      )}
-
-      {/* Video */}
-      {task.type === 'video' && (
-        <TaskVideoEditor task={task} uploading={uploading} onUpdate={onUpdate} onFileUpload={onFileUpload} />
-      )}
-
-      {/* PDF */}
-      {task.type === 'pdf' && (
-        <div>
-          <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">PDF Document</label>
-          {task.file_url ? (
-            <div className="space-y-3">
-              <div className="card overflow-hidden" style={{ height: '600px' }}>
-                <iframe src={task.file_url} className="w-full h-full border-0" title={task.title} />
-              </div>
-              <button onClick={() => onUpdate({ file_url: null })} className="text-xs text-red-500 hover:text-red-700">Remove PDF</button>
-            </div>
-          ) : (
-            <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
-              <Upload size={24} className="text-charcoal/30" />
-              <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload a PDF'}</p>
-              <p className="text-xs text-charcoal/25">PDF files only</p>
-              <input type="file" accept=".pdf" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0])} />
-            </label>
-          )}
-          <div className="mt-3">
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
-            <input className="input" value={task.content} onChange={e => onUpdate({ content: e.target.value })} placeholder="Caption" />
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function TaskVideoEditor({
-  task,
-  uploading,
-  onUpdate,
-  onFileUpload,
-}: {
-  task: TrainingTask
-  uploading: boolean
-  onUpdate: (updates: Partial<TrainingTask>) => void
-  onFileUpload: (file: File) => void
-}) {
-  function detectMode(url: string | null): 'upload' | 'embed' {
-    if (!url) return 'upload'
-    if (url.includes('supabase') || url.includes('module-files')) return 'upload'
-    return 'embed'
-  }
-
-  const [mode, setMode] = useState<'upload' | 'embed'>(detectMode(task.file_url))
-
-  useEffect(() => {
-    setMode(detectMode(task.file_url))
-  }, [task.id])
-
-  function switchMode(newMode: 'upload' | 'embed') {
-    setMode(newMode)
-    onUpdate({ file_url: null })
-  }
-
-  function getEmbedUrl(url: string): string {
-    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
-    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
-    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
-    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
-    return url
-  }
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-4">
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider">Video</label>
-        <div className="flex bg-charcoal/5 rounded-lg p-0.5 ml-auto">
-          <button onClick={() => switchMode('upload')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${mode === 'upload' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'}`}>Upload</button>
-          <button onClick={() => switchMode('embed')} className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${mode === 'embed' ? 'bg-white text-charcoal shadow-sm' : 'text-charcoal/40'}`}>Embed Link</button>
-        </div>
-      </div>
-      {mode === 'upload' ? (
-        task.file_url ? (
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Image</label>
+        {task.image_url ? (
           <div className="space-y-3">
-            <video src={task.file_url} controls className="max-w-full rounded-xl" />
-            <button onClick={() => onUpdate({ file_url: null })} className="text-xs text-red-500 hover:text-red-700">Remove video</button>
+            <img src={task.image_url} alt={task.title} className="max-w-full rounded-xl border border-black/5" />
+            <button onClick={() => onUpdate({ image_url: null })} className="text-xs text-red-500 hover:text-red-700">Remove image</button>
           </div>
         ) : (
-          <label className="card p-8 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition-shadow">
-            <Upload size={24} className="text-charcoal/30" />
-            <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload a video'}</p>
-            <p className="text-xs text-charcoal/25">MP4, WebM, MOV</p>
-            <input type="file" accept="video/*" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0])} />
+          <label className="card p-6 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
+            <Upload size={20} className="text-charcoal/30" />
+            <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload an image'}</p>
+            <p className="text-xs text-charcoal/25">PNG, JPEG, WebP</p>
+            <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0], 'image_url')} />
           </label>
-        )
-      ) : (
-        <>
-          <input className="input" value={task.file_url ?? ''} onChange={e => onUpdate({ file_url: e.target.value || null })} placeholder="Paste a YouTube, Vimeo, or video URL..." type="url" />
-          {task.file_url && (
-            <div className="mt-4 card overflow-hidden" style={{ height: '400px' }}>
-              <iframe src={getEmbedUrl(task.file_url)} className="w-full h-full border-0" title={task.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+        )}
+      </div>
+
+      {/* Video */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Video</label>
+        {task.video_url ? (
+          <div className="space-y-3">
+            {task.video_url.includes('youtube') || task.video_url.includes('vimeo') || task.video_url.includes('youtu.be') ? (
+              <div className="card overflow-hidden" style={{ height: '400px' }}>
+                <iframe src={getEmbedUrl(task.video_url)} className="w-full h-full border-0" title={task.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+              </div>
+            ) : (
+              <video src={task.video_url} controls className="max-w-full rounded-xl" />
+            )}
+            <button onClick={() => onUpdate({ video_url: null })} className="text-xs text-red-500 hover:text-red-700">Remove video</button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <input
+              className="input"
+              value=""
+              onChange={e => { if (e.target.value) onUpdate({ video_url: e.target.value }) }}
+              placeholder="Paste a YouTube, Vimeo, or video URL..."
+              type="url"
+            />
+            <p className="text-xs text-charcoal/25 text-center">or</p>
+            <label className="card p-6 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
+              <Upload size={20} className="text-charcoal/30" />
+              <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Upload a video file'}</p>
+              <p className="text-xs text-charcoal/25">MP4, WebM, MOV</p>
+              <input type="file" accept="video/*" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0], 'video_url')} />
+            </label>
+          </div>
+        )}
+      </div>
+
+      {/* PDF */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">PDF</label>
+        {task.pdf_url ? (
+          <div className="space-y-3">
+            <div className="card overflow-hidden" style={{ height: '400px' }}>
+              <iframe src={task.pdf_url} className="w-full h-full border-0" title={task.title} />
             </div>
-          )}
-        </>
-      )}
-      <div className="mt-3">
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Caption (optional)</label>
-        <input className="input" value={task.content} onChange={e => onUpdate({ content: e.target.value })} placeholder="Caption" />
+            <button onClick={() => onUpdate({ pdf_url: null })} className="text-xs text-red-500 hover:text-red-700">Remove PDF</button>
+          </div>
+        ) : (
+          <label className="card p-6 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
+            <Upload size={20} className="text-charcoal/30" />
+            <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload a PDF'}</p>
+            <p className="text-xs text-charcoal/25">PDF files only</p>
+            <input type="file" accept=".pdf" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0], 'pdf_url')} />
+          </label>
+        )}
       </div>
     </div>
   )
