@@ -118,11 +118,38 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
   const overallStats = (traineeId: string) => {
     let total = 0
     let done = 0
-    for (const { workshop, items } of workshopHierarchy) {
-      total += items.length
+    let workshopsTotal = 0, workshopsCompleted = 0
+    let coursesTotal = 0, coursesCompleted = 0
+    let nrTotal = 0, nrCompleted = 0, nrShadowed = 0
+    let sTotal = 0, sCompleted = 0, sShadowed = 0
+
+    for (const { workshop, categories: wsCats, items: wsItems } of workshopHierarchy) {
+      total += wsItems.length
       done += getWorkshopCompletions(traineeId, workshop.id).length
+      workshopsTotal++
+
+      const wsBd = getWorkshopBreakdown(traineeId, workshop.id, wsCats, wsItems)
+      coursesTotal += wsBd.coursesTotal
+      coursesCompleted += wsBd.coursesCompleted
+      nrTotal += wsBd.categories.total
+      nrCompleted += wsBd.categories.completed
+      nrShadowed += wsBd.categories.shadowed
+      sTotal += wsBd.sessions.total
+      sCompleted += wsBd.sessions.completed
+      sShadowed += wsBd.sessions.shadowed
+
+      // Workshop is complete if all courses are complete
+      if (wsBd.coursesCompleted >= wsBd.coursesTotal && wsBd.coursesTotal > 0) workshopsCompleted++
     }
-    return { total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0 }
+
+    return {
+      total, done, pct: total > 0 ? Math.round((done / total) * 100) : 0,
+      workshopsTotal, workshopsCompleted,
+      coursesTotal, coursesCompleted,
+      categories: { total: nrTotal, completed: nrCompleted, shadowed: nrShadowed, toDo: nrTotal - nrCompleted - nrShadowed },
+      sessions: { total: sTotal, completed: sCompleted, shadowed: sShadowed, toDo: Math.max(0, sTotal - sCompleted - sShadowed) },
+      hasSessions: sTotal > 0,
+    }
   }
 
   const allTraineeStats = useMemo(() => {
@@ -250,7 +277,22 @@ export function ManagerTrainees({ trainees, categories, menuItems, completions, 
                         <p className="font-medium text-charcoal text-[15px]">{trainee.name}</p>
                         <p className="text-sm font-medium text-gold">{tStats.pct}%</p>
                       </div>
-                      <p className="text-xs text-charcoal/40 mt-0.5">{tStats.done} of {tStats.total} completed</p>
+                      <p className="text-[11px] text-charcoal/40 mt-0.5">{tStats.workshopsCompleted} / {tStats.workshopsTotal} Workshops</p>
+                      <p className="text-[11px] text-charcoal/40">{tStats.coursesCompleted} / {tStats.coursesTotal} Courses</p>
+                      <p className="text-[11px] text-charcoal/40">
+                        {tStats.categories.completed + tStats.categories.shadowed} of {tStats.categories.total} Categories
+                        {tStats.categories.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{tStats.categories.completed} Completed</span></>}
+                        {tStats.categories.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{tStats.categories.shadowed} Shadowed</span></>}
+                        {tStats.categories.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{tStats.categories.toDo} To Do</span></>}
+                      </p>
+                      {tStats.hasSessions && (
+                        <p className="text-[11px] text-charcoal/40">
+                          {tStats.sessions.completed + tStats.sessions.shadowed} of {tStats.sessions.total} Training Tasks
+                          {tStats.sessions.completed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-green-600">{tStats.sessions.completed} Completed</span></>}
+                          {tStats.sessions.shadowed > 0 && <><span className="text-charcoal/30"> | </span><span className="text-blue-600">{tStats.sessions.shadowed} Shadowed</span></>}
+                          {tStats.sessions.toDo > 0 && <><span className="text-charcoal/30"> | </span><span>{tStats.sessions.toDo} To Do</span></>}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="w-16 h-1.5 bg-charcoal/8 rounded-full overflow-hidden">
