@@ -5,16 +5,17 @@ import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Globe, Upload } from '
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Category, Course, Subcategory, TrainingTask } from '@/types'
+import type { Category, Course, Subcategory, TrainingTask, TrainingTaskAttachment, AttachmentType } from '@/types'
 
 interface Props {
   categoryItem: Category
   courses: Course[]
   subcategories: Subcategory[]
   trainingTasks: TrainingTask[]
+  attachments: TrainingTaskAttachment[]
 }
 
-export function CourseContentEditor({ categoryItem: initialItem, courses, subcategories: initialSubcategories, trainingTasks: initialTrainingTasks }: Props) {
+export function CourseContentEditor({ categoryItem: initialItem, courses, subcategories: initialSubcategories, trainingTasks: initialTrainingTasks, attachments: initialAttachments }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -31,6 +32,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   // Training tasks
   const [trainingTasks, setTrainingTasks] = useState<TrainingTask[]>(initialTrainingTasks)
   const [selectedTrainingTaskId, setSelectedTrainingTaskId] = useState<string | null>(null)
+  const [attachments, setAttachments] = useState<TrainingTaskAttachment[]>(initialAttachments)
 
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -145,7 +147,28 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     }
   }
 
-  async function handleTaskFileUpload(taskId: string, file: File, field: 'image_url' | 'video_url' | 'pdf_url') {
+  const getAttachmentsForTask = (taskId: string) =>
+    attachments.filter(a => a.training_task_id === taskId).sort((a, b) => a.sort_order - b.sort_order)
+
+  async function addAttachment(taskId: string, type: AttachmentType, url: string) {
+    const existing = getAttachmentsForTask(taskId)
+    const { data, error } = await supabase.from('training_task_attachments').insert({
+      training_task_id: taskId,
+      type,
+      url,
+      sort_order: existing.length,
+    }).select().single()
+    if (!error && data) {
+      setAttachments(prev => [...prev, data as TrainingTaskAttachment])
+    }
+  }
+
+  async function removeAttachment(id: string) {
+    await supabase.from('training_task_attachments').delete().eq('id', id)
+    setAttachments(prev => prev.filter(a => a.id !== id))
+  }
+
+  async function handleAttachmentUpload(taskId: string, file: File, type: AttachmentType) {
     setUploading(true)
     const ext = file.name.split('.').pop()
     const path = `training-tasks/${taskId}/${Date.now()}.${ext}`
@@ -164,7 +187,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       .from('module-files')
       .getPublicUrl(path)
 
-    await updateTrainingTask(taskId, { [field]: urlData.publicUrl })
+    await addAttachment(taskId, type, urlData.publicUrl)
     setUploading(false)
   }
 
@@ -378,9 +401,12 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
           {activeTrainingTask && !editingCategoryDetails && (
             <TrainingTaskEditor
               task={activeTrainingTask}
+              attachments={getAttachmentsForTask(activeTrainingTask.id)}
               uploading={uploading}
               onUpdate={(updates) => updateTrainingTask(activeTrainingTask.id, updates)}
-              onFileUpload={(file, field) => handleTaskFileUpload(activeTrainingTask.id, file, field)}
+              onAddAttachment={(type, url) => addAttachment(activeTrainingTask.id, type, url)}
+              onRemoveAttachment={removeAttachment}
+              onFileUpload={(file, type) => handleAttachmentUpload(activeTrainingTask.id, file, type)}
             />
           )}
 
@@ -433,15 +459,26 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
 function TrainingTaskEditor({
   task,
+  attachments,
   uploading,
   onUpdate,
+  onAddAttachment,
+  onRemoveAttachment,
   onFileUpload,
 }: {
   task: TrainingTask
+  attachments: TrainingTaskAttachment[]
   uploading: boolean
   onUpdate: (updates: Partial<TrainingTask>) => void
-  onFileUpload: (file: File, field: 'image_url' | 'video_url' | 'pdf_url') => void
+  onAddAttachment: (type: AttachmentType, url: string) => void
+  onRemoveAttachment: (id: string) => void
+  onFileUpload: (file: File, type: AttachmentType) => void
 }) {
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false)
+  const [videoUrlInput, setVideoUrlInput] = useState('')
+  const [webpageUrlInput, setWebpageUrlInput] = useState('')
+  const [addingType, setAddingType] = useState<AttachmentType | null>(null)
+
   function getEmbedUrl(url: string): string {
     const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
@@ -449,6 +486,17 @@ function TrainingTaskEditor({
     if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
     return url
   }
+
+  function isEmbeddable(url: string) {
+    return url.includes('youtube') || url.includes('vimeo') || url.includes('youtu.be')
+  }
+
+  const ATTACHMENT_OPTIONS: { value: AttachmentType; label: string; icon: React.ReactNode }[] = [
+    { value: 'webpage', label: 'Webpage', icon: <Globe size={14} /> },
+    { value: 'image', label: 'Image', icon: <Upload size={14} /> },
+    { value: 'video', label: 'Video', icon: <Upload size={14} /> },
+    { value: 'pdf', label: 'PDF', icon: <Upload size={14} /> },
+  ]
 
   return (
     <div className="space-y-6">
@@ -489,96 +537,161 @@ function TrainingTaskEditor({
         />
       </div>
 
-      {/* Webpage URL */}
+      {/* Attachments */}
       <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Webpage URL</label>
-        <input
-          className="input"
-          value={task.webpage_url ?? ''}
-          onChange={e => onUpdate({ webpage_url: e.target.value || null })}
-          placeholder="https://example.com"
-          type="url"
-        />
-        {task.webpage_url && (
-          <div className="mt-2 card p-3 flex items-center gap-3">
-            <Globe size={14} className="text-charcoal/30 flex-shrink-0" />
-            <a href={task.webpage_url} target="_blank" rel="noopener noreferrer" className="text-sm text-gold hover:text-gold/80 underline underline-offset-2 truncate">
-              {task.webpage_url}
-            </a>
-            <span className="text-xs text-charcoal/30 flex-shrink-0">Opens in new tab</span>
-          </div>
-        )}
-      </div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-3">Attachments</label>
 
-      {/* Image */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Image</label>
-        {task.image_url ? (
-          <div className="space-y-3">
-            <img src={task.image_url} alt={task.title} className="max-w-full rounded-xl border border-black/5" />
-            <button onClick={() => onUpdate({ image_url: null })} className="text-xs text-red-500 hover:text-red-700">Remove image</button>
-          </div>
-        ) : (
-          <label className="card p-6 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
-            <Upload size={20} className="text-charcoal/30" />
-            <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload an image'}</p>
-            <p className="text-xs text-charcoal/25">PNG, JPEG, WebP</p>
-            <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0], 'image_url')} />
-          </label>
-        )}
-      </div>
+        {attachments.length > 0 && (
+          <div className="space-y-3 mb-4">
+            {attachments.map(att => (
+              <div key={att.id} className="card p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <span className="text-xs font-medium text-charcoal/40 uppercase">{att.type}</span>
+                  <button onClick={() => onRemoveAttachment(att.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                </div>
 
-      {/* Video */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Video</label>
-        {task.video_url ? (
-          <div className="space-y-3">
-            {task.video_url.includes('youtube') || task.video_url.includes('vimeo') || task.video_url.includes('youtu.be') ? (
-              <div className="card overflow-hidden" style={{ height: '400px' }}>
-                <iframe src={getEmbedUrl(task.video_url)} className="w-full h-full border-0" title={task.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                {att.type === 'webpage' && (
+                  <div className="flex items-center gap-3">
+                    <Globe size={14} className="text-charcoal/30 flex-shrink-0" />
+                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gold hover:text-gold/80 underline underline-offset-2 truncate">
+                      {att.url}
+                    </a>
+                    <span className="text-xs text-charcoal/30 flex-shrink-0">Opens in new tab</span>
+                  </div>
+                )}
+
+                {att.type === 'image' && (
+                  <img src={att.url} alt="Attachment" className="max-w-full rounded-lg border border-black/5" />
+                )}
+
+                {att.type === 'video' && (
+                  isEmbeddable(att.url) ? (
+                    <div className="card overflow-hidden" style={{ height: '300px' }}>
+                      <iframe src={getEmbedUrl(att.url)} className="w-full h-full border-0" title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                    </div>
+                  ) : (
+                    <video src={att.url} controls className="max-w-full rounded-lg" />
+                  )
+                )}
+
+                {att.type === 'pdf' && (
+                  <div className="card overflow-hidden" style={{ height: '300px' }}>
+                    <iframe src={att.url} className="w-full h-full border-0" title="PDF" />
+                  </div>
+                )}
               </div>
-            ) : (
-              <video src={task.video_url} controls className="max-w-full rounded-xl" />
-            )}
-            <button onClick={() => onUpdate({ video_url: null })} className="text-xs text-red-500 hover:text-red-700">Remove video</button>
+            ))}
           </div>
-        ) : (
-          <div className="space-y-2">
+        )}
+
+        {/* Add attachment inline form */}
+        {addingType === 'webpage' && (
+          <div className="card p-4 mb-3 space-y-2">
+            <p className="text-xs font-medium text-charcoal/50">Add Webpage</p>
             <input
               className="input"
-              value=""
-              onChange={e => { if (e.target.value) onUpdate({ video_url: e.target.value }) }}
-              placeholder="Paste a YouTube, Vimeo, or video URL..."
+              value={webpageUrlInput}
+              onChange={e => setWebpageUrlInput(e.target.value)}
+              placeholder="https://example.com"
               type="url"
+              autoFocus
             />
-            <p className="text-xs text-charcoal/25 text-center">or</p>
-            <label className="card p-6 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
-              <Upload size={20} className="text-charcoal/30" />
-              <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Upload a video file'}</p>
-              <p className="text-xs text-charcoal/25">MP4, WebM, MOV</p>
-              <input type="file" accept="video/*" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0], 'video_url')} />
-            </label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { if (webpageUrlInput.trim()) { onAddAttachment('webpage', webpageUrlInput.trim()); setWebpageUrlInput(''); setAddingType(null) } }}
+                disabled={!webpageUrlInput.trim()}
+                className="px-3 py-1.5 text-xs font-medium bg-gold text-white rounded-lg hover:bg-gold/90 disabled:opacity-40"
+              >
+                Add
+              </button>
+              <button onClick={() => { setAddingType(null); setWebpageUrlInput('') }} className="px-3 py-1.5 text-xs text-charcoal/50">Cancel</button>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* PDF */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">PDF</label>
-        {task.pdf_url ? (
-          <div className="space-y-3">
-            <div className="card overflow-hidden" style={{ height: '400px' }}>
-              <iframe src={task.pdf_url} className="w-full h-full border-0" title={task.title} />
+        {addingType === 'video' && (
+          <div className="card p-4 mb-3 space-y-2">
+            <p className="text-xs font-medium text-charcoal/50">Add Video</p>
+            <input
+              className="input"
+              value={videoUrlInput}
+              onChange={e => setVideoUrlInput(e.target.value)}
+              placeholder="Paste a YouTube, Vimeo, or video URL..."
+              type="url"
+              autoFocus
+            />
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => { if (videoUrlInput.trim()) { onAddAttachment('video', videoUrlInput.trim()); setVideoUrlInput(''); setAddingType(null) } }}
+                disabled={!videoUrlInput.trim()}
+                className="px-3 py-1.5 text-xs font-medium bg-gold text-white rounded-lg hover:bg-gold/90 disabled:opacity-40"
+              >
+                Add Link
+              </button>
+              <span className="text-xs text-charcoal/25">or</span>
+              <label className="px-3 py-1.5 text-xs font-medium text-gold hover:text-gold/80 cursor-pointer">
+                Upload file
+                <input type="file" accept="video/*" className="hidden" onChange={e => { if (e.target.files?.[0]) { onFileUpload(e.target.files[0], 'video'); setAddingType(null) } }} />
+              </label>
+              <button onClick={() => { setAddingType(null); setVideoUrlInput('') }} className="px-3 py-1.5 text-xs text-charcoal/50 ml-auto">Cancel</button>
             </div>
-            <button onClick={() => onUpdate({ pdf_url: null })} className="text-xs text-red-500 hover:text-red-700">Remove PDF</button>
           </div>
-        ) : (
-          <label className="card p-6 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
-            <Upload size={20} className="text-charcoal/30" />
-            <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload a PDF'}</p>
-            <p className="text-xs text-charcoal/25">PDF files only</p>
-            <input type="file" accept=".pdf" className="hidden" onChange={e => e.target.files?.[0] && onFileUpload(e.target.files[0], 'pdf_url')} />
-          </label>
+        )}
+
+        {addingType === 'image' && (
+          <div className="card p-4 mb-3">
+            <p className="text-xs font-medium text-charcoal/50 mb-2">Add Image</p>
+            <label className="card p-6 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
+              <Upload size={20} className="text-charcoal/30" />
+              <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload an image'}</p>
+              <p className="text-xs text-charcoal/25">PNG, JPEG, WebP</p>
+              <input type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files?.[0]) { onFileUpload(e.target.files[0], 'image'); setAddingType(null) } }} />
+            </label>
+            <button onClick={() => setAddingType(null)} className="text-xs text-charcoal/50 mt-2">Cancel</button>
+          </div>
+        )}
+
+        {addingType === 'pdf' && (
+          <div className="card p-4 mb-3">
+            <p className="text-xs font-medium text-charcoal/50 mb-2">Add PDF</p>
+            <label className="card p-6 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
+              <Upload size={20} className="text-charcoal/30" />
+              <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload a PDF'}</p>
+              <p className="text-xs text-charcoal/25">PDF files only</p>
+              <input type="file" accept=".pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) { onFileUpload(e.target.files[0], 'pdf'); setAddingType(null) } }} />
+            </label>
+            <button onClick={() => setAddingType(null)} className="text-xs text-charcoal/50 mt-2">Cancel</button>
+          </div>
+        )}
+
+        {/* Add attachment button */}
+        {!addingType && (
+          <div className="relative">
+            <button
+              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-charcoal/15 text-charcoal/40 hover:border-gold hover:text-gold transition-all text-sm"
+            >
+              <Plus size={14} />
+              <span>Add attachment</span>
+            </button>
+            {showAttachmentMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowAttachmentMenu(false)} />
+                <div className="absolute left-0 top-full mt-1 bg-white border border-charcoal/10 rounded-xl shadow-lg z-20 py-1 min-w-[160px]">
+                  {ATTACHMENT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setAddingType(opt.value); setShowAttachmentMenu(false) }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-charcoal/5 text-charcoal/70 transition-colors"
+                    >
+                      {opt.icon}
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>

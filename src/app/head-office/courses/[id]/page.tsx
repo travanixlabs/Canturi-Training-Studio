@@ -8,11 +8,12 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: categoryItem }, { data: courses }, { data: subcategories }, { data: trainingTasks }] = await Promise.all([
+  const [{ data: categoryItem }, { data: courses }, { data: subcategories }, { data: trainingTasks }, { data: attachments }] = await Promise.all([
     supabase.from('categories').select('*, course:courses(*)').eq('id', id).single(),
     supabase.from('courses').select('*').order('sort_order'),
     supabase.from('subcategories').select('*').eq('category_id', id).order('sort_order'),
     supabase.from('training_tasks').select('*').order('sort_order'),
+    supabase.from('training_task_attachments').select('*').order('sort_order'),
   ])
 
   if (!categoryItem) redirect('/head-office/courses')
@@ -23,6 +24,7 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
       courses={courses ?? []}
       subcategories={subcategories ?? []}
       trainingTasks={trainingTasks ?? []}
+      attachments={attachments ?? []}
     />
   )
 }

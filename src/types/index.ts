@@ -56,10 +56,17 @@ export interface TrainingTask {
   title: string
   description: string
   content: string
-  webpage_url: string | null
-  image_url: string | null
-  video_url: string | null
-  pdf_url: string | null
+  sort_order: number
+  created_at: string
+}
+
+export type AttachmentType = 'webpage' | 'image' | 'video' | 'pdf'
+
+export interface TrainingTaskAttachment {
+  id: string
+  training_task_id: string
+  type: AttachmentType
+  url: string
   sort_order: number
   created_at: string
 }
