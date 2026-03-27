@@ -41,23 +41,24 @@ export interface Category {
   course?: Course
 }
 
-export type SubcategoryType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
-
 export interface Subcategory {
   id: string
   category_id: string
   title: string
-  type: SubcategoryType
   content: string
-  file_url: string | null
   sort_order: number
   created_at: string
 }
+
+export type TrainingTaskType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
 
 export interface TrainingTask {
   id: string
   subcategory_id: string
   title: string
+  type: TrainingTaskType
+  content: string
+  file_url: string | null
   description: string
   sort_order: number
   created_at: string
