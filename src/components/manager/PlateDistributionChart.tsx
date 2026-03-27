@@ -229,7 +229,7 @@ export function PlateDistributionChart({
             setSelectedCourses(new Set())
             onFilterChange?.({ dates: new Set(), courseIds: new Set() })
           }}
-          className="mt-2 text-[10px] text-gold hover:text-gold/80 transition-colors"
+          className="mt-2 text-[10px] text-gold hover:text-gold/80 transition-colors w-full text-center"
         >
           Clear filters
         </button>
