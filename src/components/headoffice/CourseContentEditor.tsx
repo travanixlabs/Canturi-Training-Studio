@@ -1,11 +1,15 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Globe, Upload } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Globe, Upload, FileText } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Category, Course, Subcategory, TrainingTask, TrainingTaskAttachment, AttachmentType } from '@/types'
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import Placeholder from '@tiptap/extension-placeholder'
+import Underline from '@tiptap/extension-underline'
 
 interface Props {
   categoryItem: Category
@@ -150,15 +154,30 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   const getAttachmentsForTask = (taskId: string) =>
     attachments.filter(a => a.training_task_id === taskId).sort((a, b) => a.sort_order - b.sort_order)
 
-  async function addAttachment(taskId: string, type: AttachmentType, url: string) {
+  async function addAttachment(taskId: string, type: AttachmentType, url: string, insertAtIndex?: number) {
     const existing = getAttachmentsForTask(taskId)
     const typeLabel = type.charAt(0).toUpperCase() + type.slice(1)
+    const sortOrder = insertAtIndex ?? existing.length
+
+    // If inserting in between, bump sort_orders of items at or after this position
+    if (insertAtIndex != null) {
+      const toUpdate = existing.filter(a => a.sort_order >= sortOrder)
+      for (const a of toUpdate) {
+        await supabase.from('training_task_attachments').update({ sort_order: a.sort_order + 1 }).eq('id', a.id)
+      }
+      setAttachments(prev => prev.map(a =>
+        a.training_task_id === taskId && a.sort_order >= sortOrder
+          ? { ...a, sort_order: a.sort_order + 1 }
+          : a
+      ))
+    }
+
     const { data, error } = await supabase.from('training_task_attachments').insert({
       training_task_id: taskId,
       type,
       title: `${typeLabel} ${existing.length + 1}`,
       url,
-      sort_order: existing.length,
+      sort_order: sortOrder,
     }).select().single()
     if (!error && data) {
       setAttachments(prev => [...prev, data as TrainingTaskAttachment])
@@ -411,7 +430,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
               attachments={getAttachmentsForTask(activeTrainingTask.id)}
               uploading={uploading}
               onUpdate={(updates) => updateTrainingTask(activeTrainingTask.id, updates)}
-              onAddAttachment={(type, url) => addAttachment(activeTrainingTask.id, type, url)}
+              onAddAttachment={(type, url, insertAt) => addAttachment(activeTrainingTask.id, type, url, insertAt)}
               onUpdateAttachment={updateAttachment}
               onRemoveAttachment={removeAttachment}
               onFileUpload={(file, type) => handleAttachmentUpload(activeTrainingTask.id, file, type)}
@@ -479,7 +498,7 @@ function TrainingTaskEditor({
   attachments: TrainingTaskAttachment[]
   uploading: boolean
   onUpdate: (updates: Partial<TrainingTask>) => void
-  onAddAttachment: (type: AttachmentType, url: string) => void
+  onAddAttachment: (type: AttachmentType, url: string, insertAtIndex?: number) => void
   onUpdateAttachment: (id: string, updates: Partial<TrainingTaskAttachment>) => void
   onRemoveAttachment: (id: string) => void
   onFileUpload: (file: File, type: AttachmentType) => void
@@ -502,6 +521,7 @@ function TrainingTaskEditor({
   }
 
   const ATTACHMENT_OPTIONS: { value: AttachmentType; label: string; icon: React.ReactNode }[] = [
+    { value: 'text', label: 'Text', icon: <FileText size={14} /> },
     { value: 'webpage', label: 'Webpage', icon: <Globe size={14} /> },
     { value: 'image', label: 'Image', icon: <Upload size={14} /> },
     { value: 'video', label: 'Video', icon: <Upload size={14} /> },
@@ -523,19 +543,7 @@ function TrainingTaskEditor({
         />
       </div>
 
-      {/* Description */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Description</label>
-        <textarea
-          className="textarea"
-          rows={3}
-          value={task.description}
-          onChange={e => onUpdate({ description: e.target.value })}
-          placeholder="Describe what the trainee needs to do..."
-        />
-      </div>
-
-      {/* Attachments */}
+      {/* Content */}
       <div>
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-3">Content</label>
 
@@ -543,52 +551,59 @@ function TrainingTaskEditor({
           <div className="space-y-3 mb-4">
             {attachments.map(att => (
               <div key={att.id} className="card p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <input
-                    className="flex-1 text-xs font-medium text-charcoal/70 bg-transparent border-b border-transparent hover:border-charcoal/15 focus:border-gold focus:outline-none py-0.5 transition-colors"
-                    value={att.title}
-                    onChange={e => onUpdateAttachment(att.id, { title: e.target.value })}
-                    placeholder="Title..."
-                  />
-                  <span className="text-[10px] text-charcoal/25 uppercase flex-shrink-0">{att.type}</span>
-                  <button onClick={() => onRemoveAttachment(att.id)} className="text-xs text-red-400 hover:text-red-600 flex-shrink-0">Remove</button>
-                </div>
-
-                {att.type === 'webpage' && (
-                  <div className="flex items-center gap-3">
-                    <Globe size={14} className="text-charcoal/30 flex-shrink-0" />
-                    <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gold hover:text-gold/80 underline underline-offset-2 truncate">
-                      {att.url}
-                    </a>
-                    <span className="text-xs text-charcoal/30 flex-shrink-0">Opens in new tab</span>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      className="flex-1 text-xs font-medium text-charcoal/70 bg-transparent border-b border-transparent hover:border-charcoal/15 focus:border-gold focus:outline-none py-0.5 transition-colors"
+                      value={att.title}
+                      onChange={e => onUpdateAttachment(att.id, { title: e.target.value })}
+                      placeholder="Title..."
+                    />
+                    <span className="text-[10px] text-charcoal/25 uppercase flex-shrink-0">{att.type}</span>
+                    <button onClick={() => onRemoveAttachment(att.id)} className="text-xs text-red-400 hover:text-red-600 flex-shrink-0">Remove</button>
                   </div>
-                )}
 
-                {att.type === 'image' && (
-                  <img src={att.url} alt="Attachment" className="max-w-full rounded-lg border border-black/5" />
-                )}
+                  {att.type === 'text' && (
+                    <RichTextEditor
+                      content={att.url}
+                      onChange={(html: string) => onUpdateAttachment(att.id, { url: html })}
+                    />
+                  )}
 
-                {att.type === 'video' && (
-                  isEmbeddable(att.url) ? (
-                    <div className="card overflow-hidden" style={{ height: '300px' }}>
-                      <iframe src={getEmbedUrl(att.url)} className="w-full h-full border-0" title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                  {att.type === 'webpage' && (
+                    <div className="flex items-center gap-3">
+                      <Globe size={14} className="text-charcoal/30 flex-shrink-0" />
+                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-sm text-gold hover:text-gold/80 underline underline-offset-2 truncate">
+                        {att.url}
+                      </a>
+                      <span className="text-xs text-charcoal/30 flex-shrink-0">Opens in new tab</span>
                     </div>
-                  ) : (
-                    <video src={att.url} controls className="max-w-full rounded-lg" />
-                  )
-                )}
+                  )}
 
-                {att.type === 'pdf' && (
-                  <div className="card overflow-hidden" style={{ height: '300px' }}>
-                    <iframe src={att.url} className="w-full h-full border-0" title="PDF" />
-                  </div>
-                )}
-              </div>
+                  {att.type === 'image' && (
+                    <img src={att.url} alt="Attachment" className="max-w-full rounded-lg border border-black/5" />
+                  )}
+
+                  {att.type === 'video' && (
+                    isEmbeddable(att.url) ? (
+                      <div className="rounded-lg overflow-hidden" style={{ height: '300px' }}>
+                        <iframe src={getEmbedUrl(att.url)} className="w-full h-full border-0" title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                      </div>
+                    ) : (
+                      <video src={att.url} controls className="max-w-full rounded-lg" />
+                    )
+                  )}
+
+                  {att.type === 'pdf' && (
+                    <div className="rounded-lg overflow-hidden" style={{ height: '300px' }}>
+                      <iframe src={att.url} className="w-full h-full border-0" title="PDF" />
+                    </div>
+                  )}
+                </div>
             ))}
           </div>
         )}
 
-        {/* Add attachment inline form */}
+        {/* Add content inline form */}
         {addingType === 'webpage' && (
           <div className="card p-4 mb-3 space-y-2">
             <p className="text-xs font-medium text-charcoal/50">Add Webpage</p>
@@ -685,7 +700,14 @@ function TrainingTaskEditor({
                   {ATTACHMENT_OPTIONS.map(opt => (
                     <button
                       key={opt.value}
-                      onClick={() => { setAddingType(opt.value); setShowAttachmentMenu(false) }}
+                      onClick={() => {
+                        setShowAttachmentMenu(false)
+                        if (opt.value === 'text') {
+                          onAddAttachment('text', '')
+                        } else {
+                          setAddingType(opt.value)
+                        }
+                      }}
                       className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-charcoal/5 text-charcoal/70 transition-colors"
                     >
                       {opt.icon}
@@ -715,6 +737,9 @@ function TrainingTaskEditor({
                 {attachments.map(att => (
                   <div key={att.id}>
                     {att.title && <p className="text-xs font-medium text-charcoal/50 mb-1.5">{att.title}</p>}
+                    {att.type === 'text' && att.url && (
+                      <div className="prose prose-sm max-w-none text-charcoal/70" dangerouslySetInnerHTML={{ __html: att.url }} />
+                    )}
                     {att.type === 'webpage' && (
                       <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gold hover:text-gold/80 underline underline-offset-2">
                         <Globe size={14} />
@@ -745,6 +770,91 @@ function TrainingTaskEditor({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function RichTextEditor({ content, onChange }: { content: string; onChange: (html: string) => void }) {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      Placeholder.configure({ placeholder: 'Start writing...' }),
+    ],
+    content,
+    onUpdate: ({ editor: e }) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      debounceRef.current = setTimeout(() => {
+        onChange(e.getHTML())
+      }, 600)
+    },
+  })
+
+  if (!editor) return null
+
+  return (
+    <div className="border border-charcoal/10 rounded-xl overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-charcoal/10 bg-charcoal/[0.02]">
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          className={`px-2 py-1 rounded text-xs font-bold transition-colors ${editor.isActive('bold') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
+        >
+          B
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          className={`px-2 py-1 rounded text-xs italic transition-colors ${editor.isActive('italic') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
+        >
+          I
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          className={`px-2 py-1 rounded text-xs underline transition-colors ${editor.isActive('underline') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
+        >
+          U
+        </button>
+        <span className="w-px h-4 bg-charcoal/10 mx-1" />
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('bulletList') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
+        >
+          • List
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('orderedList') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
+        >
+          1. List
+        </button>
+        <span className="w-px h-4 bg-charcoal/10 mx-1" />
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('heading', { level: 3 }) ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
+        >
+          H3
+        </button>
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('blockquote') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
+        >
+          &ldquo;
+        </button>
+      </div>
+      {/* Editor */}
+      <EditorContent
+        editor={editor}
+        className="prose prose-sm max-w-none px-4 py-3 min-h-[200px] text-charcoal/80 focus:outline-none [&_.tiptap]:outline-none [&_.tiptap]:min-h-[180px] [&_.is-editor-empty:first-child::before]:text-charcoal/30 [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:pointer-events-none"
+      />
     </div>
   )
 }

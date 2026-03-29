@@ -60,7 +60,7 @@ export interface TrainingTask {
   created_at: string
 }
 
-export type AttachmentType = 'webpage' | 'image' | 'video' | 'pdf'
+export type AttachmentType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
 
 export interface TrainingTaskAttachment {
   id: string
