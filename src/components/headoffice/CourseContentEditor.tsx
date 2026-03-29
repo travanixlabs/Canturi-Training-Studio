@@ -136,10 +136,10 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     const { data, error } = await supabase.from('training_tasks').insert({
       subcategory_id: subcategoryId,
       title: `Training Task ${existing.length + 1}`,
-      trainer_type: 'Self Directed',
-      modality: 'Self Directed Task',
-      role_level: 'Consultant',
-      priority_level: 'Essential',
+      trainer_type: '',
+      modality: '',
+      role_level: '',
+      priority_level: '',
       prerequisites: [],
       is_recurring: false,
       recurring_count: null,
@@ -579,6 +579,7 @@ function TrainingTaskEditor({
           Trainer Type <span className="text-red-400">*</span>
         </label>
         <select className="input" value={task.trainer_type} onChange={e => onUpdate({ trainer_type: e.target.value as TrainerType })}>
+          <option value="" disabled>Select trainer type…</option>
           {TRAINER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
@@ -589,6 +590,7 @@ function TrainingTaskEditor({
           Modality <span className="text-red-400">*</span>
         </label>
         <select className="input" value={task.modality} onChange={e => onUpdate({ modality: e.target.value as Modality })}>
+          <option value="" disabled>Select modality…</option>
           {MODALITIES.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
       </div>
@@ -599,6 +601,7 @@ function TrainingTaskEditor({
           Role Level <span className="text-red-400">*</span>
         </label>
         <select className="input" value={task.role_level} onChange={e => onUpdate({ role_level: e.target.value as RoleLevel })}>
+          <option value="" disabled>Select role level…</option>
           {ROLE_LEVELS.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
       </div>
@@ -609,6 +612,7 @@ function TrainingTaskEditor({
           Priority Level <span className="text-red-400">*</span>
         </label>
         <select className="input" value={task.priority_level} onChange={e => onUpdate({ priority_level: e.target.value as PriorityLevel })}>
+          <option value="" disabled>Select priority level…</option>
           {PRIORITY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>

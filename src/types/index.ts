@@ -55,10 +55,10 @@ export interface TrainingTask {
   id: string
   subcategory_id: string
   title: string
-  trainer_type: TrainerType
-  modality: Modality
-  role_level: RoleLevel
-  priority_level: PriorityLevel
+  trainer_type: TrainerType | ''
+  modality: Modality | ''
+  role_level: RoleLevel | ''
+  priority_level: PriorityLevel | ''
   prerequisites: string[]
   is_recurring: boolean
   recurring_count: number | null
