@@ -6,10 +6,6 @@ import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Category, Course, Subcategory, TrainingTask, TrainingTaskAttachment, AttachmentType } from '@/types'
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import Underline from '@tiptap/extension-underline'
 
 interface Props {
   categoryItem: Category
@@ -568,9 +564,12 @@ function TrainingTaskEditor({
                   </div>
 
                   {att.type === 'text' && (
-                    <RichTextEditor
-                      content={att.url}
-                      onChange={(html: string) => onUpdateAttachment(att.id, { url: html })}
+                    <textarea
+                      className="textarea font-sans text-sm leading-relaxed"
+                      rows={8}
+                      value={att.url}
+                      onChange={e => onUpdateAttachment(att.id, { url: e.target.value })}
+                      placeholder="Write text content here..."
                     />
                   )}
 
@@ -743,7 +742,7 @@ function TrainingTaskEditor({
                   <div key={att.id}>
                     {att.title && <p className="text-xs font-medium text-charcoal/50 mb-1.5">{att.title}</p>}
                     {att.type === 'text' && att.url && (
-                      <div className="prose prose-sm max-w-none text-charcoal/70" dangerouslySetInnerHTML={{ __html: att.url }} />
+                      <div className="text-sm text-charcoal/70 leading-relaxed whitespace-pre-wrap">{att.url}</div>
                     )}
                     {att.type === 'webpage' && (
                       <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gold hover:text-gold/80 underline underline-offset-2">
@@ -779,87 +778,3 @@ function TrainingTaskEditor({
   )
 }
 
-function RichTextEditor({ content, onChange }: { content: string; onChange: (html: string) => void }) {
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      Placeholder.configure({ placeholder: 'Start writing...' }),
-    ],
-    content,
-    onUpdate: ({ editor: e }) => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      debounceRef.current = setTimeout(() => {
-        onChange(e.getHTML())
-      }, 600)
-    },
-  })
-
-  if (!editor) return null
-
-  return (
-    <div className="border border-charcoal/10 rounded-xl overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-charcoal/10 bg-charcoal/[0.02]">
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          className={`px-2 py-1 rounded text-xs font-bold transition-colors ${editor.isActive('bold') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
-        >
-          B
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          className={`px-2 py-1 rounded text-xs italic transition-colors ${editor.isActive('italic') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
-        >
-          I
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
-          className={`px-2 py-1 rounded text-xs underline transition-colors ${editor.isActive('underline') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
-        >
-          U
-        </button>
-        <span className="w-px h-4 bg-charcoal/10 mx-1" />
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('bulletList') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
-        >
-          • List
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('orderedList') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
-        >
-          1. List
-        </button>
-        <span className="w-px h-4 bg-charcoal/10 mx-1" />
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('heading', { level: 3 }) ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
-        >
-          H3
-        </button>
-        <button
-          type="button"
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          className={`px-2 py-1 rounded text-xs transition-colors ${editor.isActive('blockquote') ? 'bg-gold/10 text-gold' : 'text-charcoal/40 hover:text-charcoal/70'}`}
-        >
-          &ldquo;
-        </button>
-      </div>
-      {/* Editor */}
-      <EditorContent
-        editor={editor}
-        className="prose prose-sm max-w-none px-4 py-3 min-h-[200px] text-charcoal/80 focus:outline-none [&_.tiptap]:outline-none [&_.tiptap]:min-h-[180px] [&_.is-editor-empty:first-child::before]:text-charcoal/30 [&_.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.is-editor-empty:first-child::before]:float-left [&_.is-editor-empty:first-child::before]:h-0 [&_.is-editor-empty:first-child::before]:pointer-events-none"
-      />
-    </div>
-  )
-}

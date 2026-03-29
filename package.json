@@ -11,10 +11,6 @@
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.4",
-    "@tiptap/extension-placeholder": "^3.21.0",
-    "@tiptap/extension-underline": "^3.21.0",
-    "@tiptap/react": "^3.21.0",
-    "@tiptap/starter-kit": "^3.21.0",
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
