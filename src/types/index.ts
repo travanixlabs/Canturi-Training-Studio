@@ -66,6 +66,7 @@ export interface TrainingTaskAttachment {
   id: string
   training_task_id: string
   type: AttachmentType
+  title: string
   url: string
   sort_order: number
   created_at: string

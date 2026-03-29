@@ -152,9 +152,11 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
   async function addAttachment(taskId: string, type: AttachmentType, url: string) {
     const existing = getAttachmentsForTask(taskId)
+    const typeLabel = type.charAt(0).toUpperCase() + type.slice(1)
     const { data, error } = await supabase.from('training_task_attachments').insert({
       training_task_id: taskId,
       type,
+      title: `${typeLabel} ${existing.length + 1}`,
       url,
       sort_order: existing.length,
     }).select().single()
@@ -166,6 +168,11 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   async function removeAttachment(id: string) {
     await supabase.from('training_task_attachments').delete().eq('id', id)
     setAttachments(prev => prev.filter(a => a.id !== id))
+  }
+
+  async function updateAttachment(id: string, updates: Partial<TrainingTaskAttachment>) {
+    setAttachments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a))
+    await supabase.from('training_task_attachments').update(updates).eq('id', id)
   }
 
   async function handleAttachmentUpload(taskId: string, file: File, type: AttachmentType) {
@@ -405,6 +412,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
               uploading={uploading}
               onUpdate={(updates) => updateTrainingTask(activeTrainingTask.id, updates)}
               onAddAttachment={(type, url) => addAttachment(activeTrainingTask.id, type, url)}
+              onUpdateAttachment={updateAttachment}
               onRemoveAttachment={removeAttachment}
               onFileUpload={(file, type) => handleAttachmentUpload(activeTrainingTask.id, file, type)}
             />
@@ -463,6 +471,7 @@ function TrainingTaskEditor({
   uploading,
   onUpdate,
   onAddAttachment,
+  onUpdateAttachment,
   onRemoveAttachment,
   onFileUpload,
 }: {
@@ -471,6 +480,7 @@ function TrainingTaskEditor({
   uploading: boolean
   onUpdate: (updates: Partial<TrainingTask>) => void
   onAddAttachment: (type: AttachmentType, url: string) => void
+  onUpdateAttachment: (id: string, updates: Partial<TrainingTaskAttachment>) => void
   onRemoveAttachment: (id: string) => void
   onFileUpload: (file: File, type: AttachmentType) => void
 }) {
@@ -527,15 +537,21 @@ function TrainingTaskEditor({
 
       {/* Attachments */}
       <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-3">Attachments</label>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-3">Content</label>
 
         {attachments.length > 0 && (
           <div className="space-y-3 mb-4">
             {attachments.map(att => (
               <div key={att.id} className="card p-4">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <span className="text-xs font-medium text-charcoal/40 uppercase">{att.type}</span>
-                  <button onClick={() => onRemoveAttachment(att.id)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    className="flex-1 text-xs font-medium text-charcoal/70 bg-transparent border-b border-transparent hover:border-charcoal/15 focus:border-gold focus:outline-none py-0.5 transition-colors"
+                    value={att.title}
+                    onChange={e => onUpdateAttachment(att.id, { title: e.target.value })}
+                    placeholder="Title..."
+                  />
+                  <span className="text-[10px] text-charcoal/25 uppercase flex-shrink-0">{att.type}</span>
+                  <button onClick={() => onRemoveAttachment(att.id)} className="text-xs text-red-400 hover:text-red-600 flex-shrink-0">Remove</button>
                 </div>
 
                 {att.type === 'webpage' && (
@@ -660,7 +676,7 @@ function TrainingTaskEditor({
               className="flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-charcoal/15 text-charcoal/40 hover:border-gold hover:text-gold transition-all text-sm"
             >
               <Plus size={14} />
-              <span>Add attachment</span>
+              <span>Add content</span>
             </button>
             {showAttachmentMenu && (
               <>
@@ -698,6 +714,7 @@ function TrainingTaskEditor({
               <div className="space-y-3 pt-2">
                 {attachments.map(att => (
                   <div key={att.id}>
+                    {att.title && <p className="text-xs font-medium text-charcoal/50 mb-1.5">{att.title}</p>}
                     {att.type === 'webpage' && (
                       <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gold hover:text-gold/80 underline underline-offset-2">
                         <Globe size={14} />
@@ -705,12 +722,12 @@ function TrainingTaskEditor({
                       </a>
                     )}
                     {att.type === 'image' && (
-                      <img src={att.url} alt="" className="max-w-full rounded-lg border border-black/5" />
+                      <img src={att.url} alt={att.title} className="max-w-full rounded-lg border border-black/5" />
                     )}
                     {att.type === 'video' && (
                       isEmbeddable(att.url) ? (
                         <div className="rounded-lg overflow-hidden" style={{ height: '300px' }}>
-                          <iframe src={getEmbedUrl(att.url)} className="w-full h-full border-0" title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                          <iframe src={getEmbedUrl(att.url)} className="w-full h-full border-0" title={att.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                         </div>
                       ) : (
                         <video src={att.url} controls className="max-w-full rounded-lg" />
@@ -718,7 +735,7 @@ function TrainingTaskEditor({
                     )}
                     {att.type === 'pdf' && (
                       <div className="rounded-lg overflow-hidden border border-black/5" style={{ height: '400px' }}>
-                        <iframe src={att.url} className="w-full h-full border-0" title="PDF" />
+                        <iframe src={att.url} className="w-full h-full border-0" title={att.title} />
                       </div>
                     )}
                   </div>
