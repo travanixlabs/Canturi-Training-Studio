@@ -527,11 +527,34 @@ function TrainingTaskEditor({
   const [webpageUrlInput, setWebpageUrlInput] = useState('')
   const [addingType, setAddingType] = useState<AttachmentType | null>(null)
   const [tagsInput, setTagsInput] = useState((task.tags ?? []).join(', '))
+  const [touched, setTouched] = useState(false)
+
+  const missing = {
+    title: !task.title.trim(),
+    trainer_type: !task.trainer_type,
+    modality: !task.modality,
+    role_level: !task.role_level,
+    priority_level: !task.priority_level,
+    tags: !(task.tags ?? []).length,
+  }
+  const hasIncomplete = Object.values(missing).some(Boolean)
 
   // Sync tags input when task changes
   useEffect(() => {
     setTagsInput((task.tags ?? []).join(', '))
+    setTouched(false)
   }, [task.id])
+
+  // Warn on page leave if mandatory fields are incomplete
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasIncomplete) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasIncomplete])
 
   function getEmbedUrl(url: string): string {
     const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
@@ -554,21 +577,31 @@ function TrainingTaskEditor({
   ]
 
   function handleTagsBlur() {
+    setTouched(true)
     const parsed = tagsInput.split(',').map(t => t.trim()).filter(Boolean)
     onUpdate({ tags: parsed })
   }
 
+  const err = (field: keyof typeof missing) => touched && missing[field]
+
   return (
     <div className="space-y-5">
-      <p className="text-xs text-charcoal/40 uppercase tracking-wider">Training Task</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-charcoal/40 uppercase tracking-wider">Training Task</p>
+        {touched && hasIncomplete && (
+          <p className="text-xs text-red-500">Please complete all mandatory fields</p>
+        )}
+      </div>
 
       {/* Title */}
       <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Title</label>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Title <span className="text-red-400">*</span>
+        </label>
         <input
-          className="input font-serif text-xl"
+          className={`input font-serif text-xl ${err('title') ? 'border-red-300 bg-red-50/30' : ''}`}
           value={task.title}
-          onChange={e => onUpdate({ title: e.target.value })}
+          onChange={e => { setTouched(true); onUpdate({ title: e.target.value }) }}
           placeholder="Training task title"
         />
       </div>
@@ -578,7 +611,11 @@ function TrainingTaskEditor({
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
           Trainer Type <span className="text-red-400">*</span>
         </label>
-        <select className="input" value={task.trainer_type} onChange={e => onUpdate({ trainer_type: e.target.value as TrainerType })}>
+        <select
+          className={`input ${err('trainer_type') ? 'border-red-300 bg-red-50/30' : ''}`}
+          value={task.trainer_type}
+          onChange={e => { setTouched(true); onUpdate({ trainer_type: e.target.value as TrainerType }) }}
+        >
           <option value="" disabled>Select trainer type…</option>
           {TRAINER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
@@ -589,7 +626,11 @@ function TrainingTaskEditor({
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
           Modality <span className="text-red-400">*</span>
         </label>
-        <select className="input" value={task.modality} onChange={e => onUpdate({ modality: e.target.value as Modality })}>
+        <select
+          className={`input ${err('modality') ? 'border-red-300 bg-red-50/30' : ''}`}
+          value={task.modality}
+          onChange={e => { setTouched(true); onUpdate({ modality: e.target.value as Modality }) }}
+        >
           <option value="" disabled>Select modality…</option>
           {MODALITIES.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
@@ -600,7 +641,11 @@ function TrainingTaskEditor({
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
           Role Level <span className="text-red-400">*</span>
         </label>
-        <select className="input" value={task.role_level} onChange={e => onUpdate({ role_level: e.target.value as RoleLevel })}>
+        <select
+          className={`input ${err('role_level') ? 'border-red-300 bg-red-50/30' : ''}`}
+          value={task.role_level}
+          onChange={e => { setTouched(true); onUpdate({ role_level: e.target.value as RoleLevel }) }}
+        >
           <option value="" disabled>Select role level…</option>
           {ROLE_LEVELS.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
@@ -611,7 +656,11 @@ function TrainingTaskEditor({
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
           Priority Level <span className="text-red-400">*</span>
         </label>
-        <select className="input" value={task.priority_level} onChange={e => onUpdate({ priority_level: e.target.value as PriorityLevel })}>
+        <select
+          className={`input ${err('priority_level') ? 'border-red-300 bg-red-50/30' : ''}`}
+          value={task.priority_level}
+          onChange={e => { setTouched(true); onUpdate({ priority_level: e.target.value as PriorityLevel }) }}
+        >
           <option value="" disabled>Select priority level…</option>
           {PRIORITY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
@@ -697,7 +746,7 @@ function TrainingTaskEditor({
           Tags <span className="text-red-400">*</span> <span className="text-charcoal/30 normal-case font-normal">(comma-separated)</span>
         </label>
         <input
-          className="input"
+          className={`input ${err('tags') ? 'border-red-300 bg-red-50/30' : ''}`}
           value={tagsInput}
           onChange={e => setTagsInput(e.target.value)}
           onBlur={handleTagsBlur}
