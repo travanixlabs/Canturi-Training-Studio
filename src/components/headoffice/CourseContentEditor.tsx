@@ -179,7 +179,11 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       url,
       sort_order: sortOrder,
     }).select().single()
-    if (!error && data) {
+    if (error) {
+      alert('Failed to add content: ' + error.message)
+      return
+    }
+    if (data) {
       setAttachments(prev => [...prev, data as TrainingTaskAttachment])
     }
   }
