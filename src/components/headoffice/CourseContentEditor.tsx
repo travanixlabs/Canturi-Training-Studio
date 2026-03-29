@@ -5,14 +5,14 @@ import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Globe, Upload, FileTex
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Category, Course, Subcategory, TrainingTask, TrainingTaskAttachment, AttachmentType, TrainerType, Modality, RoleLevel, PriorityLevel } from '@/types'
+import type { Category, Course, Subcategory, TrainingTask, TrainingTaskContent, AttachmentType, TrainerType, Modality, RoleLevel, PriorityLevel } from '@/types'
 
 interface Props {
   categoryItem: Category
   courses: Course[]
   subcategories: Subcategory[]
   trainingTasks: TrainingTask[]
-  attachments: TrainingTaskAttachment[]
+  attachments: TrainingTaskContent[]
 }
 
 export function CourseContentEditor({ categoryItem: initialItem, courses, subcategories: initialSubcategories, trainingTasks: initialTrainingTasks, attachments: initialAttachments }: Props) {
@@ -32,7 +32,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   // Training tasks
   const [trainingTasks, setTrainingTasks] = useState<TrainingTask[]>(initialTrainingTasks)
   const [selectedTrainingTaskId, setSelectedTrainingTaskId] = useState<string | null>(null)
-  const [attachments, setAttachments] = useState<TrainingTaskAttachment[]>(initialAttachments)
+  const [attachments, setAttachments] = useState<TrainingTaskContent[]>(initialAttachments)
 
   // Auto-save state
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -169,7 +169,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     if (insertAtIndex != null) {
       const toUpdate = existing.filter(a => a.sort_order >= sortOrder)
       for (const a of toUpdate) {
-        await supabase.from('training_task_attachments').update({ sort_order: a.sort_order + 1 }).eq('id', a.id)
+        await supabase.from('training_task_content').update({ sort_order: a.sort_order + 1 }).eq('id', a.id)
       }
       setAttachments(prev => prev.map(a =>
         a.training_task_id === taskId && a.sort_order >= sortOrder
@@ -178,7 +178,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       ))
     }
 
-    const { data, error } = await supabase.from('training_task_attachments').insert({
+    const { data, error } = await supabase.from('training_task_content').insert({
       training_task_id: taskId,
       type,
       title: `${typeLabel} ${existing.length + 1}`,
@@ -190,18 +190,18 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       return
     }
     if (data) {
-      setAttachments(prev => [...prev, data as TrainingTaskAttachment])
+      setAttachments(prev => [...prev, data as TrainingTaskContent])
     }
   }
 
   async function removeAttachment(id: string) {
-    await supabase.from('training_task_attachments').delete().eq('id', id)
+    await supabase.from('training_task_content').delete().eq('id', id)
     setAttachments(prev => prev.filter(a => a.id !== id))
   }
 
-  async function updateAttachment(id: string, updates: Partial<TrainingTaskAttachment>) {
+  async function updateAttachment(id: string, updates: Partial<TrainingTaskContent>) {
     setAttachments(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a))
-    await supabase.from('training_task_attachments').update(updates).eq('id', id)
+    await supabase.from('training_task_content').update(updates).eq('id', id)
   }
 
   async function handleAttachmentUpload(taskId: string, file: File, type: AttachmentType) {
@@ -514,11 +514,11 @@ function TrainingTaskEditor({
 }: {
   task: TrainingTask
   siblingTasks: TrainingTask[]
-  attachments: TrainingTaskAttachment[]
+  attachments: TrainingTaskContent[]
   uploading: boolean
   onUpdate: (updates: Partial<TrainingTask>) => void
   onAddAttachment: (type: AttachmentType, url: string, insertAtIndex?: number) => void
-  onUpdateAttachment: (id: string, updates: Partial<TrainingTaskAttachment>) => void
+  onUpdateAttachment: (id: string, updates: Partial<TrainingTaskContent>) => void
   onRemoveAttachment: (id: string) => void
   onFileUpload: (file: File, type: AttachmentType) => void
 }) {

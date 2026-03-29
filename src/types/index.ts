@@ -73,7 +73,7 @@ export interface TrainingTask {
 
 export type AttachmentType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
 
-export interface TrainingTaskAttachment {
+export interface TrainingTaskContent {
   id: string
   training_task_id: string
   type: AttachmentType
