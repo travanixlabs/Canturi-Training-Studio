@@ -694,6 +694,57 @@ function TrainingTaskEditor({
           </div>
         )}
       </div>
+
+      {/* Preview */}
+      {(task.title || task.description || task.content || attachments.length > 0) && (
+        <div className="pt-6 border-t border-black/5">
+          <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-4">Preview</p>
+          <div className="card p-5 space-y-4">
+            {task.title && (
+              <h3 className="font-serif text-lg text-charcoal">{task.title}</h3>
+            )}
+            {task.description && (
+              <p className="text-sm text-charcoal/60 leading-relaxed">{task.description}</p>
+            )}
+            {task.content && (
+              <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap">
+                {task.content}
+              </div>
+            )}
+            {attachments.length > 0 && (
+              <div className="space-y-3 pt-2">
+                {attachments.map(att => (
+                  <div key={att.id}>
+                    {att.type === 'webpage' && (
+                      <a href={att.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-gold hover:text-gold/80 underline underline-offset-2">
+                        <Globe size={14} />
+                        {att.url}
+                      </a>
+                    )}
+                    {att.type === 'image' && (
+                      <img src={att.url} alt="" className="max-w-full rounded-lg border border-black/5" />
+                    )}
+                    {att.type === 'video' && (
+                      isEmbeddable(att.url) ? (
+                        <div className="rounded-lg overflow-hidden" style={{ height: '300px' }}>
+                          <iframe src={getEmbedUrl(att.url)} className="w-full h-full border-0" title="Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                        </div>
+                      ) : (
+                        <video src={att.url} controls className="max-w-full rounded-lg" />
+                      )
+                    )}
+                    {att.type === 'pdf' && (
+                      <div className="rounded-lg overflow-hidden border border-black/5" style={{ height: '400px' }}>
+                        <iframe src={att.url} className="w-full h-full border-0" title="PDF" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
