@@ -311,9 +311,10 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
             <div className="space-y-1">
               {subcategories.map((sub, i) => {
-                const isSelected = selectedSubcategoryId === sub.id && !editingCategoryDetails && !selectedTrainingTaskId
                 const subTasks = getTasksForSubcategory(sub.id)
-                const isExpanded = selectedSubcategoryId === sub.id
+                const hasSelectedTask = selectedTrainingTaskId != null && subTasks.some(t => t.id === selectedTrainingTaskId)
+                const isSelected = selectedSubcategoryId === sub.id && !editingCategoryDetails && !selectedTrainingTaskId
+                const isExpanded = selectedSubcategoryId === sub.id || hasSelectedTask
 
                 return (
                   <div key={sub.id}>
