@@ -525,18 +525,6 @@ function TrainingTaskEditor({
         />
       </div>
 
-      {/* Content (text) */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Content</label>
-        <textarea
-          className="textarea font-sans text-sm leading-relaxed"
-          rows={8}
-          value={task.content}
-          onChange={e => onUpdate({ content: e.target.value })}
-          placeholder="Additional text content..."
-        />
-      </div>
-
       {/* Attachments */}
       <div>
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-3">Attachments</label>
@@ -696,7 +684,7 @@ function TrainingTaskEditor({
       </div>
 
       {/* Preview */}
-      {(task.title || task.description || task.content || attachments.length > 0) && (
+      {(task.title || task.description || attachments.length > 0) && (
         <div className="pt-6 border-t border-black/5">
           <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-4">Preview</p>
           <div className="card p-5 space-y-4">
@@ -705,11 +693,6 @@ function TrainingTaskEditor({
             )}
             {task.description && (
               <p className="text-sm text-charcoal/60 leading-relaxed">{task.description}</p>
-            )}
-            {task.content && (
-              <div className="prose prose-sm max-w-none text-charcoal/70 leading-relaxed whitespace-pre-wrap">
-                {task.content}
-              </div>
             )}
             {attachments.length > 0 && (
               <div className="space-y-3 pt-2">
