@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Globe, Upload, FileTex
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Category, Course, Subcategory, TrainingTask, TrainingTaskAttachment, AttachmentType } from '@/types'
+import type { Category, Course, Subcategory, TrainingTask, TrainingTaskAttachment, AttachmentType, TrainerType, Modality, RoleLevel, PriorityLevel } from '@/types'
 
 interface Props {
   categoryItem: Category
@@ -136,6 +136,16 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     const { data, error } = await supabase.from('training_tasks').insert({
       subcategory_id: subcategoryId,
       title: `Training Task ${existing.length + 1}`,
+      trainer_type: 'Self Directed',
+      modality: 'Self Directed Task',
+      role_level: 'Consultant',
+      priority_level: 'Essential',
+      prerequisites: [],
+      is_recurring: false,
+      recurring_count: null,
+      certificate_required: false,
+      rewards_eligible: false,
+      tags: [],
       description: '',
       content: '',
       sort_order: existing.length,
@@ -428,6 +438,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
           {activeTrainingTask && !editingCategoryDetails && (
             <TrainingTaskEditor
               task={activeTrainingTask}
+              siblingTasks={getTasksForSubcategory(activeTrainingTask.subcategory_id).filter(t => t.id !== activeTrainingTask.id)}
               attachments={getAttachmentsForTask(activeTrainingTask.id)}
               uploading={uploading}
               onUpdate={(updates) => updateTrainingTask(activeTrainingTask.id, updates)}
@@ -485,8 +496,14 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   )
 }
 
+const TRAINER_TYPES: TrainerType[] = ['Self Directed', 'Senior', 'Manager']
+const MODALITIES: Modality[] = ['Website Reference', 'Online Tool', 'Role Play', 'Shadowing', 'SOP', 'Video', 'Coaching Session', 'Self Directed Task', 'External Education', 'Zoom Session', 'Upskill Friday', 'Workshop']
+const ROLE_LEVELS: RoleLevel[] = ['Consultant', 'Specialist', 'Senior Specialist']
+const PRIORITY_LEVELS: PriorityLevel[] = ['Essential', 'Core', 'Advanced']
+
 function TrainingTaskEditor({
   task,
+  siblingTasks,
   attachments,
   uploading,
   onUpdate,
@@ -496,6 +513,7 @@ function TrainingTaskEditor({
   onFileUpload,
 }: {
   task: TrainingTask
+  siblingTasks: TrainingTask[]
   attachments: TrainingTaskAttachment[]
   uploading: boolean
   onUpdate: (updates: Partial<TrainingTask>) => void
@@ -508,6 +526,12 @@ function TrainingTaskEditor({
   const [videoUrlInput, setVideoUrlInput] = useState('')
   const [webpageUrlInput, setWebpageUrlInput] = useState('')
   const [addingType, setAddingType] = useState<AttachmentType | null>(null)
+  const [tagsInput, setTagsInput] = useState((task.tags ?? []).join(', '))
+
+  // Sync tags input when task changes
+  useEffect(() => {
+    setTagsInput((task.tags ?? []).join(', '))
+  }, [task.id])
 
   function getEmbedUrl(url: string): string {
     const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
@@ -529,8 +553,13 @@ function TrainingTaskEditor({
     { value: 'pdf', label: 'PDF', icon: <Upload size={14} /> },
   ]
 
+  function handleTagsBlur() {
+    const parsed = tagsInput.split(',').map(t => t.trim()).filter(Boolean)
+    onUpdate({ tags: parsed })
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <p className="text-xs text-charcoal/40 uppercase tracking-wider">Training Task</p>
 
       {/* Title */}
@@ -541,6 +570,134 @@ function TrainingTaskEditor({
           value={task.title}
           onChange={e => onUpdate({ title: e.target.value })}
           placeholder="Training task title"
+        />
+      </div>
+
+      {/* 1. Trainer Type */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Trainer Type <span className="text-red-400">*</span>
+        </label>
+        <select className="input" value={task.trainer_type} onChange={e => onUpdate({ trainer_type: e.target.value as TrainerType })}>
+          {TRAINER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      {/* 2. Modality */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Modality <span className="text-red-400">*</span>
+        </label>
+        <select className="input" value={task.modality} onChange={e => onUpdate({ modality: e.target.value as Modality })}>
+          {MODALITIES.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </div>
+
+      {/* 3. Role Level */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Role Level <span className="text-red-400">*</span>
+        </label>
+        <select className="input" value={task.role_level} onChange={e => onUpdate({ role_level: e.target.value as RoleLevel })}>
+          {ROLE_LEVELS.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+
+      {/* 4. Priority Level */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Priority Level <span className="text-red-400">*</span>
+        </label>
+        <select className="input" value={task.priority_level} onChange={e => onUpdate({ priority_level: e.target.value as PriorityLevel })}>
+          {PRIORITY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </div>
+
+      {/* 5. Prerequisites */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Prerequisites</label>
+        {siblingTasks.length === 0 ? (
+          <p className="text-xs text-charcoal/30">No other training tasks in this subcategory</p>
+        ) : (
+          <div className="space-y-1.5">
+            {siblingTasks.map(st => {
+              const isSelected = (task.prerequisites ?? []).includes(st.id)
+              return (
+                <button
+                  key={st.id}
+                  onClick={() => {
+                    const current = task.prerequisites ?? []
+                    const updated = isSelected ? current.filter(id => id !== st.id) : [...current, st.id]
+                    onUpdate({ prerequisites: updated })
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-all border ${
+                    isSelected ? 'border-gold bg-gold/5 text-gold' : 'border-charcoal/10 text-charcoal/60 hover:border-charcoal/20'
+                  }`}
+                >
+                  <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${isSelected ? 'bg-gold border-gold text-white' : 'border-charcoal/20'}`}>
+                    {isSelected && '✓'}
+                  </span>
+                  {st.title}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 6. Recurring */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Recurring</label>
+        <select className="input" value={task.is_recurring ? 'Yes' : 'No'} onChange={e => {
+          const isYes = e.target.value === 'Yes'
+          onUpdate({ is_recurring: isYes, recurring_count: isYes ? (task.recurring_count ?? 2) : null })
+        }}>
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+
+      {/* 7. Recurring Count */}
+      {task.is_recurring && (
+        <div>
+          <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Recurring Count</label>
+          <select className="input w-24" value={task.recurring_count ?? 2} onChange={e => onUpdate({ recurring_count: Number(e.target.value) })}>
+            {Array.from({ length: 19 }, (_, i) => i + 2).map(n => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* 8. Certificate Required */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Certificate Required</label>
+        <select className="input" value={task.certificate_required ? 'Yes' : 'No'} onChange={e => onUpdate({ certificate_required: e.target.value === 'Yes' })}>
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+
+      {/* 9. Rewards Eligible */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Rewards Eligible</label>
+        <select className="input" value={task.rewards_eligible ? 'Yes' : 'No'} onChange={e => onUpdate({ rewards_eligible: e.target.value === 'Yes' })}>
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+
+      {/* 10. Tags */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Tags <span className="text-red-400">*</span> <span className="text-charcoal/30 normal-case font-normal">(comma-separated)</span>
+        </label>
+        <input
+          className="input"
+          value={tagsInput}
+          onChange={e => setTagsInput(e.target.value)}
+          onBlur={handleTagsBlur}
+          placeholder="e.g. diamonds, consultation, sales"
         />
       </div>
 

@@ -1,10 +1,6 @@
 export type UserRole = 'trainee' | 'manager' | 'head_office'
 
-export type TrainerType = 'Self' | 'Manager' | 'Self/Manager'
-
 export type ItemStatus = 'active' | 'hidden'
-
-export type DifficultyLevel = 'introductory' | 'intermediate' | 'advanced'
 
 export interface Boutique {
   id: string
@@ -50,10 +46,25 @@ export interface Subcategory {
   created_at: string
 }
 
+export type TrainerType = 'Self Directed' | 'Senior' | 'Manager'
+export type Modality = 'Website Reference' | 'Online Tool' | 'Role Play' | 'Shadowing' | 'SOP' | 'Video' | 'Coaching Session' | 'Self Directed Task' | 'External Education' | 'Zoom Session' | 'Upskill Friday' | 'Workshop'
+export type RoleLevel = 'Consultant' | 'Specialist' | 'Senior Specialist'
+export type PriorityLevel = 'Essential' | 'Core' | 'Advanced'
+
 export interface TrainingTask {
   id: string
   subcategory_id: string
   title: string
+  trainer_type: TrainerType
+  modality: Modality
+  role_level: RoleLevel
+  priority_level: PriorityLevel
+  prerequisites: string[]
+  is_recurring: boolean
+  recurring_count: number | null
+  certificate_required: boolean
+  rewards_eligible: boolean
+  tags: string[]
   description: string
   content: string
   sort_order: number
