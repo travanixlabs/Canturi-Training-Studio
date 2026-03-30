@@ -94,7 +94,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-120px)]">
       {/* Left sidebar */}
-      <div className="lg:w-80 lg:min-h-full lg:border-r border-b lg:border-b-0 border-black/5 bg-white overflow-y-auto">
+      <div className="lg:w-80 lg:h-[calc(100vh-120px)] lg:overflow-y-auto lg:sticky lg:top-[120px] lg:border-r border-b lg:border-b-0 border-black/5 bg-white">
         <div className="p-4">
           <h1 className="font-serif text-xl text-charcoal mb-1">Training Menu</h1>
           <p className="text-xs text-charcoal/40 mb-4">Browse all training topics</p>
