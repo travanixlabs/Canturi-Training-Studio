@@ -65,6 +65,7 @@ export interface TrainingTask {
   recurring_count: number | null
   certificate_required: boolean
   rewards_eligible: boolean
+  confidence_rating_required: boolean
   tags: string[]
   description: string
   content: string

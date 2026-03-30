@@ -154,6 +154,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       recurring_count: null,
       certificate_required: false,
       rewards_eligible: false,
+      confidence_rating_required: false,
       tags: [],
       description: '',
       content: '',
@@ -799,7 +800,16 @@ function TrainingTaskEditor({
         </select>
       </div>
 
-      {/* 10. Tags */}
+      {/* 10. Confidence Rating Required */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Confidence Rating Required</label>
+        <select className="input" value={task.confidence_rating_required ? 'Yes' : 'No'} onChange={e => onUpdate({ confidence_rating_required: e.target.value === 'Yes' })}>
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+
+      {/* 11. Tags */}
       <div>
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
           Tags <span className="text-red-400">*</span> <span className="text-charcoal/30 normal-case font-normal">(comma-separated)</span>
