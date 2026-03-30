@@ -301,7 +301,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
       <div className="flex flex-col lg:flex-row">
         {/* Subcategory sidebar */}
-        <div className="lg:w-72 lg:min-h-[calc(100vh-57px)] lg:border-r border-b lg:border-b-0 border-black/5 bg-white">
+        <div className="lg:w-72 lg:h-[calc(100vh-57px)] lg:overflow-y-auto lg:sticky lg:top-[57px] lg:border-r border-b lg:border-b-0 border-black/5 bg-white">
           {/* Mobile: horizontal strip */}
           <div className="lg:hidden px-4 py-3 flex gap-2 overflow-x-auto">
             <button
