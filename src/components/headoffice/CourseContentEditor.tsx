@@ -131,8 +131,14 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   }
 
   async function deleteSubcategory(id: string) {
-    setSubcategories(prev => prev.filter(s => s.id !== id))
     const now = new Date().toISOString()
+    // Soft-delete the subcategory first
+    const { data: updated, error } = await supabase.from('subcategories').update({ deleted_at: now }).eq('id', id).select()
+    if (error || !updated || updated.length === 0) {
+      alert('Failed to delete subcategory' + (error ? ': ' + error.message : ' — check database permissions.'))
+      return
+    }
+
     // Soft-delete child training tasks and their content
     const { data: childTasks } = await supabase.from('training_tasks').select('id').eq('subcategory_id', id).is('deleted_at', null)
     if (childTasks && childTasks.length > 0) {
@@ -142,7 +148,8 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       setTrainingTasks(prev => prev.filter(t => !taskIds.includes(t.id)))
       setAttachments(prev => prev.filter(a => !taskIds.includes(a.training_task_id)))
     }
-    await supabase.from('subcategories').update({ deleted_at: now }).eq('id', id)
+
+    setSubcategories(prev => prev.filter(s => s.id !== id))
     if (selectedSubcategoryId === id) {
       setSelectedSubcategoryId(subcategories.find(s => s.id !== id)?.id ?? null)
       if (subcategories.length <= 1) setEditingCategoryDetails(true)

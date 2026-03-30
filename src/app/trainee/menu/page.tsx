@@ -9,7 +9,7 @@ export default async function TraineeMenuPage() {
   if (!authUser) redirect('/login')
 
   const [{ data: courses }, { data: categories }, { data: profile }, { data: workshops }, { data: workshopCourses }, { data: subcategories }, { data: trainingTasks }, { data: taskContent }, { data: completions }] = await Promise.all([
-    supabase.from('courses').select('*').eq('status', 'active').order('sort_order'),
+    supabase.from('courses').select('*').eq('status', 'active').is('deleted_at', null).order('sort_order'),
     supabase.from('categories').select('*, course:courses(*)').is('deleted_at', null).order('sort_order'),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('workshops').select('*').is('deleted_at', null).eq('status', 'active').order('name'),

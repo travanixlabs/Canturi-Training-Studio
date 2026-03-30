@@ -56,6 +56,7 @@ export function DeletionHistory({ items: initialItems }: Props) {
   }
 
   const labelColour: Record<string, string> = {
+    'Course': 'bg-amber-50 text-amber-700',
     'Workshop': 'bg-gold/10 text-gold',
     'Category': 'bg-blue-50 text-blue-600',
     'Subcategory': 'bg-purple-50 text-purple-600',

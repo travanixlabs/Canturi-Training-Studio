@@ -8,7 +8,7 @@ export default async function HeadOfficeCoursesPage() {
   if (!authUser) redirect('/login')
 
   const [{ data: courses }, { data: categories }] = await Promise.all([
-    supabase.from('courses').select('*').order('sort_order'),
+    supabase.from('courses').select('*').is('deleted_at', null).order('sort_order'),
     supabase.from('categories').select('*, course:courses(*)').is('deleted_at', null).order('sort_order'),
   ])
 

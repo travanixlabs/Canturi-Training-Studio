@@ -7,7 +7,8 @@ export default async function DeletionHistoryPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: workshops }, { data: categories }, { data: subcategories }, { data: trainingTasks }, { data: taskContent }] = await Promise.all([
+  const [{ data: courses }, { data: workshops }, { data: categories }, { data: subcategories }, { data: trainingTasks }, { data: taskContent }] = await Promise.all([
+    supabase.from('courses').select('id, name, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     supabase.from('workshops').select('id, name, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     supabase.from('categories').select('id, title, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
     supabase.from('subcategories').select('id, title, deleted_at').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
@@ -18,6 +19,7 @@ export default async function DeletionHistoryPage() {
   type DeletedItem = { id: string; table: string; label: string; detail: string; deleted_at: string }
 
   const items: DeletedItem[] = [
+    ...(courses ?? []).map(c => ({ id: c.id, table: 'courses', label: 'Course', detail: c.name, deleted_at: c.deleted_at })),
     ...(workshops ?? []).map(w => ({ id: w.id, table: 'workshops', label: 'Workshop', detail: w.name, deleted_at: w.deleted_at })),
     ...(categories ?? []).map(c => ({ id: c.id, table: 'categories', label: 'Category', detail: c.title, deleted_at: c.deleted_at })),
     ...(subcategories ?? []).map(s => ({ id: s.id, table: 'subcategories', label: 'Subcategory', detail: s.title, deleted_at: s.deleted_at })),

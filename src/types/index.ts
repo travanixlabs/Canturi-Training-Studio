@@ -26,6 +26,7 @@ export interface Course {
   colour_hex: string
   sort_order: number
   status: ItemStatus
+  deleted_at: string | null
 }
 
 export interface Category {

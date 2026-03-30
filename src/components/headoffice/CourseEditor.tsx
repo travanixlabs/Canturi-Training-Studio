@@ -156,10 +156,15 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     setDeleting(true)
 
     const now = new Date().toISOString()
-    // Soft-delete the category first
-    const { error } = await supabase.from('categories').update({ deleted_at: now }).eq('id', deleteTarget.id)
+    // Soft-delete the category
+    const { data: updated, error } = await supabase.from('categories').update({ deleted_at: now }).eq('id', deleteTarget.id).select()
     if (error) {
       alert('Failed to delete category: ' + error.message)
+      setDeleting(false)
+      return
+    }
+    if (!updated || updated.length === 0) {
+      alert('Failed to delete category — no rows were updated. Check database permissions.')
       setDeleting(false)
       return
     }
@@ -300,6 +305,19 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     setDeleting(true)
 
     const now = new Date().toISOString()
+    // Soft-delete the course
+    const { data: updatedCourse, error: courseError } = await supabase.from('courses').update({ deleted_at: now }).eq('id', deleteCategoryTarget.id).select()
+    if (courseError) {
+      alert('Failed to delete course: ' + courseError.message)
+      setDeleting(false)
+      return
+    }
+    if (!updatedCourse || updatedCourse.length === 0) {
+      alert('Failed to delete course — no rows were updated. Check database permissions.')
+      setDeleting(false)
+      return
+    }
+
     // Soft-delete all categories in this course and their children
     const { data: catSubs } = await supabase.from('categories').select('id').eq('course_id', deleteCategoryTarget.id).is('deleted_at', null)
     if (catSubs && catSubs.length > 0) {
@@ -317,7 +335,6 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
       }
       await supabase.from('categories').update({ deleted_at: now }).in('id', catIds)
     }
-    await supabase.from('courses').delete().eq('id', deleteCategoryTarget.id)
 
     setCategorys(prev => prev.filter(i => i.course_id !== deleteCategoryTarget.id))
     setCourses(prev => prev.filter(c => c.id !== deleteCategoryTarget.id))
@@ -689,10 +706,10 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
             <h3 className="font-serif text-xl text-charcoal mb-2">Delete course?</h3>
             <p className="text-sm text-charcoal/60 mb-1">
-              <span className="font-medium text-charcoal">&ldquo;{deleteCategoryTarget.name}&rdquo;</span> and all its categories will be permanently deleted.
+              <span className="font-medium text-charcoal">&ldquo;{deleteCategoryTarget.name}&rdquo;</span> and all its categories, subcategories, and training tasks will be deleted.
             </p>
             <p className="text-sm text-charcoal/40 mb-6">
-              This cannot be undone. Consider archiving instead.
+              Items are retained for 7 days and can be recovered from Deletion History.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteCategoryTarget(null)} className="btn-outline flex-1">Cancel</button>
