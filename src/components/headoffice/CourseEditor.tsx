@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
+import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Eye, EyeOff, GripVertical } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Course, Category } from '@/types'
@@ -56,7 +56,9 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
 
   // Drag and drop
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null)
+  const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(null)
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null)
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
@@ -235,6 +237,7 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     const updated = reordered.map((c, i) => ({ ...c, sort_order: i + 1 }))
     setCourses(updated)
     setDraggedCategoryId(null)
+    setDragOverCategoryId(null)
 
     await Promise.all(
       updated.map(c => supabase.from('courses').update({ sort_order: c.sort_order }).eq('id', c.id))
@@ -259,8 +262,9 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
       updatedIds.has(item.id) ? { ...item, sort_order: updatedIds.get(item.id)! } : item
     ))
     setDraggedItemId(null)
+    setDragOverItemId(null)
 
-    // Persist to DB — categories table doesn't have sort_order yet, add it
+    // Persist to DB
     await Promise.all(
       reordered.map((item, i) => supabase.from('categories').update({ sort_order: i }).eq('id', item.id))
     )
@@ -319,11 +323,12 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
           return (
             <div
               key={category.id}
-              className={`card overflow-hidden transition-all ${draggedCategoryId === category.id ? 'opacity-50 scale-[0.98]' : ''} ${category.status === 'hidden' ? 'opacity-50' : ''}`}
+              className={`card overflow-hidden transition-all ${draggedCategoryId === category.id ? 'opacity-40 scale-[0.97]' : ''} ${dragOverCategoryId === category.id && draggedCategoryId !== category.id ? 'ring-2 ring-gold ring-offset-2' : ''} ${category.status === 'hidden' ? 'opacity-50' : ''}`}
               draggable
               onDragStart={() => setDraggedCategoryId(category.id)}
-              onDragEnd={() => setDraggedCategoryId(null)}
-              onDragOver={e => e.preventDefault()}
+              onDragEnd={() => { setDraggedCategoryId(null); setDragOverCategoryId(null) }}
+              onDragOver={e => { e.preventDefault(); setDragOverCategoryId(category.id) }}
+              onDragLeave={() => setDragOverCategoryId(null)}
               onDrop={() => handleDrop(category.id)}
             >
               {/* Course header */}
@@ -406,11 +411,13 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
                         key={item.id}
                         item={item}
                         isDragging={draggedItemId === item.id}
+                        isDragOver={dragOverItemId === item.id && draggedItemId !== item.id}
                         onEdit={() => router.push(`/head-office/courses/${item.id}`)}
                         onDelete={() => setDeleteTarget(item)}
                         onDragStart={() => setDraggedItemId(item.id)}
-                        onDragEnd={() => setDraggedItemId(null)}
-                        onDragOver={e => e.preventDefault()}
+                        onDragEnd={() => { setDraggedItemId(null); setDragOverItemId(null) }}
+                        onDragOver={e => { e.preventDefault(); setDragOverItemId(item.id) }}
+                        onDragLeave={() => setDragOverItemId(null)}
                         onDrop={() => handleItemDrop(item.id, category.id)}
                       />
                     ))
@@ -671,32 +678,40 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
 function CourseRow({
   item,
   isDragging,
+  isDragOver,
   onEdit,
   onDelete,
   onDragStart,
   onDragEnd,
   onDragOver,
+  onDragLeave,
   onDrop,
 }: {
   item: Category
   isDragging: boolean
+  isDragOver: boolean
   onEdit: () => void
   onDelete: () => void
   onDragStart: () => void
   onDragEnd: () => void
   onDragOver: (e: React.DragEvent) => void
+  onDragLeave: () => void
   onDrop: () => void
 }) {
   return (
     <div
-      className={`px-5 py-3.5 flex items-start gap-3 transition-all ${isDragging ? 'opacity-50 scale-[0.98]' : ''}`}
+      className={`flex items-center gap-0 transition-all ${isDragging ? 'opacity-40 scale-[0.97]' : ''} ${isDragOver && !isDragging ? 'bg-gold/5 border-l-2 border-gold' : ''}`}
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div className="flex-1 min-w-0">
+      <div className="pl-3 pr-1 py-3.5 cursor-grab active:cursor-grabbing text-charcoal/15 hover:text-charcoal/30">
+        <GripVertical size={14} />
+      </div>
+      <div className="flex-1 min-w-0 py-3.5 pr-2">
         <p className="text-[14px] font-medium text-charcoal leading-snug">{item.title}</p>
         {item.description && (
           <p className="text-xs text-charcoal/40 mt-0.5 line-clamp-1">{item.description}</p>
@@ -704,7 +719,7 @@ function CourseRow({
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+      <div className="flex items-center gap-1 flex-shrink-0 pr-5">
         <button
           onClick={onEdit}
           className="w-8 h-8 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-gold hover:bg-gold/10 transition-all"
