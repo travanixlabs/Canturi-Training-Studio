@@ -156,6 +156,14 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     setDeleting(true)
 
     const now = new Date().toISOString()
+    // Soft-delete the category first
+    const { error } = await supabase.from('categories').update({ deleted_at: now }).eq('id', deleteTarget.id)
+    if (error) {
+      alert('Failed to delete category: ' + error.message)
+      setDeleting(false)
+      return
+    }
+
     // Soft-delete child subcategories, their training tasks, and training task content
     const { data: childSubs } = await supabase.from('subcategories').select('id').eq('category_id', deleteTarget.id).is('deleted_at', null)
     if (childSubs && childSubs.length > 0) {
@@ -167,11 +175,6 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
         await supabase.from('training_tasks').update({ deleted_at: now }).in('id', taskIds)
       }
       await supabase.from('subcategories').update({ deleted_at: now }).in('id', subIds)
-    }
-    const { error } = await supabase.from('categories').update({ deleted_at: now }).eq('id', deleteTarget.id)
-    if (error) {
-      setDeleting(false)
-      return
     }
 
     setCategorys(prev => prev.filter(i => i.id !== deleteTarget.id))
@@ -665,10 +668,10 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
             <h3 className="font-serif text-xl text-charcoal mb-2">Delete category?</h3>
             <p className="text-sm text-charcoal/60 mb-1">
-              <span className="font-medium text-charcoal">&ldquo;{deleteTarget.title}&rdquo;</span> will be permanently deleted.
+              <span className="font-medium text-charcoal">&ldquo;{deleteTarget.title}&rdquo;</span> and all its subcategories and training tasks will be deleted.
             </p>
             <p className="text-sm text-charcoal/40 mb-6">
-              This cannot be undone. Consider archiving instead if you may need it later.
+              Items are retained for 7 days and can be recovered from Deletion History.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteTarget(null)} className="btn-outline flex-1">Cancel</button>
