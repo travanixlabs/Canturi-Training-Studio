@@ -96,6 +96,8 @@ export interface TrainingTaskCompletion {
   takeaways: string
   summary: string
   confidence_rating: number | null
+  certificate_reference: string | null
+  certificate_url: string | null
   completed_at: string
 }
 

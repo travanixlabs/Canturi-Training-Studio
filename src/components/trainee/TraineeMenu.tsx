@@ -51,7 +51,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     return wsCourses.length > 0 && wsCourses.every(c => isCourseCompleted(c.id))
   }
 
-  async function submitCompletion(taskId: string, data: { takeaways: string; summary: string; confidence_rating: number | null }) {
+  async function submitCompletion(taskId: string, data: { takeaways: string; summary: string; confidence_rating: number | null; certificate_reference: string | null; certificate_url: string | null }) {
     setCompleting(true)
     const { data: result, error } = await supabase.from('training_task_completions').insert({
       training_task_id: taskId,
@@ -542,15 +542,20 @@ function CompletionOverlay({
 }: {
   task: TrainingTask
   submitting: boolean
-  onSubmit: (data: { takeaways: string; summary: string; confidence_rating: number | null }) => void
+  onSubmit: (data: { takeaways: string; summary: string; confidence_rating: number | null; certificate_reference: string | null; certificate_url: string | null }) => void
   onClose: () => void
 }) {
   const [takeaways, setTakeaways] = useState('')
   const [summary, setSummary] = useState('')
   const [rating, setRating] = useState(0)
+  const [certRef, setCertRef] = useState('')
+  const [certFile, setCertFile] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [showErrors, setShowErrors] = useState(false)
+  const supabase = createClient()
 
   const needsRating = task.confidence_rating_required
+  const needsCert = task.certificate_required
 
   function wordCount(s: string) {
     return s.trim().split(/\s+/).filter(Boolean).length
@@ -564,6 +569,18 @@ function CompletionOverlay({
 
   const hasErrors = Object.values(errors).some(Boolean)
 
+  async function handleCertUpload(file: File) {
+    setUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `certificates/${task.id}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('module-files').upload(path, file, { upsert: true })
+    if (!error) {
+      const { data: urlData } = supabase.storage.from('module-files').getPublicUrl(path)
+      setCertFile(urlData.publicUrl)
+    }
+    setUploading(false)
+  }
+
   function handleSubmit() {
     if (hasErrors) {
       setShowErrors(true)
@@ -573,6 +590,8 @@ function CompletionOverlay({
       takeaways: takeaways.trim(),
       summary: summary.trim(),
       confidence_rating: needsRating ? rating : null,
+      certificate_reference: needsCert && certRef.trim() ? certRef.trim() : null,
+      certificate_url: needsCert ? certFile : null,
     })
   }
 
@@ -648,6 +667,43 @@ function CompletionOverlay({
                 <p className="text-[10px] text-red-400 mt-1">Please select a confidence level</p>
               )}
             </div>
+          )}
+
+          {/* Certificate */}
+          {needsCert && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+                  Certificate Reference Number
+                </label>
+                <input
+                  className="input text-sm"
+                  value={certRef}
+                  onChange={e => setCertRef(e.target.value)}
+                  placeholder="Optional — enter certificate reference number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+                  Certificate Upload
+                </label>
+                {certFile ? (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2"><path d="M20 6L9 17l-5-5" /></svg>
+                    <span className="text-sm text-green-700 flex-1 truncate">Certificate uploaded</span>
+                    <button onClick={() => setCertFile(null)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                  </div>
+                ) : (
+                  <label className="card p-4 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-charcoal/30"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+                    <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload certificate'}</p>
+                    <p className="text-xs text-charcoal/25">PDF, JPG, PNG</p>
+                    <input type="file" accept=".pdf,image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCertUpload(e.target.files[0])} />
+                  </label>
+                )}
+              </div>
+            </>
           )}
         </div>
 
