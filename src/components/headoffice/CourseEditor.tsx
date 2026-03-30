@@ -155,7 +155,20 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     if (!deleteTarget) return
     setDeleting(true)
 
-    const { error } = await supabase.from('categories').delete().eq('id', deleteTarget.id)
+    const now = new Date().toISOString()
+    // Soft-delete child subcategories, their training tasks, and training task content
+    const { data: childSubs } = await supabase.from('subcategories').select('id').eq('category_id', deleteTarget.id).is('deleted_at', null)
+    if (childSubs && childSubs.length > 0) {
+      const subIds = childSubs.map(s => s.id)
+      const { data: childTasks } = await supabase.from('training_tasks').select('id').in('subcategory_id', subIds).is('deleted_at', null)
+      if (childTasks && childTasks.length > 0) {
+        const taskIds = childTasks.map(t => t.id)
+        await supabase.from('training_task_content').update({ deleted_at: now }).in('training_task_id', taskIds).is('deleted_at', null)
+        await supabase.from('training_tasks').update({ deleted_at: now }).in('id', taskIds)
+      }
+      await supabase.from('subcategories').update({ deleted_at: now }).in('id', subIds)
+    }
+    const { error } = await supabase.from('categories').update({ deleted_at: now }).eq('id', deleteTarget.id)
     if (error) {
       setDeleting(false)
       return
@@ -283,8 +296,24 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     if (!deleteCategoryTarget) return
     setDeleting(true)
 
-    // Delete all categories in this course first
-    await supabase.from('categories').delete().eq('course_id', deleteCategoryTarget.id)
+    const now = new Date().toISOString()
+    // Soft-delete all categories in this course and their children
+    const { data: catSubs } = await supabase.from('categories').select('id').eq('course_id', deleteCategoryTarget.id).is('deleted_at', null)
+    if (catSubs && catSubs.length > 0) {
+      const catIds = catSubs.map(c => c.id)
+      const { data: childSubs } = await supabase.from('subcategories').select('id').in('category_id', catIds).is('deleted_at', null)
+      if (childSubs && childSubs.length > 0) {
+        const subIds = childSubs.map(s => s.id)
+        const { data: childTasks } = await supabase.from('training_tasks').select('id').in('subcategory_id', subIds).is('deleted_at', null)
+        if (childTasks && childTasks.length > 0) {
+          const taskIds = childTasks.map(t => t.id)
+          await supabase.from('training_task_content').update({ deleted_at: now }).in('training_task_id', taskIds).is('deleted_at', null)
+          await supabase.from('training_tasks').update({ deleted_at: now }).in('id', taskIds)
+        }
+        await supabase.from('subcategories').update({ deleted_at: now }).in('id', subIds)
+      }
+      await supabase.from('categories').update({ deleted_at: now }).in('id', catIds)
+    }
     await supabase.from('courses').delete().eq('id', deleteCategoryTarget.id)
 
     setCategorys(prev => prev.filter(i => i.course_id !== deleteCategoryTarget.id))

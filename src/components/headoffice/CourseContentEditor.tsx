@@ -130,7 +130,17 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
   async function deleteSubcategory(id: string) {
     setSubcategories(prev => prev.filter(s => s.id !== id))
-    await supabase.from('subcategories').delete().eq('id', id)
+    const now = new Date().toISOString()
+    // Soft-delete child training tasks and their content
+    const { data: childTasks } = await supabase.from('training_tasks').select('id').eq('subcategory_id', id).is('deleted_at', null)
+    if (childTasks && childTasks.length > 0) {
+      const taskIds = childTasks.map(t => t.id)
+      await supabase.from('training_task_content').update({ deleted_at: now }).in('training_task_id', taskIds).is('deleted_at', null)
+      await supabase.from('training_tasks').update({ deleted_at: now }).in('id', taskIds)
+      setTrainingTasks(prev => prev.filter(t => !taskIds.includes(t.id)))
+      setAttachments(prev => prev.filter(a => !taskIds.includes(a.training_task_id)))
+    }
+    await supabase.from('subcategories').update({ deleted_at: now }).eq('id', id)
     if (selectedSubcategoryId === id) {
       setSelectedSubcategoryId(subcategories.find(s => s.id !== id)?.id ?? null)
       if (subcategories.length <= 1) setEditingCategoryDetails(true)
@@ -183,6 +193,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       content: '',
       sort_order: existing.length,
       created_at: new Date().toISOString(),
+      deleted_at: null,
     }
     setTrainingTasks(prev => [...prev, draft])
     setDraftTaskIds(prev => new Set(prev).add(tempId))
@@ -227,7 +238,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   }
 
   async function removeAttachment(id: string) {
-    await supabase.from('training_task_content').delete().eq('id', id)
+    await supabase.from('training_task_content').update({ deleted_at: new Date().toISOString() }).eq('id', id)
     setAttachments(prev => prev.filter(a => a.id !== id))
   }
 
@@ -292,7 +303,11 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     if (draftTaskIds.has(id)) {
       setDraftTaskIds(prev => { const next = new Set(prev); next.delete(id); return next })
     } else {
-      await supabase.from('training_tasks').delete().eq('id', id)
+      const now = new Date().toISOString()
+      // Soft-delete child training task content
+      await supabase.from('training_task_content').update({ deleted_at: now }).eq('training_task_id', id).is('deleted_at', null)
+      await supabase.from('training_tasks').update({ deleted_at: now }).eq('id', id)
+      setAttachments(prev => prev.filter(a => a.training_task_id !== id))
     }
     if (selectedTrainingTaskId === id) {
       setSelectedTrainingTaskId(null)

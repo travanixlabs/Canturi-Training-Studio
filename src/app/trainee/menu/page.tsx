@@ -10,13 +10,13 @@ export default async function TraineeMenuPage() {
 
   const [{ data: courses }, { data: categories }, { data: profile }, { data: workshops }, { data: workshopCourses }, { data: subcategories }, { data: trainingTasks }, { data: taskContent }, { data: completions }] = await Promise.all([
     supabase.from('courses').select('*').eq('status', 'active').order('sort_order'),
-    supabase.from('categories').select('*, course:courses(*)').order('sort_order'),
+    supabase.from('categories').select('*, course:courses(*)').is('deleted_at', null).order('sort_order'),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
-    supabase.from('workshops').select('*').eq('status', 'active').order('name'),
+    supabase.from('workshops').select('*').is('deleted_at', null).eq('status', 'active').order('name'),
     supabase.from('workshop_courses').select('*'),
-    supabase.from('subcategories').select('*').order('sort_order'),
-    supabase.from('training_tasks').select('*').order('sort_order'),
-    supabase.from('training_task_content').select('*').order('sort_order'),
+    supabase.from('subcategories').select('*').is('deleted_at', null).order('sort_order'),
+    supabase.from('training_tasks').select('*').is('deleted_at', null).order('sort_order'),
+    supabase.from('training_task_content').select('*').is('deleted_at', null).order('sort_order'),
     supabase.from('training_task_completions').select('*').eq('trainee_id', authUser.id),
   ])
 

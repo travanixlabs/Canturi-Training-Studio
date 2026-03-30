@@ -35,6 +35,7 @@ export interface Category {
   course_id: string
   sort_order: number
   created_at: string
+  deleted_at: string | null
   course?: Course
 }
 
@@ -45,6 +46,7 @@ export interface Subcategory {
   content: string
   sort_order: number
   created_at: string
+  deleted_at: string | null
 }
 
 export type TrainerType = 'Self Directed' | 'Senior' | 'Manager'
@@ -71,6 +73,7 @@ export interface TrainingTask {
   content: string
   sort_order: number
   created_at: string
+  deleted_at: string | null
 }
 
 export type AttachmentType = 'text' | 'webpage' | 'image' | 'video' | 'pdf'
@@ -83,6 +86,7 @@ export interface TrainingTaskContent {
   url: string
   sort_order: number
   created_at: string
+  deleted_at: string | null
 }
 
 export interface TrainingTaskCompletion {
@@ -101,6 +105,7 @@ export interface Workshop {
   tags: string[]
   status: 'active' | 'hidden'
   created_at: string
+  deleted_at: string | null
 }
 
 export interface WorkshopCourse {

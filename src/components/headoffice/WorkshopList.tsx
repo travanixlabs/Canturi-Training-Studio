@@ -43,7 +43,7 @@ export function WorkshopList({ workshops: initialWorkshops, workshopCourses }: P
   }
 
   async function handleDelete(workshop: Workshop) {
-    const { error } = await supabase.from('workshops').delete().eq('id', workshop.id)
+    const { error } = await supabase.from('workshops').update({ deleted_at: new Date().toISOString() }).eq('id', workshop.id)
     if (!error) {
       setWorkshops(prev => prev.filter(w => w.id !== workshop.id))
     }

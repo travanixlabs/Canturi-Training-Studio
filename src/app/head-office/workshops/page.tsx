@@ -8,7 +8,7 @@ export default async function HeadOfficeWorkshopsPage() {
   if (!authUser) redirect('/login')
 
   const [{ data: workshops }, { data: workshopCourses }] = await Promise.all([
-    supabase.from('workshops').select('*').order('created_at', { ascending: false }),
+    supabase.from('workshops').select('*').is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('workshop_courses').select('*'),
   ])
 
