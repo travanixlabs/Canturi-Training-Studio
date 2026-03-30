@@ -24,6 +24,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const [selection, setSelection] = useState<{ type: 'workshop' | 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
   const [completions, setCompletions] = useState<TrainingTaskCompletion[]>(initialCompletions)
   const [completing, setCompleting] = useState(false)
+  const [completionOverlay, setCompletionOverlay] = useState<string | null>(null) // task id
   const supabase = createClient()
   const router = useRouter()
 
@@ -50,16 +51,18 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     return wsCourses.length > 0 && wsCourses.every(c => isCourseCompleted(c.id))
   }
 
-  async function markComplete(taskId: string) {
+  async function submitCompletion(taskId: string, data: { takeaway_1: string; takeaway_2: string; takeaway_3: string; summary: string; confidence_rating: number | null }) {
     setCompleting(true)
-    const { data, error } = await supabase.from('training_task_completions').insert({
+    const { data: result, error } = await supabase.from('training_task_completions').insert({
       training_task_id: taskId,
       trainee_id: currentUser.id,
+      ...data,
     }).select().single()
-    if (!error && data) {
-      setCompletions(prev => [...prev, data as TrainingTaskCompletion])
+    if (!error && result) {
+      setCompletions(prev => [...prev, result as TrainingTaskCompletion])
     }
     setCompleting(false)
+    setCompletionOverlay(null)
   }
 
   function toggle(key: string) {
@@ -498,11 +501,10 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                 </div>
               ) : (
                 <button
-                  onClick={() => markComplete(selTask.id)}
-                  disabled={completing}
-                  className="w-full px-4 py-3 rounded-xl bg-gold text-white font-medium text-sm hover:bg-gold/90 transition-colors disabled:opacity-50"
+                  onClick={() => setCompletionOverlay(selTask.id)}
+                  className="w-full px-4 py-3 rounded-xl bg-gold text-white font-medium text-sm hover:bg-gold/90 transition-colors"
                 >
-                  {completing ? 'Saving...' : 'Mark as Complete'}
+                  Mark as Complete
                 </button>
               )}
             </div>
@@ -518,6 +520,189 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
             </div>
           </div>
         )}
+      </div>
+      {/* Completion overlay */}
+      {completionOverlay && (
+        <CompletionOverlay
+          task={trainingTasks.find(t => t.id === completionOverlay)!}
+          submitting={completing}
+          onSubmit={(data) => submitCompletion(completionOverlay, data)}
+          onClose={() => setCompletionOverlay(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function CompletionOverlay({
+  task,
+  submitting,
+  onSubmit,
+  onClose,
+}: {
+  task: TrainingTask
+  submitting: boolean
+  onSubmit: (data: { takeaway_1: string; takeaway_2: string; takeaway_3: string; summary: string; confidence_rating: number | null }) => void
+  onClose: () => void
+}) {
+  const [takeaway1, setTakeaway1] = useState('')
+  const [takeaway2, setTakeaway2] = useState('')
+  const [takeaway3, setTakeaway3] = useState('')
+  const [summary, setSummary] = useState('')
+  const [rating, setRating] = useState(0)
+  const [showErrors, setShowErrors] = useState(false)
+
+  const needsRating = task.confidence_rating_required
+
+  function wordCount(s: string) {
+    return s.trim().split(/\s+/).filter(Boolean).length
+  }
+
+  const errors = {
+    takeaway1: wordCount(takeaway1) < 20,
+    takeaway2: wordCount(takeaway2) < 20,
+    takeaway3: wordCount(takeaway3) < 20,
+    summary: wordCount(summary) < 20,
+    rating: needsRating && rating === 0,
+  }
+
+  const hasErrors = Object.values(errors).some(Boolean)
+
+  function handleSubmit() {
+    if (hasErrors) {
+      setShowErrors(true)
+      return
+    }
+    onSubmit({
+      takeaway_1: takeaway1.trim(),
+      takeaway_2: takeaway2.trim(),
+      takeaway_3: takeaway3.trim(),
+      summary: summary.trim(),
+      confidence_rating: needsRating ? rating : null,
+    })
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg mx-0 sm:mx-4 max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3 border-b border-black/5">
+          <h2 className="font-serif text-lg text-charcoal">Complete Training Task</h2>
+          <p className="text-xs text-charcoal/40 mt-0.5 line-clamp-1">{task.title}</p>
+        </div>
+
+        {/* Form */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          {/* Takeaway 1 */}
+          <div>
+            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+              Key Takeaway 1 <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              className={`textarea text-sm ${showErrors && errors.takeaway1 ? 'border-red-300 bg-red-50/30' : ''}`}
+              rows={3}
+              value={takeaway1}
+              onChange={e => setTakeaway1(e.target.value)}
+              placeholder="What was your first key takeaway? (minimum 20 words)"
+            />
+            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaway1 ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaway1)} / 20 words min</p>
+          </div>
+
+          {/* Takeaway 2 */}
+          <div>
+            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+              Key Takeaway 2 <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              className={`textarea text-sm ${showErrors && errors.takeaway2 ? 'border-red-300 bg-red-50/30' : ''}`}
+              rows={3}
+              value={takeaway2}
+              onChange={e => setTakeaway2(e.target.value)}
+              placeholder="What was your second key takeaway? (minimum 20 words)"
+            />
+            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaway2 ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaway2)} / 20 words min</p>
+          </div>
+
+          {/* Takeaway 3 */}
+          <div>
+            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+              Key Takeaway 3 <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              className={`textarea text-sm ${showErrors && errors.takeaway3 ? 'border-red-300 bg-red-50/30' : ''}`}
+              rows={3}
+              value={takeaway3}
+              onChange={e => setTakeaway3(e.target.value)}
+              placeholder="What was your third key takeaway? (minimum 20 words)"
+            />
+            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaway3 ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaway3)} / 20 words min</p>
+          </div>
+
+          {/* Summary */}
+          <div>
+            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+              Brief Summary <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              className={`textarea text-sm ${showErrors && errors.summary ? 'border-red-300 bg-red-50/30' : ''}`}
+              rows={4}
+              value={summary}
+              onChange={e => setSummary(e.target.value)}
+              placeholder="Write a brief summary of what you covered — not an essay, just the essence (minimum 20 words)"
+            />
+            <p className={`text-[10px] mt-1 ${showErrors && errors.summary ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(summary)} / 20 words min</p>
+          </div>
+
+          {/* Confidence Rating */}
+          {needsRating && (
+            <div>
+              <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
+                Confidence Level <span className="text-red-400">*</span>
+              </label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    onClick={() => setRating(star)}
+                    className="p-1 transition-transform hover:scale-110"
+                  >
+                    <svg
+                      width="28"
+                      height="28"
+                      viewBox="0 0 24 24"
+                      fill={star <= rating ? '#C9A96E' : 'none'}
+                      stroke={star <= rating ? '#C9A96E' : '#D1D5DB'}
+                      strokeWidth="1.5"
+                    >
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
+              {showErrors && errors.rating && (
+                <p className="text-[10px] text-red-400 mt-1">Please select a confidence level</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 px-5 py-4 border-t border-black/5">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="flex-1 px-4 py-2.5 text-sm font-medium bg-gold text-white rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50"
+          >
+            {submitting ? 'Submitting...' : 'Complete Task'}
+          </button>
+        </div>
       </div>
     </div>
   )
