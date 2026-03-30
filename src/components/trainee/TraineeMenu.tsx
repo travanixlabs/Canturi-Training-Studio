@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { COURSE_COLOURS } from '@/types'
-import type { Course, Category, User, Workshop, WorkshopCourse } from '@/types'
-import { useRouter } from 'next/navigation'
+import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent } from '@/types'
 
 interface Props {
   courses: Course[]
@@ -13,27 +12,33 @@ interface Props {
   currentUser: User
   workshops?: Workshop[]
   workshopCourses?: WorkshopCourse[]
+  subcategories?: Subcategory[]
+  trainingTasks?: TrainingTask[]
+  taskContent?: TrainingTaskContent[]
 }
 
-export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCourses = [] }: Props) {
-  const [search, setSearch] = useState('')
-  const [expandedWorkshops, setExpandedWorkshops] = useState<Set<string>>(new Set())
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
-  const router = useRouter()
+export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCourses = [], subcategories = [], trainingTasks = [], taskContent = [] }: Props) {
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set())
 
-  const filteredItems = useMemo(() => {
-    if (!search.trim()) return categories
-    const q = search.toLowerCase()
-    return categories.filter(item =>
-      item.title.toLowerCase().includes(q) ||
-      item.description.toLowerCase().includes(q)
-    )
-  }, [categories, search])
+  const selectedCategory = categories.find(c => c.id === selectedCategoryId)
 
-  const isSearching = search.trim().length > 0
+  // Build flat course → category hierarchy (first workshop that has courses)
+  const courseHierarchy = useMemo(() => {
+    const allCourseIds = new Set(workshopCourses.map(wc => wc.course_id))
+    return courses
+      .filter(c => allCourseIds.has(c.id))
+      .map(course => ({
+        course,
+        categories: categories
+          .filter(cat => cat.course_id === course.id)
+          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+      }))
+      .filter(ch => ch.categories.length > 0)
+  }, [courses, categories, workshopCourses])
 
-  function toggleWorkshop(id: string) {
-    setExpandedWorkshops(prev => {
+  function toggleCourse(id: string) {
+    setExpandedCourses(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -41,188 +46,186 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     })
   }
 
-  function toggleCategory(id: string) {
-    setExpandedCategories(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  // Helpers for selected category content
+  const getSubcategories = (catId: string) =>
+    subcategories.filter(s => s.category_id === catId).sort((a, b) => a.sort_order - b.sort_order)
+
+  const getTasksForSub = (subId: string) =>
+    trainingTasks.filter(t => t.subcategory_id === subId).sort((a, b) => a.sort_order - b.sort_order)
+
+  const getContentForTask = (taskId: string) =>
+    taskContent.filter(c => c.training_task_id === taskId).sort((a, b) => a.sort_order - b.sort_order)
+
+  function getEmbedUrl(url: string): string {
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
+    return url
   }
 
-  const workshopHierarchy = useMemo(() => {
-    return workshops.map(ws => {
-      const courseIds = new Set(workshopCourses.filter(wc => wc.workshop_id === ws.id).map(wc => wc.course_id))
-      const wsCourses = courses.filter(c => courseIds.has(c.id)).sort((a, b) => a.sort_order - b.sort_order)
-      return { workshop: ws, courses: wsCourses }
-    }).filter(ws => ws.courses.length > 0)
-  }, [workshops, workshopCourses, courses])
-
-  function highlightText(text: string, query: string) {
-    if (!query.trim()) return text
-    const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
-    return parts.map((part, i) =>
-      part.toLowerCase() === query.toLowerCase()
-        ? <mark key={i} className="bg-gold/25 text-charcoal rounded px-0.5">{part}</mark>
-        : part
-    )
+  function isEmbeddable(url: string) {
+    return url.includes('youtube') || url.includes('vimeo') || url.includes('youtu.be')
   }
 
   return (
-    <>
-      <div className="px-5 py-6">
-        <div className="mb-5">
-          <h1 className="font-serif text-2xl text-charcoal">Training Menu</h1>
-          <p className="text-sm text-charcoal/40 mt-1">Browse all training topics</p>
-        </div>
+    <div className="flex flex-col lg:flex-row min-h-[calc(100vh-120px)]">
+      {/* Left sidebar */}
+      <div className="lg:w-80 lg:min-h-full lg:border-r border-b lg:border-b-0 border-black/5 bg-white overflow-y-auto">
+        <div className="p-4">
+          <h1 className="font-serif text-xl text-charcoal mb-1">Training Menu</h1>
+          <p className="text-xs text-charcoal/40 mb-4">Browse all training topics</p>
 
-        {/* Search bar */}
-        <div className="relative mb-5">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-charcoal/30" />
-          <input
-            type="search"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search topics, tags..."
-            className="input pl-10 pr-10"
-            autoComplete="off"
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/30 hover:text-charcoal"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
-
-        {/* Search results */}
-        {isSearching && (
-          <div className="mb-2">
-            <p className="text-xs text-charcoal/40 mb-3">
-              {filteredItems.length === 0 ? 'No results' : `${filteredItems.length} result${filteredItems.length !== 1 ? 's' : ''}`}
-            </p>
-            {filteredItems.length === 0 && (
-              <div className="card p-6 text-center">
-                <p className="text-charcoal/40 text-sm">No training items match &quot;{search}&quot;</p>
-              </div>
-            )}
-            <div className="space-y-2">
-              {filteredItems.map(item => (
-                <CategoryCard
-                  key={item.id}
-                  item={item}
-                  searchQuery={search}
-                  highlightText={highlightText}
-                  onOpen={() => router.push(`/trainee/course/${item.id}`)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Workshop > Course > Category browse (when not searching) */}
-        {!isSearching && (
-          <div className="space-y-3">
-            {workshopHierarchy.map(({ workshop, courses: wsCourses }) => {
-              const wsExpanded = expandedWorkshops.has(workshop.id)
-              const wsItems = categories.filter(mi => wsCourses.some(c => c.id === mi.course_id))
-
-              const allCourseKeys = wsCourses.map(c => `${workshop.id}-${c.id}`)
-              const allCoursesExpanded = allCourseKeys.length > 0 && allCourseKeys.every(k => expandedCategories.has(k))
+          <div className="space-y-1">
+            {courseHierarchy.map(({ course, categories: cats }) => {
+              const isExpanded = expandedCourses.has(course.id)
+              const colour = course.colour_hex || COURSE_COLOURS[course.name] || '#C9A96E'
 
               return (
-                <div key={workshop.id} className="card overflow-hidden">
-                  {/* Workshop header */}
+                <div key={course.id}>
+                  {/* Course header */}
                   <button
-                    onClick={() => toggleWorkshop(workshop.id)}
-                    className="w-full px-5 py-4 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors"
+                    onClick={() => toggleCourse(course.id)}
+                    className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 hover:bg-charcoal/3 transition-all"
                   >
-                    <span className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-sm flex-shrink-0 text-gold font-serif">
-                      W
+                    <span
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
+                      style={{ backgroundColor: colour + '20', color: colour }}
+                    >
+                      {course.icon}
                     </span>
-                    <div className="flex-1">
-                      <p className="font-serif font-medium text-charcoal text-[16px]">{workshop.name}</p>
-                      <p className="text-xs text-charcoal/40 mt-0.5">{wsItems.length} topic{wsItems.length !== 1 ? 's' : ''} · {wsCourses.length} course{wsCourses.length !== 1 ? 's' : ''}</p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (allCoursesExpanded) {
-                            setExpandedCategories(prev => {
-                              const next = new Set(prev)
-                              for (const k of allCourseKeys) next.delete(k)
-                              return next
-                            })
-                            setExpandedWorkshops(prev => {
-                              const next = new Set(prev)
-                              next.delete(workshop.id)
-                              return next
-                            })
-                          } else {
-                            setExpandedCategories(prev => {
-                              const next = new Set(prev)
-                              for (const k of allCourseKeys) next.add(k)
-                              return next
-                            })
-                            setExpandedWorkshops(prev => new Set(prev).add(workshop.id))
-                          }
-                        }}
-                        className="text-xs font-medium text-gold hover:text-gold/80 transition-colors mt-1"
-                      >
-                        {allCoursesExpanded ? 'Collapse all' : 'Expand all'}
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {wsExpanded ? <ChevronUp size={16} className="text-charcoal/30" /> : <ChevronDown size={16} className="text-charcoal/30" />}
-                    </div>
+                    <span className="text-sm font-medium text-charcoal flex-1">{course.name}</span>
+                    {isExpanded ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
                   </button>
 
-                  {/* Courses inside this workshop */}
-                  {wsExpanded && (
-                    <div className="border-t border-black/5">
-                      {wsCourses.map(category => {
-                        const catItems = wsItems.filter(i => i.course_id === category.id).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
-                        const catKey = `${workshop.id}-${category.id}`
-                        const catExpanded = expandedCategories.has(catKey)
+                  {/* Categories inside course */}
+                  {isExpanded && (
+                    <div className="ml-4 pl-3 border-l border-charcoal/10 mt-1 mb-2 space-y-0.5">
+                      {cats.map(cat => {
+                        const isSelected = selectedCategoryId === cat.id
+                        return (
+                          <button
+                            key={cat.id}
+                            onClick={() => setSelectedCategoryId(cat.id)}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                              isSelected
+                                ? 'bg-gold/10 text-gold font-medium'
+                                : 'text-charcoal/60 hover:bg-charcoal/3 hover:text-charcoal'
+                            }`}
+                          >
+                            {cat.title}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Right content area */}
+      <div className="flex-1 overflow-y-auto">
+        {selectedCategory ? (
+          <div className="px-5 py-6 max-w-2xl">
+            {/* Category header */}
+            {selectedCategory.course && (
+              <div className="mb-3">
+                <CourseBadge courseName={(selectedCategory.course as Course).name} icon={(selectedCategory.course as Course).icon} />
+              </div>
+            )}
+            <h1 className="font-serif text-2xl text-charcoal mb-2">{selectedCategory.title}</h1>
+            {selectedCategory.description && (
+              <p className="text-sm text-charcoal/60 leading-relaxed mb-6">{selectedCategory.description}</p>
+            )}
+
+            {/* Subcategories + Tasks */}
+            {getSubcategories(selectedCategory.id).map((sub, subIdx) => {
+              const subTasks = getTasksForSub(sub.id)
+
+              return (
+                <div key={sub.id} className="mb-8">
+                  <div className="flex items-baseline gap-3 mb-3">
+                    <span className="text-xs font-medium text-charcoal/30 uppercase tracking-wider flex-shrink-0">
+                      {subIdx + 1}
+                    </span>
+                    <h2 className="font-serif text-lg text-charcoal">{sub.title}</h2>
+                  </div>
+
+                  {sub.content && (
+                    <p className="text-sm text-charcoal/60 leading-relaxed mb-4 ml-7">{sub.content}</p>
+                  )}
+
+                  {subTasks.length > 0 && (
+                    <div className="ml-7 space-y-4">
+                      {subTasks.map((task, taskIdx) => {
+                        const content = getContentForTask(task.id)
 
                         return (
-                          <div key={category.id}>
-                            {/* Course header */}
-                            <button
-                              onClick={() => toggleCategory(catKey)}
-                              className="w-full pl-8 pr-5 py-3 flex items-center gap-3 text-left hover:bg-charcoal/2 transition-colors border-b border-black/5"
-                            >
-                              <span
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs flex-shrink-0"
-                                style={{ backgroundColor: category.colour_hex + '20', color: category.colour_hex }}
-                              >
-                                {category.icon}
+                          <div key={task.id} className="card p-4">
+                            <div className="flex items-start gap-3 mb-2">
+                              <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-[10px] text-charcoal/40 flex-shrink-0 mt-0.5">
+                                {taskIdx + 1}
                               </span>
-                              <div className="flex-1">
-                                <p className="font-medium text-charcoal text-[14px]">{category.name}</p>
-                                <p className="text-xs text-charcoal/40 mt-0.5">{catItems.length} topic{catItems.length !== 1 ? 's' : ''}</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-charcoal leading-snug">{task.title}</p>
+                                {task.trainer_type && (
+                                  <p className="text-xs text-charcoal/40 mt-0.5">{task.trainer_type}</p>
+                                )}
                               </div>
-                              <div className="flex items-center gap-2">
-                                {catExpanded ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
-                              </div>
-                            </button>
+                            </div>
 
-                            {/* Categories (menu items) inside this course */}
-                            {catExpanded && (
-                              <div className="divide-y divide-black/5 bg-charcoal/[0.01]">
-                                {catItems.map(item => (
-                                  <button
-                                    key={item.id}
-                                    onClick={() => router.push(`/trainee/course/${item.id}`)}
-                                    className="w-full pl-12 pr-5 py-3.5 flex items-center gap-3 text-left transition-colors hover:bg-charcoal/2"
-                                  >
-                                    <span className="w-5 h-5 rounded-full border border-charcoal/20 flex-shrink-0" />
-                                    <div className="flex-1">
-                                      <p className="text-[14px] leading-snug text-charcoal">{item.title}</p>
-                                    </div>
-                                    <span className="text-charcoal/20 text-lg">&rsaquo;</span>
-                                  </button>
+                            {content.length > 0 && (
+                              <div className="ml-9 space-y-3 mt-3">
+                                {content.map(c => (
+                                  <div key={c.id}>
+                                    {c.title && c.type !== 'text' && (
+                                      <p className="text-xs font-medium text-charcoal/50 mb-1">{c.title}</p>
+                                    )}
+
+                                    {c.type === 'text' && c.url && (
+                                      <div className="text-sm text-charcoal/70 leading-relaxed whitespace-pre-wrap">{c.url}</div>
+                                    )}
+
+                                    {c.type === 'webpage' && c.url && (
+                                      <a
+                                        href={c.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 text-sm text-gold hover:text-gold/80 underline underline-offset-2 break-all"
+                                      >
+                                        {c.url}
+                                      </a>
+                                    )}
+
+                                    {c.type === 'image' && c.url && (
+                                      <img src={c.url} alt={c.title || ''} className="max-w-full rounded-lg border border-black/5" />
+                                    )}
+
+                                    {c.type === 'video' && c.url && (
+                                      isEmbeddable(c.url) ? (
+                                        <div className="rounded-lg overflow-hidden" style={{ height: '280px' }}>
+                                          <iframe
+                                            src={getEmbedUrl(c.url)}
+                                            className="w-full h-full border-0"
+                                            title={c.title || 'Video'}
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                          />
+                                        </div>
+                                      ) : (
+                                        <video src={c.url} controls className="max-w-full rounded-lg" />
+                                      )
+                                    )}
+
+                                    {c.type === 'pdf' && c.url && (
+                                      <div className="rounded-lg overflow-hidden border border-black/5" style={{ height: '350px' }}>
+                                        <iframe src={c.url} className="w-full h-full border-0" title={c.title || 'PDF'} />
+                                      </div>
+                                    )}
+                                  </div>
                                 ))}
                               </div>
                             )}
@@ -235,45 +238,15 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
               )
             })}
           </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center">
+              <BookOpen size={40} className="mx-auto text-charcoal/15 mb-3" />
+              <p className="font-serif text-lg text-charcoal/40">Select a category to view its content</p>
+            </div>
+          </div>
         )}
       </div>
-    </>
-  )
-}
-
-function CategoryCard({
-  item,
-  searchQuery,
-  highlightText,
-  onOpen,
-}: {
-  item: Category
-  searchQuery: string
-  highlightText: (text: string, query: string) => React.ReactNode
-  onOpen: () => void
-}) {
-  const colour = item.course ? COURSE_COLOURS[item.course.name] ?? '#C9A96E' : '#C9A96E'
-
-  return (
-    <button
-      onClick={onOpen}
-      className="card w-full text-left p-4 hover:shadow-md transition-shadow relative overflow-hidden"
-    >
-      <div
-        className="absolute left-0 top-0 bottom-0 w-1"
-        style={{ backgroundColor: colour }}
-      />
-      <div className="pl-3">
-        {item.course && (
-          <CourseBadge courseName={item.course.name} icon={item.course.icon} />
-        )}
-        <p className="font-medium text-charcoal text-[15px] mt-1.5 leading-snug">
-          {highlightText(item.title, searchQuery)}
-        </p>
-        <p className="text-xs text-charcoal/50 mt-1 line-clamp-2 leading-relaxed">
-          {highlightText(item.description, searchQuery)}
-        </p>
-      </div>
-    </button>
+    </div>
   )
 }
