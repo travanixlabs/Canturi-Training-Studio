@@ -568,6 +568,7 @@ function TrainingTaskEditor({
   const [addingType, setAddingType] = useState<AttachmentType | null>(null)
   const [tagsInput, setTagsInput] = useState((task.tags ?? []).join(', '))
   const [touched, setTouched] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
 
   const missing = {
     title: !task.title.trim(),
@@ -645,6 +646,24 @@ function TrainingTaskEditor({
           placeholder="Training task title"
         />
       </div>
+
+      {/* Task Details toggle */}
+      <button
+        onClick={() => setShowDetails(!showDetails)}
+        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-sm ${
+          hasIncomplete && touched
+            ? 'border-red-200 bg-red-50/30 text-red-600'
+            : showDetails
+            ? 'border-gold/30 bg-gold/5 text-gold'
+            : 'border-charcoal/10 text-charcoal/50 hover:border-charcoal/20'
+        }`}
+      >
+        <span className="font-medium">Task Details</span>
+        {showDetails ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+
+      {showDetails && (
+      <div className="space-y-5 pl-1">
 
       {/* 1. Trainer Type */}
       <div>
@@ -793,6 +812,9 @@ function TrainingTaskEditor({
           placeholder="e.g. diamonds, consultation, sales"
         />
       </div>
+
+      </div>
+      )}
 
       {/* Content */}
       <div>
