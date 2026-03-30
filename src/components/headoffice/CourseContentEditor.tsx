@@ -325,7 +325,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                 }`}
               >
                 <span>{i + 1}</span>
-                <span className="truncate max-w-[120px]">{sub.title}</span>
+                <span className="line-clamp-2">{sub.title}</span>
               </button>
             ))}
             <button
@@ -375,7 +375,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                         <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs flex-shrink-0">
                           {i + 1}
                         </span>
-                        <span className="text-sm truncate">{sub.title}</span>
+                        <span className="text-sm leading-snug">{sub.title}</span>
                       </button>
 
                       <div className="hidden group-hover:flex items-center gap-0.5 flex-shrink-0">
@@ -404,7 +404,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                                   : 'hover:bg-charcoal/3 text-charcoal/50'
                               }`}
                             >
-                              <span className="truncate">{task.title}</span>
+                              <span className="leading-snug">{task.title}</span>
                             </button>
                             <button
                               onClick={() => deleteTrainingTask(task.id)}
