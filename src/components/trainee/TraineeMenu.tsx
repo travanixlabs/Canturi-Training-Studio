@@ -83,6 +83,41 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     return url.includes('youtube') || url.includes('vimeo') || url.includes('youtu.be')
   }
 
+  function getAllKeysForWorkshop(wsId: string) {
+    const keys: string[] = [`ws-${wsId}`]
+    const courseIds = new Set(workshopCourses.filter(wc => wc.workshop_id === wsId).map(wc => wc.course_id))
+    for (const cId of courseIds) {
+      keys.push(`c-${cId}`)
+      const cats = getCatsForCourse(cId)
+      for (const cat of cats) {
+        keys.push(`cat-${cat.id}`)
+        const subs = getSubsForCat(cat.id)
+        for (const sub of subs) {
+          keys.push(`sub-${sub.id}`)
+        }
+      }
+    }
+    return keys
+  }
+
+  function expandAll(wsId: string) {
+    const keys = getAllKeysForWorkshop(wsId)
+    setExpanded(prev => {
+      const next = new Set(prev)
+      for (const k of keys) next.add(k)
+      return next
+    })
+  }
+
+  function collapseAll(wsId: string) {
+    const keys = getAllKeysForWorkshop(wsId)
+    setExpanded(prev => {
+      const next = new Set(prev)
+      for (const k of keys) next.delete(k)
+      return next
+    })
+  }
+
   // Resolve selected item
   const selCourse = selection?.type === 'course' ? courses.find(c => c.id === selection.id) : null
   const selCategory = selection?.type === 'category' ? categories.find(c => c.id === selection.id) : null
@@ -118,6 +153,11 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 
                   {wsOpen && (
                     <div className="ml-4 pl-3 border-l border-charcoal/8 mt-1 mb-2 space-y-0.5">
+                      <div className="flex gap-2 mb-1 px-3">
+                        <button onClick={(e) => { e.stopPropagation(); expandAll(workshop.id) }} className="text-[10px] font-medium text-gold hover:text-gold/80 transition-colors">Expand All</button>
+                        <span className="text-charcoal/15">|</span>
+                        <button onClick={(e) => { e.stopPropagation(); collapseAll(workshop.id) }} className="text-[10px] font-medium text-charcoal/40 hover:text-charcoal/60 transition-colors">Collapse All</button>
+                      </div>
                       {wsCourses.map(course => {
                         const cKey = `c-${course.id}`
                         const cOpen = expanded.has(cKey)
