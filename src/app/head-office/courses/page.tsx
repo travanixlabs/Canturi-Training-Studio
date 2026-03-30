@@ -9,7 +9,7 @@ export default async function HeadOfficeCoursesPage() {
 
   const [{ data: courses }, { data: categories }] = await Promise.all([
     supabase.from('courses').select('*').order('sort_order'),
-    supabase.from('categories').select('*, course:courses(*)').order('title'),
+    supabase.from('categories').select('*, course:courses(*)').order('sort_order'),
   ])
 
   return (

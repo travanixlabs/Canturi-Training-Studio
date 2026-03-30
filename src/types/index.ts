@@ -33,6 +33,7 @@ export interface Category {
   title: string
   description: string
   course_id: string
+  sort_order: number
   created_at: string
   course?: Course
 }

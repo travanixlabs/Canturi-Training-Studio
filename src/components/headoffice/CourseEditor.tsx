@@ -56,6 +56,7 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
 
   // Drag and drop
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null)
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
@@ -240,6 +241,31 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     )
   }
 
+  async function handleItemDrop(targetItemId: string, courseId: string) {
+    if (!draggedItemId || draggedItemId === targetItemId) return
+
+    const courseItems = categories.filter(i => i.course_id === courseId)
+    const fromIdx = courseItems.findIndex(i => i.id === draggedItemId)
+    const toIdx = courseItems.findIndex(i => i.id === targetItemId)
+    if (fromIdx === -1 || toIdx === -1) return
+
+    const reordered = [...courseItems]
+    const [moved] = reordered.splice(fromIdx, 1)
+    reordered.splice(toIdx, 0, moved)
+
+    // Update local state with new sort orders
+    const updatedIds = new Map(reordered.map((item, i) => [item.id, i]))
+    setCategorys(prev => prev.map(item =>
+      updatedIds.has(item.id) ? { ...item, sort_order: updatedIds.get(item.id)! } : item
+    ))
+    setDraggedItemId(null)
+
+    // Persist to DB — categories table doesn't have sort_order yet, add it
+    await Promise.all(
+      reordered.map((item, i) => supabase.from('categories').update({ sort_order: i }).eq('id', item.id))
+    )
+  }
+
   async function changeCourseStatus(cat: Course, status: 'active' | 'hidden') {
     const { error } = await supabase.from('courses').update({ status }).eq('id', cat.id)
     if (error) {
@@ -265,7 +291,7 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
   }
 
   const itemsByCategory = (categoryId: string) =>
-    categories.filter(i => i.course_id === categoryId)
+    categories.filter(i => i.course_id === categoryId).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
   return (
     <div className="px-5 py-6 max-w-3xl mx-auto">
@@ -379,8 +405,13 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
                       <CourseRow
                         key={item.id}
                         item={item}
+                        isDragging={draggedItemId === item.id}
                         onEdit={() => router.push(`/head-office/courses/${item.id}`)}
                         onDelete={() => setDeleteTarget(item)}
+                        onDragStart={() => setDraggedItemId(item.id)}
+                        onDragEnd={() => setDraggedItemId(null)}
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={() => handleItemDrop(item.id, category.id)}
                       />
                     ))
                   )}
@@ -639,15 +670,32 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
 
 function CourseRow({
   item,
+  isDragging,
   onEdit,
   onDelete,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
 }: {
   item: Category
+  isDragging: boolean
   onEdit: () => void
   onDelete: () => void
+  onDragStart: () => void
+  onDragEnd: () => void
+  onDragOver: (e: React.DragEvent) => void
+  onDrop: () => void
 }) {
   return (
-    <div className="px-5 py-3.5 flex items-start gap-3">
+    <div
+      className={`px-5 py-3.5 flex items-start gap-3 transition-all ${isDragging ? 'opacity-50 scale-[0.98]' : ''}`}
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-medium text-charcoal leading-snug">{item.title}</p>
         {item.description && (
