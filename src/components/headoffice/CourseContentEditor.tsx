@@ -22,6 +22,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   // Category fields
   const [title, setTitle] = useState(initialItem.title)
   const [description, setDescription] = useState(initialItem.description)
+  const [courseId, setCourseId] = useState(initialItem.course_id)
 
   // Subcategories
   const [subcategories, setSubcategories] = useState<Subcategory[]>(initialSubcategories)
@@ -41,7 +42,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
   const activeSubcategory = subcategories.find(s => s.id === selectedSubcategoryId)
   const activeTrainingTask = trainingTasks.find(t => t.id === selectedTrainingTaskId)
-  const course = courses.find(c => c.id === initialItem.course_id)
+  const course = courses.find(c => c.id === courseId)
 
   // Get training tasks for a specific subcategory
   const getTasksForSubcategory = (subcategoryId: string) =>
@@ -93,10 +94,11 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     await supabase.from('categories').update({
       title,
       description,
+      course_id: courseId,
     }).eq('id', initialItem.id)
     setSaveStatus('saved')
     setTimeout(() => setSaveStatus('idle'), 2000)
-  }, [title, description])
+  }, [title, description, courseId])
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -106,7 +108,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => { autoSave() }, 800)
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current) }
-  }, [title, description])
+  }, [title, description, courseId])
 
   async function addSubcategory() {
     const newOrder = subcategories.length
@@ -500,7 +502,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
               <div>
                 <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Course</label>
-                <select className="input bg-charcoal/3 cursor-not-allowed" value={initialItem.course_id} disabled>
+                <select className="input" value={courseId} onChange={e => setCourseId(e.target.value)}>
                   {courses.map(c => (
                     <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                   ))}
