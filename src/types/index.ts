@@ -89,9 +89,7 @@ export interface TrainingTaskCompletion {
   id: string
   training_task_id: string
   trainee_id: string
-  takeaway_1: string
-  takeaway_2: string
-  takeaway_3: string
+  takeaways: string
   summary: string
   confidence_rating: number | null
   completed_at: string

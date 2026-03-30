@@ -51,7 +51,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     return wsCourses.length > 0 && wsCourses.every(c => isCourseCompleted(c.id))
   }
 
-  async function submitCompletion(taskId: string, data: { takeaway_1: string; takeaway_2: string; takeaway_3: string; summary: string; confidence_rating: number | null }) {
+  async function submitCompletion(taskId: string, data: { takeaways: string; summary: string; confidence_rating: number | null }) {
     setCompleting(true)
     const { data: result, error } = await supabase.from('training_task_completions').insert({
       training_task_id: taskId,
@@ -542,12 +542,10 @@ function CompletionOverlay({
 }: {
   task: TrainingTask
   submitting: boolean
-  onSubmit: (data: { takeaway_1: string; takeaway_2: string; takeaway_3: string; summary: string; confidence_rating: number | null }) => void
+  onSubmit: (data: { takeaways: string; summary: string; confidence_rating: number | null }) => void
   onClose: () => void
 }) {
-  const [takeaway1, setTakeaway1] = useState('')
-  const [takeaway2, setTakeaway2] = useState('')
-  const [takeaway3, setTakeaway3] = useState('')
+  const [takeaways, setTakeaways] = useState('')
   const [summary, setSummary] = useState('')
   const [rating, setRating] = useState(0)
   const [showErrors, setShowErrors] = useState(false)
@@ -559,9 +557,7 @@ function CompletionOverlay({
   }
 
   const errors = {
-    takeaway1: wordCount(takeaway1) < 20,
-    takeaway2: wordCount(takeaway2) < 20,
-    takeaway3: wordCount(takeaway3) < 20,
+    takeaways: wordCount(takeaways) < 20,
     summary: wordCount(summary) < 20,
     rating: needsRating && rating === 0,
   }
@@ -574,9 +570,7 @@ function CompletionOverlay({
       return
     }
     onSubmit({
-      takeaway_1: takeaway1.trim(),
-      takeaway_2: takeaway2.trim(),
-      takeaway_3: takeaway3.trim(),
+      takeaways: takeaways.trim(),
       summary: summary.trim(),
       confidence_rating: needsRating ? rating : null,
     })
@@ -594,49 +588,19 @@ function CompletionOverlay({
 
         {/* Form */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {/* Takeaway 1 */}
+          {/* Key Takeaways */}
           <div>
             <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-              Key Takeaway 1 <span className="text-red-400">*</span>
+              What were your three key takeaways? <span className="text-red-400">*</span>
             </label>
             <textarea
-              className={`textarea text-sm ${showErrors && errors.takeaway1 ? 'border-red-300 bg-red-50/30' : ''}`}
-              rows={3}
-              value={takeaway1}
-              onChange={e => setTakeaway1(e.target.value)}
-              placeholder="What was your first key takeaway? (minimum 20 words)"
+              className={`textarea text-sm ${showErrors && errors.takeaways ? 'border-red-300 bg-red-50/30' : ''}`}
+              rows={5}
+              value={takeaways}
+              onChange={e => setTakeaways(e.target.value)}
+              placeholder="Share your three key takeaways... (minimum 20 words)"
             />
-            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaway1 ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaway1)} / 20 words min</p>
-          </div>
-
-          {/* Takeaway 2 */}
-          <div>
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-              Key Takeaway 2 <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              className={`textarea text-sm ${showErrors && errors.takeaway2 ? 'border-red-300 bg-red-50/30' : ''}`}
-              rows={3}
-              value={takeaway2}
-              onChange={e => setTakeaway2(e.target.value)}
-              placeholder="What was your second key takeaway? (minimum 20 words)"
-            />
-            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaway2 ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaway2)} / 20 words min</p>
-          </div>
-
-          {/* Takeaway 3 */}
-          <div>
-            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-              Key Takeaway 3 <span className="text-red-400">*</span>
-            </label>
-            <textarea
-              className={`textarea text-sm ${showErrors && errors.takeaway3 ? 'border-red-300 bg-red-50/30' : ''}`}
-              rows={3}
-              value={takeaway3}
-              onChange={e => setTakeaway3(e.target.value)}
-              placeholder="What was your third key takeaway? (minimum 20 words)"
-            />
-            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaway3 ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaway3)} / 20 words min</p>
+            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaways ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaways)} / 20 words min</p>
           </div>
 
           {/* Summary */}
