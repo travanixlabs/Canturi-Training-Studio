@@ -21,7 +21,7 @@ interface Props {
 
 export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCourses = [], subcategories = [], trainingTasks = [], taskContent = [], completions: initialCompletions = [] }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [selection, setSelection] = useState<{ type: 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
+  const [selection, setSelection] = useState<{ type: 'workshop' | 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
   const [completions, setCompletions] = useState<TrainingTaskCompletion[]>(initialCompletions)
   const [completing, setCompleting] = useState(false)
   const supabase = createClient()
@@ -119,6 +119,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   }
 
   // Resolve selected item
+  const selWorkshop = selection?.type === 'workshop' ? workshops.find(w => w.id === selection.id) : null
   const selCourse = selection?.type === 'course' ? courses.find(c => c.id === selection.id) : null
   const selCategory = selection?.type === 'category' ? categories.find(c => c.id === selection.id) : null
   const selSubcategory = selection?.type === 'subcategory' ? subcategories.find(s => s.id === selection.id) : null
@@ -143,8 +144,10 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                 <div key={workshop.id}>
                   {/* Workshop */}
                   <button
-                    onClick={() => toggle(wsKey)}
-                    className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 hover:bg-charcoal/3 transition-all"
+                    onClick={() => { toggle(wsKey); setSelection({ type: 'workshop', id: workshop.id }) }}
+                    className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
+                      selection?.type === 'workshop' && selection.id === workshop.id ? 'bg-gold/10' : 'hover:bg-charcoal/3'
+                    }`}
                   >
                     <span className="w-6 h-6 rounded-lg bg-gold/10 flex items-center justify-center text-[10px] flex-shrink-0 text-gold font-serif">W</span>
                     <span className="text-sm font-medium text-charcoal flex-1">{workshop.name}</span>
@@ -272,6 +275,57 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 
       {/* Right content area */}
       <div className="flex-1 overflow-y-auto">
+        {/* Workshop view */}
+        {selWorkshop && (
+          <div className="px-5 py-6 max-w-2xl">
+            <span className="text-xs text-charcoal/30 uppercase tracking-wider">Workshop</span>
+            <h1 className="font-serif text-2xl text-charcoal mt-1 mb-3">{selWorkshop.name}</h1>
+            {selWorkshop.tags && selWorkshop.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {selWorkshop.tags.map(tag => (
+                  <span key={tag} className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{tag}</span>
+                ))}
+              </div>
+            )}
+            {(() => {
+              const wsCourseIds = new Set(workshopCourses.filter(wc => wc.workshop_id === selWorkshop.id).map(wc => wc.course_id))
+              const wsCourses = courses.filter(c => wsCourseIds.has(c.id)).sort((a, b) => a.sort_order - b.sort_order)
+              const totalCats = wsCourses.reduce((sum, c) => sum + getCatsForCourse(c.id).length, 0)
+              return (
+                <>
+                  <p className="text-sm text-charcoal/50 mb-4">{wsCourses.length} courses · {totalCats} categories</p>
+                  <p className="text-xs text-charcoal/30 uppercase tracking-wider mb-3">Courses</p>
+                  <div className="space-y-2">
+                    {wsCourses.map(course => {
+                      const colour = course.colour_hex || COURSE_COLOURS[course.name] || '#C9A96E'
+                      const cats = getCatsForCourse(course.id)
+                      return (
+                        <button
+                          key={course.id}
+                          onClick={() => { setSelection({ type: 'course', id: course.id }); setExpanded(prev => new Set(prev).add(`ws-${selWorkshop.id}`).add(`c-${course.id}`)) }}
+                          className="w-full card p-4 text-left hover:shadow-md transition-shadow flex items-center gap-3"
+                        >
+                          <span
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                            style={{ backgroundColor: colour + '20', color: colour }}
+                          >
+                            {course.icon}
+                          </span>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-charcoal">{course.name}</p>
+                            <p className="text-xs text-charcoal/40 mt-0.5">{cats.length} categories</p>
+                          </div>
+                          <span className="text-charcoal/20">&rsaquo;</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        )}
+
         {/* Course view */}
         {selCourse && (
           <div className="px-5 py-6 max-w-2xl">
