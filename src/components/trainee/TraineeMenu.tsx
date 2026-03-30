@@ -182,7 +182,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                   {wsExpanded && (
                     <div className="border-t border-black/5">
                       {wsCourses.map(category => {
-                        const catItems = wsItems.filter(i => i.course_id === category.id)
+                        const catItems = wsItems.filter(i => i.course_id === category.id).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
                         const catKey = `${workshop.id}-${category.id}`
                         const catExpanded = expandedCategories.has(catKey)
 
