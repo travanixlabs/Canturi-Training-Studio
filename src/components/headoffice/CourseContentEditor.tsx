@@ -473,7 +473,12 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
           {activeTrainingTask && !editingCategoryDetails && (
             <TrainingTaskEditor
               task={activeTrainingTask}
-              siblingTasks={getTasksForSubcategory(activeTrainingTask.subcategory_id).filter(t => t.id !== activeTrainingTask.id)}
+              siblingTasks={(() => {
+                const sub = subcategories.find(s => s.id === activeTrainingTask.subcategory_id)
+                if (!sub) return []
+                const catSubIds = new Set(subcategories.filter(s => s.category_id === sub.category_id).map(s => s.id))
+                return trainingTasks.filter(t => catSubIds.has(t.subcategory_id) && t.id !== activeTrainingTask.id)
+              })()}
               attachments={getAttachmentsForTask(activeTrainingTask.id)}
               uploading={uploading}
               onUpdate={(updates) => updateTrainingTask(activeTrainingTask.id, updates)}
