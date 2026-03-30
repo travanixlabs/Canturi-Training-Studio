@@ -18,9 +18,7 @@ interface Props {
 
 export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCourses = [], subcategories = [], trainingTasks = [], taskContent = [] }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
-
-  const selectedTask = trainingTasks.find(t => t.id === selectedTaskId)
+  const [selection, setSelection] = useState<{ type: 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
 
   function toggle(key: string) {
     setExpanded(prev => {
@@ -64,9 +62,13 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     return url.includes('youtube') || url.includes('vimeo') || url.includes('youtu.be')
   }
 
-  // Find context for selected task
-  const selectedSub = selectedTask ? subcategories.find(s => s.id === selectedTask.subcategory_id) : null
-  const selectedCat = selectedSub ? categories.find(c => c.id === selectedSub.category_id) : null
+  // Resolve selected item
+  const selCourse = selection?.type === 'course' ? courses.find(c => c.id === selection.id) : null
+  const selCategory = selection?.type === 'category' ? categories.find(c => c.id === selection.id) : null
+  const selSubcategory = selection?.type === 'subcategory' ? subcategories.find(s => s.id === selection.id) : null
+  const selTask = selection?.type === 'task' ? trainingTasks.find(t => t.id === selection.id) : null
+  const selTaskSub = selTask ? subcategories.find(s => s.id === selTask.subcategory_id) : null
+  const selTaskCat = selTaskSub ? categories.find(c => c.id === selTaskSub.category_id) : null
 
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-120px)]">
@@ -105,8 +107,10 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                           <div key={course.id}>
                             {/* Course */}
                             <button
-                              onClick={() => toggle(cKey)}
-                              className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-charcoal/3 transition-all"
+                              onClick={() => { toggle(cKey); setSelection({ type: 'course', id: course.id }) }}
+                              className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
+                                selection?.type === 'course' && selection.id === course.id ? 'bg-gold/10' : 'hover:bg-charcoal/3'
+                              }`}
                             >
                               <span
                                 className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
@@ -129,8 +133,10 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                     <div key={cat.id}>
                                       {/* Category */}
                                       <button
-                                        onClick={() => toggle(catKey)}
-                                        className="w-full text-left px-3 py-1.5 rounded-lg flex items-center gap-2 hover:bg-charcoal/3 transition-all"
+                                        onClick={() => { toggle(catKey); setSelection({ type: 'category', id: cat.id }) }}
+                                        className={`w-full text-left px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
+                                          selection?.type === 'category' && selection.id === cat.id ? 'bg-gold/10' : 'hover:bg-charcoal/3'
+                                        }`}
                                       >
                                         <span className="text-xs text-charcoal/50 flex-1">{cat.title}</span>
                                         {subs.length > 0 && (
@@ -149,8 +155,10 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                               <div key={sub.id}>
                                                 {/* Subcategory */}
                                                 <button
-                                                  onClick={() => toggle(subKey)}
-                                                  className="w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 hover:bg-charcoal/3 transition-all"
+                                                  onClick={() => { toggle(subKey); setSelection({ type: 'subcategory', id: sub.id }) }}
+                                                  className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
+                                                    selection?.type === 'subcategory' && selection.id === sub.id ? 'bg-gold/10' : 'hover:bg-charcoal/3'
+                                                  }`}
                                                 >
                                                   <span className="text-xs text-charcoal/40 flex-1">{sub.title}</span>
                                                   {tasks.length > 0 && (
@@ -161,13 +169,12 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                                 {subOpen && tasks.length > 0 && (
                                                   <div className="ml-2 pl-3 border-l border-charcoal/5 mt-0.5 mb-1 space-y-0.5">
                                                     {tasks.map(task => {
-                                                      const isSelected = selectedTaskId === task.id
                                                       return (
                                                         <button
                                                           key={task.id}
-                                                          onClick={() => setSelectedTaskId(task.id)}
+                                                          onClick={() => setSelection({ type: 'task', id: task.id })}
                                                           className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all ${
-                                                            isSelected
+                                                            selection?.type === 'task' && selection.id === task.id
                                                               ? 'bg-gold/10 text-gold font-medium'
                                                               : 'text-charcoal/40 hover:bg-charcoal/3 hover:text-charcoal/60'
                                                           }`}
@@ -202,78 +209,128 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 
       {/* Right content area */}
       <div className="flex-1 overflow-y-auto">
-        {selectedTask && selectedSub && selectedCat ? (
+        {/* Course view */}
+        {selCourse && (
           <div className="px-5 py-6 max-w-2xl">
-            {/* Breadcrumb */}
+            <span className="text-xs text-charcoal/30 uppercase tracking-wider">Course</span>
+            <h1 className="font-serif text-2xl text-charcoal mt-1 mb-3">{selCourse.name}</h1>
+            <p className="text-sm text-charcoal/50 mb-4">{getCatsForCourse(selCourse.id).length} categories</p>
+            <div className="space-y-2">
+              {getCatsForCourse(selCourse.id).map((cat, i) => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setSelection({ type: 'category', id: cat.id }); setExpanded(prev => new Set(prev).add(`c-${selCourse.id}`).add(`cat-${cat.id}`)) }}
+                  className="w-full card p-4 text-left hover:shadow-md transition-shadow flex items-center gap-3"
+                >
+                  <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs text-charcoal/40 flex-shrink-0">{i + 1}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-charcoal">{cat.title}</p>
+                    {cat.description && <p className="text-xs text-charcoal/40 mt-0.5 line-clamp-1">{cat.description}</p>}
+                  </div>
+                  <span className="text-charcoal/20">&rsaquo;</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Category view */}
+        {selCategory && (
+          <div className="px-5 py-6 max-w-2xl">
+            {selCategory.course && <span className="text-xs text-charcoal/30">{(selCategory.course as Course).name}</span>}
+            <h1 className="font-serif text-2xl text-charcoal mt-1 mb-2">{selCategory.title}</h1>
+            {selCategory.description && <p className="text-sm text-charcoal/60 leading-relaxed mb-4">{selCategory.description}</p>}
+            <p className="text-xs text-charcoal/30 uppercase tracking-wider mb-3">Subcategories</p>
+            <div className="space-y-2">
+              {getSubsForCat(selCategory.id).map((sub, i) => (
+                <button
+                  key={sub.id}
+                  onClick={() => { setSelection({ type: 'subcategory', id: sub.id }); setExpanded(prev => new Set(prev).add(`cat-${selCategory.id}`).add(`sub-${sub.id}`)) }}
+                  className="w-full card p-4 text-left hover:shadow-md transition-shadow flex items-center gap-3"
+                >
+                  <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs text-charcoal/40 flex-shrink-0">{i + 1}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-charcoal">{sub.title}</p>
+                    {sub.content && <p className="text-xs text-charcoal/40 mt-0.5 line-clamp-1">{sub.content}</p>}
+                  </div>
+                  <span className="text-xs text-charcoal/30">{getTasksForSub(sub.id).length} tasks</span>
+                  <span className="text-charcoal/20">&rsaquo;</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Subcategory view */}
+        {selSubcategory && (() => {
+          const parentCat = categories.find(c => c.id === selSubcategory.category_id)
+          const tasks = getTasksForSub(selSubcategory.id)
+          return (
+            <div className="px-5 py-6 max-w-2xl">
+              {parentCat && <span className="text-xs text-charcoal/30">{parentCat.course ? (parentCat.course as Course).name + ' › ' : ''}{parentCat.title}</span>}
+              <h1 className="font-serif text-2xl text-charcoal mt-1 mb-2">{selSubcategory.title}</h1>
+              {selSubcategory.content && <p className="text-sm text-charcoal/60 leading-relaxed mb-4">{selSubcategory.content}</p>}
+              <p className="text-xs text-charcoal/30 uppercase tracking-wider mb-3">Training Tasks</p>
+              <div className="space-y-2">
+                {tasks.map((task, i) => (
+                  <button
+                    key={task.id}
+                    onClick={() => { setSelection({ type: 'task', id: task.id }); setExpanded(prev => new Set(prev).add(`sub-${selSubcategory.id}`)) }}
+                    className="w-full card p-4 text-left hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs text-charcoal/40 flex-shrink-0 mt-0.5">{i + 1}</span>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-charcoal leading-snug">{task.title}</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {task.trainer_type && <span className="text-[10px] px-2 py-0.5 rounded-full bg-charcoal/5 text-charcoal/40">{task.trainer_type}</span>}
+                          {task.modality && <span className="text-[10px] px-2 py-0.5 rounded-full bg-charcoal/5 text-charcoal/40">{task.modality}</span>}
+                        </div>
+                      </div>
+                      <span className="text-charcoal/20 mt-0.5">&rsaquo;</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
+
+        {/* Training Task view */}
+        {selTask && (
+          <div className="px-5 py-6 max-w-2xl">
             <p className="text-xs text-charcoal/30 mb-4">
-              {selectedCat.course && <span>{(selectedCat.course as Course).name} &rsaquo; </span>}
-              {selectedCat.title} &rsaquo; {selectedSub.title}
+              {selTaskCat?.course && <span>{(selTaskCat.course as Course).name} &rsaquo; </span>}
+              {selTaskCat && <span>{selTaskCat.title} &rsaquo; </span>}
+              {selTaskSub && <span>{selTaskSub.title}</span>}
             </p>
 
-            {/* Task title */}
-            <h1 className="font-serif text-xl text-charcoal mb-3">{selectedTask.title}</h1>
+            <h1 className="font-serif text-xl text-charcoal mb-3">{selTask.title}</h1>
 
-            {/* Task meta */}
             <div className="flex flex-wrap gap-2 mb-5">
-              {selectedTask.trainer_type && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{selectedTask.trainer_type}</span>
-              )}
-              {selectedTask.modality && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{selectedTask.modality}</span>
-              )}
-              {selectedTask.priority_level && (
-                <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{selectedTask.priority_level}</span>
-              )}
+              {selTask.trainer_type && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{selTask.trainer_type}</span>}
+              {selTask.modality && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{selTask.modality}</span>}
+              {selTask.priority_level && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{selTask.priority_level}</span>}
             </div>
 
-            {/* Task content */}
             {(() => {
-              const content = getContentForTask(selectedTask.id)
+              const content = getContentForTask(selTask.id)
               if (content.length === 0) return null
-
               return (
                 <div className="space-y-4">
                   {content.map(c => (
                     <div key={c.id}>
-                      {c.title && c.type !== 'text' && (
-                        <p className="text-xs font-medium text-charcoal/50 mb-1.5">{c.title}</p>
-                      )}
-
-                      {c.type === 'text' && c.url && (
-                        <div className="text-sm text-charcoal/70 leading-relaxed whitespace-pre-wrap">{c.url}</div>
-                      )}
-
-                      {c.type === 'webpage' && c.url && (
-                        <a
-                          href={c.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm text-gold hover:text-gold/80 underline underline-offset-2 break-all"
-                        >
-                          {c.url}
-                        </a>
-                      )}
-
-                      {c.type === 'image' && c.url && (
-                        <img src={c.url} alt={c.title || ''} className="max-w-full rounded-lg border border-black/5" />
-                      )}
-
+                      {c.title && c.type !== 'text' && <p className="text-xs font-medium text-charcoal/50 mb-1.5">{c.title}</p>}
+                      {c.type === 'text' && c.url && <div className="text-sm text-charcoal/70 leading-relaxed whitespace-pre-wrap">{c.url}</div>}
+                      {c.type === 'webpage' && c.url && <a href={c.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-gold hover:text-gold/80 underline underline-offset-2 break-all">{c.url}</a>}
+                      {c.type === 'image' && c.url && <img src={c.url} alt={c.title || ''} className="max-w-full rounded-lg border border-black/5" />}
                       {c.type === 'video' && c.url && (
                         isEmbeddable(c.url) ? (
                           <div className="rounded-lg overflow-hidden" style={{ height: '320px' }}>
-                            <iframe
-                              src={getEmbedUrl(c.url)}
-                              className="w-full h-full border-0"
-                              title={c.title || 'Video'}
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                            />
+                            <iframe src={getEmbedUrl(c.url)} className="w-full h-full border-0" title={c.title || 'Video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                           </div>
-                        ) : (
-                          <video src={c.url} controls className="max-w-full rounded-lg" />
-                        )
+                        ) : <video src={c.url} controls className="max-w-full rounded-lg" />
                       )}
-
                       {c.type === 'pdf' && c.url && (
                         <div className="rounded-lg overflow-hidden border border-black/5" style={{ height: '400px' }}>
                           <iframe src={c.url} className="w-full h-full border-0" title={c.title || 'PDF'} />
@@ -285,11 +342,14 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
               )
             })()}
           </div>
-        ) : (
+        )}
+
+        {/* Empty state */}
+        {!selection && (
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center">
               <BookOpen size={40} className="mx-auto text-charcoal/15 mb-3" />
-              <p className="font-serif text-lg text-charcoal/40">Select a training task to view its content</p>
+              <p className="font-serif text-lg text-charcoal/40">Select an item to view details</p>
             </div>
           </div>
         )}
