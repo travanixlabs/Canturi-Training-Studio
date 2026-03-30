@@ -780,31 +780,42 @@ function TrainingTaskEditor({
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Prerequisites</label>
         {siblingTasks.length === 0 ? (
           <p className="text-xs text-charcoal/30">No other training tasks in this subcategory</p>
-        ) : (
-          <div className="space-y-1.5">
-            {siblingTasks.map(st => {
-              const isSelected = (task.prerequisites ?? []).includes(st.id)
-              return (
-                <button
-                  key={st.id}
-                  onClick={() => {
-                    const current = task.prerequisites ?? []
-                    const updated = isSelected ? current.filter(id => id !== st.id) : [...current, st.id]
-                    onUpdate({ prerequisites: updated })
-                  }}
-                  className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-all border ${
-                    isSelected ? 'border-gold bg-gold/5 text-gold' : 'border-charcoal/10 text-charcoal/60 hover:border-charcoal/20'
-                  }`}
-                >
-                  <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${isSelected ? 'bg-gold border-gold text-white' : 'border-charcoal/20'}`}>
-                    {isSelected && '✓'}
-                  </span>
-                  {st.title}
-                </button>
-              )
-            })}
-          </div>
-        )}
+        ) : (() => {
+          const selectedCount = (task.prerequisites ?? []).length
+          return (
+            <details className="group">
+              <summary className="input cursor-pointer flex items-center justify-between list-none [&::-webkit-details-marker]:hidden">
+                <span className="text-sm text-charcoal/60">
+                  {selectedCount === 0 ? 'None selected' : `${selectedCount} prerequisite${selectedCount !== 1 ? 's' : ''} selected`}
+                </span>
+                <ChevronDown size={14} className="text-charcoal/30 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="mt-2 space-y-1.5">
+                {siblingTasks.map(st => {
+                  const isSelected = (task.prerequisites ?? []).includes(st.id)
+                  return (
+                    <button
+                      key={st.id}
+                      onClick={() => {
+                        const current = task.prerequisites ?? []
+                        const updated = isSelected ? current.filter(id => id !== st.id) : [...current, st.id]
+                        onUpdate({ prerequisites: updated })
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 text-sm transition-all border ${
+                        isSelected ? 'border-gold bg-gold/5 text-gold' : 'border-charcoal/10 text-charcoal/60 hover:border-charcoal/20'
+                      }`}
+                    >
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${isSelected ? 'bg-gold border-gold text-white' : 'border-charcoal/20'}`}>
+                        {isSelected && '✓'}
+                      </span>
+                      {st.title}
+                    </button>
+                  )
+                })}
+              </div>
+            </details>
+          )
+        })()}
       </div>
 
       {/* 6. Recurring */}
