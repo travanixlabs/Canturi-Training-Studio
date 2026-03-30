@@ -47,21 +47,44 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   const getTasksForSubcategory = (subcategoryId: string) =>
     trainingTasks.filter(t => t.subcategory_id === subcategoryId)
 
+  // Guard: check if current task is an incomplete draft before navigating away
+  function guardNavigation(proceed: () => void) {
+    if (selectedTrainingTaskId) {
+      const currentTask = trainingTasks.find(t => t.id === selectedTrainingTaskId)
+      if (currentTask && !isTaskValid(currentTask)) {
+        const confirmed = window.confirm(
+          'This training task has incomplete mandatory fields.\n\nIf you leave now, the task will be deleted.\n\nAre you sure you want to leave?'
+        )
+        if (!confirmed) return
+        // Delete the incomplete draft
+        deleteTrainingTask(selectedTrainingTaskId)
+      }
+    }
+    proceed()
+  }
+
   function selectSubcategory(id: string) {
-    setSelectedSubcategoryId(id)
-    setSelectedTrainingTaskId(null)
-    setEditingCategoryDetails(false)
+    guardNavigation(() => {
+      setSelectedSubcategoryId(id)
+      setSelectedTrainingTaskId(null)
+      setEditingCategoryDetails(false)
+    })
   }
 
   function selectTrainingTask(id: string) {
-    setSelectedTrainingTaskId(id)
-    setEditingCategoryDetails(false)
+    if (id === selectedTrainingTaskId) return
+    guardNavigation(() => {
+      setSelectedTrainingTaskId(id)
+      setEditingCategoryDetails(false)
+    })
   }
 
   function selectCategoryDetails() {
-    setEditingCategoryDetails(true)
-    setSelectedSubcategoryId(null)
-    setSelectedTrainingTaskId(null)
+    guardNavigation(() => {
+      setEditingCategoryDetails(true)
+      setSelectedSubcategoryId(null)
+      setSelectedTrainingTaskId(null)
+    })
   }
 
   const autoSave = useCallback(async () => {
@@ -277,7 +300,9 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   }
 
   function handleBack() {
-    router.push('/head-office/courses')
+    guardNavigation(() => {
+      router.push('/head-office/courses')
+    })
   }
 
   return (
