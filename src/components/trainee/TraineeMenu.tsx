@@ -29,6 +29,27 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 
   const isTaskCompleted = (taskId: string) => completions.some(c => c.training_task_id === taskId)
 
+  const isSubCompleted = (subId: string) => {
+    const tasks = getTasksForSub(subId)
+    return tasks.length > 0 && tasks.every(t => isTaskCompleted(t.id))
+  }
+
+  const isCatCompleted = (catId: string) => {
+    const subs = getSubsForCat(catId)
+    return subs.length > 0 && subs.every(s => isSubCompleted(s.id))
+  }
+
+  const isCourseCompleted = (courseId: string) => {
+    const cats = getCatsForCourse(courseId)
+    return cats.length > 0 && cats.every(c => isCatCompleted(c.id))
+  }
+
+  const isWorkshopCompleted = (wsId: string) => {
+    const courseIds = new Set(workshopCourses.filter(wc => wc.workshop_id === wsId).map(wc => wc.course_id))
+    const wsCourses = courses.filter(c => courseIds.has(c.id))
+    return wsCourses.length > 0 && wsCourses.every(c => isCourseCompleted(c.id))
+  }
+
   async function markComplete(taskId: string) {
     setCompleting(true)
     const { data, error } = await supabase.from('training_task_completions').insert({
@@ -146,11 +167,13 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                   <button
                     onClick={() => { toggle(wsKey); setSelection({ type: 'workshop', id: workshop.id }) }}
                     className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
-                      selection?.type === 'workshop' && selection.id === workshop.id ? 'bg-gold/10' : 'hover:bg-charcoal/3'
+                      selection?.type === 'workshop' && selection.id === workshop.id ? 'bg-gold/10'
+                      : isWorkshopCompleted(workshop.id) ? 'bg-green-50'
+                      : 'hover:bg-charcoal/3'
                     }`}
                   >
-                    <span className="w-6 h-6 rounded-lg bg-gold/10 flex items-center justify-center text-[10px] flex-shrink-0 text-gold font-serif">W</span>
-                    <span className="text-sm font-medium text-charcoal flex-1">{workshop.name}</span>
+                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] flex-shrink-0 font-serif ${isWorkshopCompleted(workshop.id) ? 'bg-green-100 text-green-700' : 'bg-gold/10 text-gold'}`}>W</span>
+                    <span className={`text-sm font-medium flex-1 ${isWorkshopCompleted(workshop.id) ? 'text-green-700' : 'text-charcoal'}`}>{workshop.name}</span>
                     {wsOpen ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
                   </button>
 
@@ -174,16 +197,18 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                             <button
                               onClick={() => { toggle(cKey); setSelection({ type: 'course', id: course.id }) }}
                               className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                                selection?.type === 'course' && selection.id === course.id ? 'bg-gold/10' : 'hover:bg-charcoal/3'
+                                selection?.type === 'course' && selection.id === course.id ? 'bg-gold/10'
+                                : isCourseCompleted(course.id) ? 'bg-green-50'
+                                : 'hover:bg-charcoal/3'
                               }`}
                             >
                               <span
-                                className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0"
-                                style={{ backgroundColor: colour + '20', color: colour }}
+                                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 ${isCourseCompleted(course.id) ? 'bg-green-200 text-green-700' : ''}`}
+                                style={isCourseCompleted(course.id) ? {} : { backgroundColor: colour + '20', color: colour }}
                               >
-                                {course.icon}
+                                {isCourseCompleted(course.id) ? '✓' : course.icon}
                               </span>
-                              <span className="text-sm text-charcoal/70 flex-1">{course.name}</span>
+                              <span className={`text-sm flex-1 ${isCourseCompleted(course.id) ? 'text-green-700' : 'text-charcoal/70'}`}>{course.name}</span>
                               {cOpen ? <ChevronUp size={12} className="text-charcoal/20" /> : <ChevronDown size={12} className="text-charcoal/20" />}
                             </button>
 
@@ -200,10 +225,12 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                       <button
                                         onClick={() => { toggle(catKey); setSelection({ type: 'category', id: cat.id }) }}
                                         className={`w-full text-left px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
-                                          selection?.type === 'category' && selection.id === cat.id ? 'bg-gold/10' : 'hover:bg-charcoal/3'
+                                          selection?.type === 'category' && selection.id === cat.id ? 'bg-gold/10'
+                                          : isCatCompleted(cat.id) ? 'bg-green-50'
+                                          : 'hover:bg-charcoal/3'
                                         }`}
                                       >
-                                        <span className="text-xs text-charcoal/50 flex-1">{cat.title}</span>
+                                        <span className={`text-xs flex-1 ${isCatCompleted(cat.id) ? 'text-green-700 font-medium' : 'text-charcoal/50'}`}>{cat.title}</span>
                                         {subs.length > 0 && (
                                           catOpen ? <ChevronUp size={10} className="text-charcoal/20" /> : <ChevronDown size={10} className="text-charcoal/20" />
                                         )}
@@ -222,10 +249,12 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                                 <button
                                                   onClick={() => { toggle(subKey); setSelection({ type: 'subcategory', id: sub.id }) }}
                                                   className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
-                                                    selection?.type === 'subcategory' && selection.id === sub.id ? 'bg-gold/10' : 'hover:bg-charcoal/3'
+                                                    selection?.type === 'subcategory' && selection.id === sub.id ? 'bg-gold/10'
+                                                    : isSubCompleted(sub.id) ? 'bg-green-50'
+                                                    : 'hover:bg-charcoal/3'
                                                   }`}
                                                 >
-                                                  <span className="text-xs text-charcoal/40 flex-1">{sub.title}</span>
+                                                  <span className={`text-xs flex-1 ${isSubCompleted(sub.id) ? 'text-green-700 font-medium' : 'text-charcoal/40'}`}>{sub.title}</span>
                                                   {tasks.length > 0 && (
                                                     subOpen ? <ChevronUp size={10} className="text-charcoal/15" /> : <ChevronDown size={10} className="text-charcoal/15" />
                                                   )}
