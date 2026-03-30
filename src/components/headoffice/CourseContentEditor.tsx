@@ -236,15 +236,15 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   }
 
   async function updateTrainingTask(id: string, updates: Partial<TrainingTask>) {
-    // Update local state first
-    let updatedTask: TrainingTask | undefined
-    setTrainingTasks(prev => {
-      const next = prev.map(t => t.id === id ? { ...t, ...updates } : t)
-      updatedTask = next.find(t => t.id === id)
-      return next
-    })
+    // Compute updated task synchronously from current state
+    const currentTask = trainingTasks.find(t => t.id === id)
+    if (!currentTask) return
+    const updatedTask = { ...currentTask, ...updates }
 
-    if (!updatedTask || !isTaskValid(updatedTask)) return
+    // Update local state
+    setTrainingTasks(prev => prev.map(t => t.id === id ? updatedTask : t))
+
+    if (!isTaskValid(updatedTask)) return
 
     const isDraft = draftTaskIds.has(id)
     if (isDraft) {
