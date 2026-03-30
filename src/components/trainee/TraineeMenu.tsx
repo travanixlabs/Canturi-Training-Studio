@@ -154,13 +154,14 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                     {wsOpen ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
                   </button>
 
+                  <div className="flex gap-2 mt-0.5 mb-1 ml-12">
+                    <button onClick={(e) => { e.stopPropagation(); expandAll(workshop.id) }} className="text-[10px] font-medium text-gold hover:text-gold/80 transition-colors">Expand All</button>
+                    <span className="text-charcoal/15">|</span>
+                    <button onClick={(e) => { e.stopPropagation(); collapseAll(workshop.id) }} className="text-[10px] font-medium text-charcoal/40 hover:text-charcoal/60 transition-colors">Collapse All</button>
+                  </div>
+
                   {wsOpen && (
                     <div className="ml-4 pl-3 border-l border-charcoal/8 mt-1 mb-2 space-y-0.5">
-                      <div className="flex gap-2 mb-1 px-3">
-                        <button onClick={(e) => { e.stopPropagation(); expandAll(workshop.id) }} className="text-[10px] font-medium text-gold hover:text-gold/80 transition-colors">Expand All</button>
-                        <span className="text-charcoal/15">|</span>
-                        <button onClick={(e) => { e.stopPropagation(); collapseAll(workshop.id) }} className="text-[10px] font-medium text-charcoal/40 hover:text-charcoal/60 transition-colors">Collapse All</button>
-                      </div>
                       {wsCourses.map(course => {
                         const cKey = `c-${course.id}`
                         const cOpen = expanded.has(cKey)
