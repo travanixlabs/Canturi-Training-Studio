@@ -131,11 +131,20 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     )
   }
 
-  async function addTrainingTask(subcategoryId: string) {
+  // Track which tasks are local drafts (not yet saved to DB)
+  const [draftTaskIds, setDraftTaskIds] = useState<Set<string>>(new Set())
+
+  function isTaskValid(t: TrainingTask) {
+    return !!(t.title.trim() && t.trainer_type && t.modality && t.role_level && t.priority_level && (t.tags ?? []).length)
+  }
+
+  function addTrainingTask(subcategoryId: string) {
     const existing = getTasksForSubcategory(subcategoryId)
-    const { data, error } = await supabase.from('training_tasks').insert({
+    const tempId = `draft-${Date.now()}`
+    const draft: TrainingTask = {
+      id: tempId,
       subcategory_id: subcategoryId,
-      title: `Training Task ${existing.length + 1}`,
+      title: '',
       trainer_type: '',
       modality: '',
       role_level: '',
@@ -149,12 +158,11 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       description: '',
       content: '',
       sort_order: existing.length,
-    }).select().single()
-
-    if (!error && data) {
-      setTrainingTasks(prev => [...prev, data as TrainingTask])
-      selectTrainingTask(data.id)
+      created_at: new Date().toISOString(),
     }
+    setTrainingTasks(prev => [...prev, draft])
+    setDraftTaskIds(prev => new Set(prev).add(tempId))
+    selectTrainingTask(tempId)
   }
 
   const getAttachmentsForTask = (taskId: string) =>
@@ -228,13 +236,40 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
   }
 
   async function updateTrainingTask(id: string, updates: Partial<TrainingTask>) {
-    setTrainingTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
-    await supabase.from('training_tasks').update(updates).eq('id', id)
+    // Update local state first
+    let updatedTask: TrainingTask | undefined
+    setTrainingTasks(prev => {
+      const next = prev.map(t => t.id === id ? { ...t, ...updates } : t)
+      updatedTask = next.find(t => t.id === id)
+      return next
+    })
+
+    if (!updatedTask || !isTaskValid(updatedTask)) return
+
+    const isDraft = draftTaskIds.has(id)
+    if (isDraft) {
+      // First time valid — insert into DB
+      const { id: _tempId, created_at: _ca, ...payload } = updatedTask
+      const { data, error } = await supabase.from('training_tasks').insert(payload).select().single()
+      if (!error && data) {
+        // Replace temp ID with real DB ID
+        setTrainingTasks(prev => prev.map(t => t.id === id ? (data as TrainingTask) : t))
+        setDraftTaskIds(prev => { const next = new Set(prev); next.delete(id); return next })
+        if (selectedTrainingTaskId === id) setSelectedTrainingTaskId(data.id)
+      }
+    } else {
+      // Already in DB — update
+      await supabase.from('training_tasks').update(updates).eq('id', id)
+    }
   }
 
   async function deleteTrainingTask(id: string) {
     setTrainingTasks(prev => prev.filter(t => t.id !== id))
-    await supabase.from('training_tasks').delete().eq('id', id)
+    if (draftTaskIds.has(id)) {
+      setDraftTaskIds(prev => { const next = new Set(prev); next.delete(id); return next })
+    } else {
+      await supabase.from('training_tasks').delete().eq('id', id)
+    }
     if (selectedTrainingTaskId === id) {
       setSelectedTrainingTaskId(null)
     }
