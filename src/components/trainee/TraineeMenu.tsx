@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronDown, ChevronUp, BookOpen } from 'lucide-react'
+import { ChevronDown, ChevronUp, BookOpen, Check } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
-import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent } from '@/types'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion } from '@/types'
 
 interface Props {
   courses: Course[]
@@ -14,11 +16,30 @@ interface Props {
   subcategories?: Subcategory[]
   trainingTasks?: TrainingTask[]
   taskContent?: TrainingTaskContent[]
+  completions?: TrainingTaskCompletion[]
 }
 
-export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCourses = [], subcategories = [], trainingTasks = [], taskContent = [] }: Props) {
+export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCourses = [], subcategories = [], trainingTasks = [], taskContent = [], completions: initialCompletions = [] }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [selection, setSelection] = useState<{ type: 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
+  const [completions, setCompletions] = useState<TrainingTaskCompletion[]>(initialCompletions)
+  const [completing, setCompleting] = useState(false)
+  const supabase = createClient()
+  const router = useRouter()
+
+  const isTaskCompleted = (taskId: string) => completions.some(c => c.training_task_id === taskId)
+
+  async function markComplete(taskId: string) {
+    setCompleting(true)
+    const { data, error } = await supabase.from('training_task_completions').insert({
+      training_task_id: taskId,
+      trainee_id: currentUser.id,
+    }).select().single()
+    if (!error && data) {
+      setCompletions(prev => [...prev, data as TrainingTaskCompletion])
+    }
+    setCompleting(false)
+  }
 
   function toggle(key: string) {
     setExpanded(prev => {
@@ -176,6 +197,8 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                                           className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all ${
                                                             selection?.type === 'task' && selection.id === task.id
                                                               ? 'bg-gold/10 text-gold font-medium'
+                                                              : isTaskCompleted(task.id)
+                                                              ? 'bg-green-50 text-green-700'
                                                               : 'text-charcoal/40 hover:bg-charcoal/3 hover:text-charcoal/60'
                                                           }`}
                                                         >
@@ -276,7 +299,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                   <button
                     key={task.id}
                     onClick={() => { setSelection({ type: 'task', id: task.id }); setExpanded(prev => new Set(prev).add(`sub-${selSubcategory.id}`)) }}
-                    className="w-full card p-4 text-left hover:shadow-md transition-shadow"
+                    className={`w-full card p-4 text-left hover:shadow-md transition-shadow ${isTaskCompleted(task.id) ? 'bg-green-50 border-green-200' : ''}`}
                   >
                     <div className="flex items-start gap-3">
                       <span className="w-6 h-6 rounded-full bg-charcoal/8 flex items-center justify-center text-xs text-charcoal/40 flex-shrink-0 mt-0.5">{i + 1}</span>
@@ -341,6 +364,24 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                 </div>
               )
             })()}
+
+            {/* Mark as Complete */}
+            <div className="mt-8 pt-6 border-t border-black/5">
+              {isTaskCompleted(selTask.id) ? (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 text-green-700 text-sm font-medium">
+                  <Check size={16} />
+                  Completed
+                </div>
+              ) : (
+                <button
+                  onClick={() => markComplete(selTask.id)}
+                  disabled={completing}
+                  className="w-full px-4 py-3 rounded-xl bg-gold text-white font-medium text-sm hover:bg-gold/90 transition-colors disabled:opacity-50"
+                >
+                  {completing ? 'Saving...' : 'Mark as Complete'}
+                </button>
+              )}
+            </div>
           </div>
         )}
 

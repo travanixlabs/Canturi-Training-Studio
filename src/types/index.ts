@@ -84,6 +84,13 @@ export interface TrainingTaskContent {
   created_at: string
 }
 
+export interface TrainingTaskCompletion {
+  id: string
+  training_task_id: string
+  trainee_id: string
+  completed_at: string
+}
+
 export interface Workshop {
   id: string
   name: string
