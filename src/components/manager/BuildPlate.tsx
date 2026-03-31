@@ -749,7 +749,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                             return (
                               <div
                                 key={`${taskId}-${idx}`}
-                                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] leading-tight group"
+                                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-snug group"
                                 style={{ backgroundColor: colour + '15', color: colour }}
                               >
                                 <span className="flex-1 truncate">{task.title}</span>
