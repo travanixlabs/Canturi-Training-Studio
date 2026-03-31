@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 const tabs = [
   { href: '/trainee/day-plate', label: 'Day Plate' },
   { href: '/trainee/menu', label: 'Menu' },
+  { href: '/trainee/feedback', label: 'Feedback' },
 ]
 
 export function TraineeNav() {
