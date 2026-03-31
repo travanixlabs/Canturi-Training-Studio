@@ -716,9 +716,9 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                         } ${
                           dragOverDate === dateKey ? 'bg-gold/5' : ''
                         } ${
-                          status === 'saved' ? 'ring-2 ring-inset ring-green-500' : ''
+                          status === 'saved' ? 'ring-2 ring-inset ring-green-500 bg-green-50' : ''
                         } ${
-                          status === 'error' ? 'ring-2 ring-inset ring-red-500' : ''
+                          status === 'error' ? 'ring-2 ring-inset ring-red-500 bg-red-50' : ''
                         }`}
                       >
                         <div className="flex items-center gap-1 mb-1">
