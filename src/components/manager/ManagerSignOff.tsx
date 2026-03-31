@@ -127,6 +127,19 @@ export function ManagerSignOff({ manager, trainees, completions: initialCompleti
                       <p className="text-sm font-medium text-charcoal">{task?.title || 'Unknown Task'}</p>
                       <p className="text-[10px] text-charcoal/30 mt-0.5">{getBreadcrumb(c.training_task_id)}</p>
                       <p className="text-[10px] text-charcoal/30 mt-0.5">Completed {formatDate(c.completed_at)}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {c.confidence_rating && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-charcoal/30">
+                            Self: {[1,2,3,4,5].map(s => <svg key={s} width="10" height="10" viewBox="0 0 24 24" fill={s <= c.confidence_rating! ? '#C9A96E' : 'none'} stroke={s <= c.confidence_rating! ? '#C9A96E' : '#D1D5DB'} strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>)}
+                          </span>
+                        )}
+                        {c.confidence_rating && c.manager_rating && <span className="text-[10px] text-charcoal/15">|</span>}
+                        {c.manager_rating && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-charcoal/30">
+                            Manager: {[1,2,3,4,5].map(s => <svg key={s} width="10" height="10" viewBox="0 0 24 24" fill={s <= c.manager_rating! ? '#C9A96E' : 'none'} stroke={s <= c.manager_rating! ? '#C9A96E' : '#D1D5DB'} strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {task?.is_recurring && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 flex-shrink-0">Recurring</span>
@@ -170,6 +183,19 @@ export function ManagerSignOff({ manager, trainees, completions: initialCompleti
                       <p className="text-sm font-medium text-charcoal">{task?.title || 'Unknown Task'}</p>
                       <p className="text-[10px] text-charcoal/30 mt-0.5">{getBreadcrumb(c.training_task_id)}</p>
                       <p className="text-[10px] text-charcoal/30 mt-0.5">Completed {formatDate(c.completed_at)} · Signed off {formatDate(c.signed_off_at!)}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {c.confidence_rating && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-charcoal/30">
+                            Self: {[1,2,3,4,5].map(s => <svg key={s} width="10" height="10" viewBox="0 0 24 24" fill={s <= c.confidence_rating! ? '#C9A96E' : 'none'} stroke={s <= c.confidence_rating! ? '#C9A96E' : '#D1D5DB'} strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>)}
+                          </span>
+                        )}
+                        {c.confidence_rating && c.manager_rating && <span className="text-[10px] text-charcoal/15">|</span>}
+                        {c.manager_rating && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-charcoal/30">
+                            Manager: {[1,2,3,4,5].map(s => <svg key={s} width="10" height="10" viewBox="0 0 24 24" fill={s <= c.manager_rating! ? '#C9A96E' : 'none'} stroke={s <= c.manager_rating! ? '#C9A96E' : '#D1D5DB'} strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <Check size={14} className="text-green-600 flex-shrink-0 mt-0.5" />
                   </div>
