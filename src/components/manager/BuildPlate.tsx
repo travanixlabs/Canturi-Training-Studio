@@ -771,7 +771,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                 className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-snug group cursor-grab active:cursor-grabbing"
                                 style={{ backgroundColor: colour + '15', color: colour }}
                               >
-                                <span className="flex-1 truncate">{task.title}</span>
+                                <span className="flex-1">{task.title}</span>
                                 <button
                                   onClick={() => {
                                     setLocalPlate(prev => ({
