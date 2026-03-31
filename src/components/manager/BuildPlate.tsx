@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
-import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskCompletion } from '@/types'
+import { savePlateAssignments } from '@/app/manager/build-plate/actions'
+import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskCompletion, TrainingTaskAssigned } from '@/types'
 
 interface Props {
   trainees: User[]
@@ -14,6 +15,7 @@ interface Props {
   subcategories: Subcategory[]
   trainingTasks: TrainingTask[]
   completions: TrainingTaskCompletion[]
+  assignments: TrainingTaskAssigned[]
 }
 
 function getWeekStart(date: Date) {
@@ -61,7 +63,11 @@ function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
 
-export function BuildPlate({ trainees, courses, categories, workshops, workshopCourses, subcategories, trainingTasks, completions }: Props) {
+function toDateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+export function BuildPlate({ trainees, courses, categories, workshops, workshopCourses, subcategories, trainingTasks, completions, assignments }: Props) {
   const sortedTrainees = useMemo(() =>
     [...trainees].sort((a, b) => a.name.localeCompare(b.name)),
     [trainees]
@@ -72,6 +78,50 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
   const [selection, setSelection] = useState<{ type: 'workshop' | 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'todo' | 'completed'>('all')
+
+  // Plate assignment state
+  const buildInitialPlate = useCallback((traineeId: string) => {
+    const map: Record<string, string[]> = {}
+    for (const a of assignments.filter(a => a.trainee_id === traineeId)) {
+      const key = a.assigned_date
+      if (!map[key]) map[key] = []
+      map[key].push(a.training_task_id)
+    }
+    return map
+  }, [assignments])
+
+  const [localPlate, setLocalPlate] = useState<Record<string, string[]>>(() => buildInitialPlate(sortedTrainees[0]?.id ?? ''))
+  const [savedPlate, setSavedPlate] = useState<Record<string, string[]>>(() => buildInitialPlate(sortedTrainees[0]?.id ?? ''))
+  const [daySaveStatus, setDaySaveStatus] = useState<Record<string, 'saved' | 'error'>>({})
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  // Check if there are unsaved changes
+  const isDirty = useMemo(() => {
+    const allDates = new Set([...Object.keys(localPlate), ...Object.keys(savedPlate)])
+    for (const date of allDates) {
+      const local = (localPlate[date] ?? []).join(',')
+      const saved = (savedPlate[date] ?? []).join(',')
+      if (local !== saved) return true
+    }
+    return false
+  }, [localPlate, savedPlate])
+
+  // Task lookup map for performance
+  const taskMap = useMemo(() => {
+    const m = new Map<string, TrainingTask>()
+    for (const t of trainingTasks) m.set(t.id, t)
+    return m
+  }, [trainingTasks])
+
+  // Warn on page leave with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) { e.preventDefault(); e.returnValue = '' }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
 
   const weeks = useMemo(() => getCalendarWeeks(), [])
   const today = new Date()
@@ -498,8 +548,13 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                     {tasks.map(task => (
                                                       <button
                                                         key={task.id}
+                                                        draggable="true"
+                                                        onDragStart={(e) => {
+                                                          e.dataTransfer.setData('text/plain', task.id)
+                                                          e.dataTransfer.effectAllowed = 'copy'
+                                                        }}
                                                         onClick={() => selectTask(task.id)}
-                                                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all flex items-center ${
+                                                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all flex items-center cursor-grab active:cursor-grabbing ${
                                                           selection?.type === 'task' && selection.id === task.id
                                                             ? 'bg-gold/10 text-gold font-medium'
                                                             : isTaskCompleted(task.id)
@@ -544,7 +599,15 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
             {sortedTrainees.map(trainee => (
               <button
                 key={trainee.id}
-                onClick={() => { setSelectedTraineeId(trainee.id); setSelection(null) }}
+                onClick={() => {
+                  if (isDirty && !window.confirm('You have unsaved changes. Switch trainee anyway?')) return
+                  setSelectedTraineeId(trainee.id)
+                  setSelection(null)
+                  const plate = buildInitialPlate(trainee.id)
+                  setLocalPlate(plate)
+                  setSavedPlate(plate)
+                  setDaySaveStatus({})
+                }}
                 className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
                   selectedTraineeId === trainee.id
                     ? 'bg-gold text-white'
@@ -562,6 +625,41 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
             {sortedTrainees.length === 0 && (
               <p className="text-sm text-charcoal/30">No trainees in your boutique</p>
             )}
+            <div className="ml-auto flex-shrink-0">
+              <button
+                onClick={async () => {
+                  setSaving(true)
+                  // Only send dates that have been changed
+                  const toSave: Record<string, string[]> = {}
+                  const allDates = new Set([...Object.keys(localPlate), ...Object.keys(savedPlate)])
+                  for (const date of allDates) {
+                    const local = (localPlate[date] ?? []).join(',')
+                    const saved = (savedPlate[date] ?? []).join(',')
+                    if (local !== saved && (localPlate[date] ?? []).length > 0) {
+                      toSave[date] = localPlate[date]
+                    }
+                  }
+                  if (Object.keys(toSave).length === 0) { setSaving(false); return }
+                  const result = await savePlateAssignments(selectedTraineeId, toSave)
+                  const newStatus: Record<string, 'saved' | 'error'> = { ...daySaveStatus }
+                  for (const d of result.saved) {
+                    newStatus[d] = 'saved'
+                    setSavedPlate(prev => ({ ...prev, [d]: localPlate[d] ?? [] }))
+                  }
+                  for (const d of Object.keys(result.errors ?? {})) newStatus[d] = 'error'
+                  setDaySaveStatus(newStatus)
+                  setSaving(false)
+                }}
+                disabled={saving || !isDirty}
+                className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  isDirty
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-charcoal/5 text-charcoal/30 cursor-not-allowed'
+                }`}
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -583,10 +681,45 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                 <div key={wi} className="grid grid-cols-7 gap-px">
                   {week.days.map((day, di) => {
                     const isToday = isSameDay(day, today)
+                    const dateKey = toDateKey(day)
+                    const dayTasks = localPlate[dateKey] ?? []
+                    const status = daySaveStatus[dateKey]
+
                     return (
                       <div
                         key={di}
-                        className={`p-2 flex flex-col min-h-[100px] bg-white ${isToday ? 'ring-2 ring-inset ring-gold/30' : ''}`}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverDate(dateKey) }}
+                        onDragEnter={(e) => { e.preventDefault() }}
+                        onDragLeave={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverDate(null)
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault()
+                          setDragOverDate(null)
+                          const taskId = e.dataTransfer.getData('text/plain')
+                          if (!taskId || dayTasks.includes(taskId)) return
+                          const task = taskMap.get(taskId)
+                          if (!task) return
+                          // Non-recurring tasks can only appear once across the entire calendar
+                          if (!task.is_recurring) {
+                            const alreadyAssigned = Object.entries(localPlate).some(([d, ids]) => d !== dateKey && ids.includes(taskId))
+                            if (alreadyAssigned) return
+                          }
+                          setLocalPlate(prev => ({
+                            ...prev,
+                            [dateKey]: [...(prev[dateKey] ?? []), taskId]
+                          }))
+                          setDaySaveStatus(prev => { const n = { ...prev }; delete n[dateKey]; return n })
+                        }}
+                        className={`p-2 flex flex-col min-h-[100px] bg-white transition-all ${
+                          isToday ? 'ring-2 ring-inset ring-gold/30' : ''
+                        } ${
+                          dragOverDate === dateKey ? 'bg-gold/5' : ''
+                        } ${
+                          status === 'saved' ? 'border-l-4 border-l-green-500' : ''
+                        } ${
+                          status === 'error' ? 'border-l-4 border-l-red-500' : ''
+                        }`}
                       >
                         <div className="flex items-center gap-1 mb-1">
                           <span className={`text-xs font-medium ${
@@ -597,8 +730,45 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                           {(day.getDate() === 1 || (wi === 0 && di === 0)) && (
                             <span className="text-[10px] text-charcoal/30">{formatMonth(day)}</span>
                           )}
+                          {dayTasks.length > 0 && (
+                            <span className={`text-[9px] ml-auto ${
+                              dayTasks.length >= 3 && dayTasks.length <= 6 ? 'text-green-500' : 'text-red-400'
+                            }`}>{dayTasks.length}/6</span>
+                          )}
                         </div>
-                        {/* Calendar content will go here */}
+                        {/* Task chips */}
+                        <div className="flex-1 flex flex-col gap-0.5 overflow-hidden">
+                          {dayTasks.map((taskId, idx) => {
+                            const task = taskMap.get(taskId)
+                            if (!task) return null
+                            const sub = subcategories.find(s => s.id === task.subcategory_id)
+                            const cat = sub ? categories.find(c => c.id === sub.category_id) : null
+                            const course = cat ? courses.find(c => c.id === cat.course_id) : null
+                            const colour = course?.colour_hex || COURSE_COLOURS[course?.name ?? ''] || '#C9A96E'
+
+                            return (
+                              <div
+                                key={`${taskId}-${idx}`}
+                                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] leading-tight group"
+                                style={{ backgroundColor: colour + '15', color: colour }}
+                              >
+                                <span className="flex-1 truncate">{task.title}</span>
+                                <button
+                                  onClick={() => {
+                                    setLocalPlate(prev => ({
+                                      ...prev,
+                                      [dateKey]: (prev[dateKey] ?? []).filter(id => id !== taskId)
+                                    }))
+                                    setDaySaveStatus(prev => { const n = { ...prev }; delete n[dateKey]; return n })
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                >
+                                  <X size={10} />
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     )
                   })}

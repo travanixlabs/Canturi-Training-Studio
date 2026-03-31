@@ -119,6 +119,15 @@ export interface WorkshopCourse {
   course?: Course
 }
 
+export interface TrainingTaskAssigned {
+  id: string
+  trainee_id: string
+  training_task_id: string
+  assigned_date: string
+  assigned_by: string
+  created_at: string
+}
+
 // Course colour mapping
 export const COURSE_COLOURS: Record<string, string> = {
   'Services': '#8B6355',
