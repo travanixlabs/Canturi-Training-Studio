@@ -866,9 +866,11 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                   e.dataTransfer.effectAllowed = 'move'
                                 }}
                                 className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-snug group cursor-grab active:cursor-grabbing ${
-                                  isTaskCompletedOnDate(taskId, dateKey) ? 'bg-green-50 text-green-700' : ''
+                                  isTaskCompletedOnDate(taskId, dateKey) ? 'bg-green-50 text-green-700'
+                                  : isTaskBlue(taskId) ? 'bg-blue-50 text-blue-700'
+                                  : ''
                                 }`}
-                                style={isTaskCompletedOnDate(taskId, dateKey) ? {} : { backgroundColor: colour + '15', color: colour }}
+                                style={isTaskCompletedOnDate(taskId, dateKey) || isTaskBlue(taskId) ? {} : { backgroundColor: colour + '15', color: colour }}
                               >
                                 <span className="flex-1">{task.title}</span>
                                 <button
