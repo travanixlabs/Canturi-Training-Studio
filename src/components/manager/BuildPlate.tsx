@@ -623,7 +623,13 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                           e.dataTransfer.setData('text/plain', task.id)
                                                           e.dataTransfer.effectAllowed = 'copy'
                                                         }}
-                                                        onClick={() => selectTask(task.id)}
+                                                        onClick={() => {
+                                                          if (selection?.type === 'task' && selection.id === task.id) {
+                                                            setPreviewTaskId(task.id)
+                                                          } else {
+                                                            selectTask(task.id)
+                                                          }
+                                                        }}
                                                         className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all flex items-center gap-1.5 cursor-grab active:cursor-grabbing ${
                                                           selection?.type === 'task' && selection.id === task.id
                                                             ? 'bg-gold/10 text-gold font-medium'
