@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ChevronDown, ChevronUp, BookOpen, Check } from 'lucide-react'
+import { ChevronDown, ChevronUp, BookOpen, Check, Search, X } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -25,6 +25,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const [completions, setCompletions] = useState<TrainingTaskCompletion[]>(initialCompletions)
   const [completing, setCompleting] = useState(false)
   const [completionOverlay, setCompletionOverlay] = useState<string | null>(null) // task id
+  const [searchQuery, setSearchQuery] = useState('')
   const supabase = createClient()
   const router = useRouter()
 
@@ -199,6 +200,46 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     })
   }
 
+  // Search
+  const searchResults = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim()
+    if (!q) return null
+
+    const matchFields = (fields: (string | undefined | null)[]) =>
+      fields.some(f => f && f.toLowerCase().includes(q))
+
+    type SearchResult = { type: 'course' | 'category' | 'subcategory' | 'task'; id: string; title: string; breadcrumb: string }
+    const results: SearchResult[] = []
+
+    for (const course of courses) {
+      if (matchFields([course.name, course.icon])) {
+        results.push({ type: 'course', id: course.id, title: course.name, breadcrumb: 'Course' })
+      }
+    }
+    for (const cat of categories) {
+      const course = courses.find(c => c.id === cat.course_id)
+      if (matchFields([cat.title, cat.description])) {
+        results.push({ type: 'category', id: cat.id, title: cat.title, breadcrumb: course?.name || 'Category' })
+      }
+    }
+    for (const sub of subcategories) {
+      const cat = categories.find(c => c.id === sub.category_id)
+      const course = cat ? courses.find(c => c.id === cat.course_id) : null
+      if (matchFields([sub.title, sub.content])) {
+        results.push({ type: 'subcategory', id: sub.id, title: sub.title, breadcrumb: [course?.name, cat?.title].filter(Boolean).join(' › ') })
+      }
+    }
+    for (const task of trainingTasks) {
+      const sub = subcategories.find(s => s.id === task.subcategory_id)
+      const cat = sub ? categories.find(c => c.id === sub.category_id) : null
+      const course = cat ? courses.find(c => c.id === cat.course_id) : null
+      if (matchFields([task.title, task.trainer_type, task.modality, task.role_level, task.priority_level, ...(task.tags ?? [])])) {
+        results.push({ type: 'task', id: task.id, title: task.title, breadcrumb: [course?.name, cat?.title, sub?.title].filter(Boolean).join(' › ') })
+      }
+    }
+    return results
+  }, [searchQuery, courses, categories, subcategories, trainingTasks])
+
   // Resolve selected item
   const selWorkshop = selection?.type === 'workshop' ? workshops.find(w => w.id === selection.id) : null
   const selCourse = selection?.type === 'course' ? courses.find(c => c.id === selection.id) : null
@@ -214,7 +255,47 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
       <div className="lg:w-80 lg:h-[calc(100vh-120px)] lg:overflow-y-auto lg:sticky lg:top-[120px] lg:border-r border-b lg:border-b-0 border-black/5 bg-white">
         <div className="p-4">
           <h1 className="font-serif text-xl text-charcoal mb-1">Training Menu</h1>
-          <p className="text-xs text-charcoal/40 mb-4">Browse all training topics</p>
+          <p className="text-xs text-charcoal/40 mb-3">Browse all training topics</p>
+
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-charcoal/30" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search courses, categories, tasks..."
+              className="input pl-9 pr-8 py-2 text-sm w-full"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-charcoal/30 hover:text-charcoal/60">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {/* Search results */}
+          {searchResults ? (
+            <div className="space-y-1">
+              {searchResults.length === 0 ? (
+                <p className="text-xs text-charcoal/30 text-center py-4">No results found</p>
+              ) : (
+                <>
+                  <p className="text-[10px] text-charcoal/30 mb-2">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''}</p>
+                  {searchResults.map(r => (
+                    <button
+                      key={`${r.type}-${r.id}`}
+                      onClick={() => { setSelection({ type: r.type, id: r.id }); setSearchQuery('') }}
+                      className="w-full text-left px-3 py-2 rounded-lg hover:bg-charcoal/3 transition-all"
+                    >
+                      <p className="text-sm text-charcoal leading-snug">{r.title}</p>
+                      <p className="text-[10px] text-charcoal/30 mt-0.5">{r.breadcrumb}</p>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          ) : (
 
           <div className="space-y-1">
             {workshopHierarchy.map(({ workshop, courses: wsCourses }) => {
@@ -381,6 +462,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
               )
             })}
           </div>
+          )}
         </div>
       </div>
 
