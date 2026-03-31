@@ -32,7 +32,10 @@ function getWeekStart(date: Date) {
 
 function getCalendarWeeks(): { weekStart: Date; days: Date[] }[] {
   const today = new Date()
-  const start = getWeekStart(today)
+  const thisWeekStart = getWeekStart(today)
+  // Start from previous week's Monday
+  const start = new Date(thisWeekStart)
+  start.setDate(start.getDate() - 7)
   const weeks: { weekStart: Date; days: Date[] }[] = []
 
   for (let w = 0; w < 4; w++) {
