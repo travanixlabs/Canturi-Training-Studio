@@ -26,6 +26,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const [completing, setCompleting] = useState(false)
   const [completionOverlay, setCompletionOverlay] = useState<string | null>(null) // task id
   const [searchQuery, setSearchQuery] = useState('')
+  const [filter, setFilter] = useState<'all' | 'todo' | 'completed'>('all')
   const supabase = createClient()
   const router = useRouter()
 
@@ -104,6 +105,27 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 
   const getContentForTask = (taskId: string) =>
     taskContent.filter(c => c.training_task_id === taskId).sort((a, b) => a.sort_order - b.sort_order)
+
+  // Filtered getters for sidebar (respects filter pills)
+  const taskMatchesFilter = (taskId: string) =>
+    filter === 'all' || (filter === 'completed' ? isTaskCompleted(taskId) : !isTaskCompleted(taskId))
+
+  const getFilteredTasksForSub = (subId: string) =>
+    getTasksForSub(subId).filter(t => taskMatchesFilter(t.id))
+
+  const getFilteredSubsForCat = (catId: string) =>
+    getSubsForCat(catId).filter(s => getFilteredTasksForSub(s.id).length > 0)
+
+  const getFilteredCatsForCourse = (courseId: string) =>
+    getCatsForCourse(courseId).filter(c => getFilteredSubsForCat(c.id).length > 0)
+
+  const filteredWorkshopHierarchy = useMemo(() => {
+    if (filter === 'all') return workshopHierarchy
+    return workshopHierarchy.map(({ workshop, courses: wsCourses }) => ({
+      workshop,
+      courses: wsCourses.filter(c => getFilteredCatsForCourse(c.id).length > 0),
+    })).filter(ws => ws.courses.length > 0)
+  }, [workshopHierarchy, filter, completions])
 
   // Progress stats helpers — recurring tasks count as their recurring_count value
   const taskCompletedCount = (t: TrainingTask) => Math.min(getCompletionCount(t.id), getRequiredCount(t))
@@ -274,6 +296,23 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
             )}
           </div>
 
+          {/* Filter pills */}
+          <div className="flex gap-1.5 mb-4">
+            {(['all', 'todo', 'completed'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  filter === f
+                    ? 'bg-gold text-white'
+                    : 'bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10'
+                }`}
+              >
+                {f === 'all' ? 'All' : f === 'todo' ? 'To Do' : 'Completed'}
+              </button>
+            ))}
+          </div>
+
           {/* Search results */}
           {searchResults ? (
             <div className="space-y-1">
@@ -298,7 +337,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
           ) : (
 
           <div className="space-y-1">
-            {workshopHierarchy.map(({ workshop, courses: wsCourses }) => {
+            {filteredWorkshopHierarchy.map(({ workshop, courses: wsCourses }) => {
               const wsKey = `ws-${workshop.id}`
               const wsOpen = expanded.has(wsKey)
 
@@ -335,7 +374,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                         const cKey = `c-${course.id}`
                         const cOpen = expanded.has(cKey)
                         const colour = course.colour_hex || COURSE_COLOURS[course.name] || '#C9A96E'
-                        const cats = getCatsForCourse(course.id)
+                        const cats = getFilteredCatsForCourse(course.id)
 
                         return (
                           <div key={course.id}>
@@ -368,7 +407,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                 {cats.map(cat => {
                                   const catKey = `cat-${cat.id}`
                                   const catOpen = expanded.has(catKey)
-                                  const subs = getSubsForCat(cat.id)
+                                  const subs = getFilteredSubsForCat(cat.id)
 
                                   return (
                                     <div key={cat.id}>
@@ -397,7 +436,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                           {subs.map(sub => {
                                             const subKey = `sub-${sub.id}`
                                             const subOpen = expanded.has(subKey)
-                                            const tasks = getTasksForSub(sub.id)
+                                            const tasks = getFilteredTasksForSub(sub.id)
 
                                             return (
                                               <div key={sub.id}>
