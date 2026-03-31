@@ -224,6 +224,15 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
     return wsCourses.length > 0 && wsCourses.every(c => isCourseCompleted(c.id) || isCourseBlue(c.id)) && wsCourses.some(c => isCourseBlue(c.id))
   }
 
+  // Check if a task is completed on a specific date (for calendar chip styling)
+  const isTaskCompletedOnDate = (taskId: string, dateKey: string) => {
+    const task = taskMap.get(taskId)
+    if (!task) return false
+    if (!task.is_recurring) return isTaskCompleted(taskId)
+    // Recurring: check if there's a completion on this specific date
+    return traineeCompletions.some(c => c.training_task_id === taskId && c.completed_at.split('T')[0] === dateKey)
+  }
+
   // Hierarchy helpers
   const workshopHierarchy = useMemo(() => {
     return workshops.map(ws => {
@@ -856,8 +865,10 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                   e.dataTransfer.setData('source-date', dateKey)
                                   e.dataTransfer.effectAllowed = 'move'
                                 }}
-                                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-snug group cursor-grab active:cursor-grabbing"
-                                style={{ backgroundColor: colour + '15', color: colour }}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-snug group cursor-grab active:cursor-grabbing ${
+                                  isTaskCompletedOnDate(taskId, dateKey) ? 'bg-green-50 text-green-700' : ''
+                                }`}
+                                style={isTaskCompletedOnDate(taskId, dateKey) ? {} : { backgroundColor: colour + '15', color: colour }}
                               >
                                 <span className="flex-1">{task.title}</span>
                                 <button
