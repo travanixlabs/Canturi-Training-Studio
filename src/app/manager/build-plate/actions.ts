@@ -14,25 +14,29 @@ export async function savePlateAssignments(
   const errors: Record<string, string> = {}
 
   for (const [date, taskIds] of Object.entries(assignments)) {
-    if (taskIds.length < 3 || taskIds.length > 6) {
+    // Reject 1-2 or 7+ tasks; allow 0 (clear) and 3-6 (valid)
+    if (taskIds.length >= 1 && taskIds.length < 3 || taskIds.length > 6) {
       errors[date] = `Must have 3–6 tasks (has ${taskIds.length})`
       continue
     }
 
-    // Delete existing for this trainee+date, then insert new
+    // Delete existing for this trainee+date
     await supabase.from('training_task_assigned').delete().eq('trainee_id', traineeId).eq('assigned_date', date)
 
-    const { error } = await supabase.from('training_task_assigned').insert(
-      taskIds.map(taskId => ({
-        trainee_id: traineeId,
-        training_task_id: taskId,
-        assigned_date: date,
-        assigned_by: user.id,
-      }))
-    )
+    // Insert new if any
+    if (taskIds.length > 0) {
+      const { error } = await supabase.from('training_task_assigned').insert(
+        taskIds.map(taskId => ({
+          trainee_id: traineeId,
+          training_task_id: taskId,
+          assigned_date: date,
+          assigned_by: user.id,
+        }))
+      )
+      if (error) { errors[date] = error.message; continue }
+    }
 
-    if (error) errors[date] = error.message
-    else saved.push(date)
+    saved.push(date)
   }
 
   return { saved, errors }

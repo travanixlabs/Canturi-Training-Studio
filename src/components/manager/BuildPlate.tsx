@@ -710,8 +710,8 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                   for (const date of allDates) {
                     const local = (localPlate[date] ?? []).join(',')
                     const saved = (savedPlate[date] ?? []).join(',')
-                    if (local !== saved && (localPlate[date] ?? []).length > 0) {
-                      toSave[date] = localPlate[date]
+                    if (local !== saved) {
+                      toSave[date] = localPlate[date] ?? []
                     }
                   }
                   if (Object.keys(toSave).length === 0) { setSaving(false); return }
