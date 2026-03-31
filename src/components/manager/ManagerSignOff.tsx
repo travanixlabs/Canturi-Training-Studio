@@ -244,7 +244,7 @@ function SignOffOverlay({
   task: TrainingTask
   breadcrumb: string
   onClose: () => void
-  onSignOff: (data: { manager_notes: string; manager_coaching: string; manager_rating: number }) => void
+  onSignOff: (data: { manager_notes: string; manager_coaching: string; manager_rating: number | null }) => void
 }) {
   const [notes, setNotes] = useState(completion.manager_notes ?? '')
   const [coaching, setCoaching] = useState(completion.manager_coaching ?? '')
@@ -254,6 +254,7 @@ function SignOffOverlay({
 
   const isAlreadySignedOff = !!completion.signed_off_at
   const isRecurring = task.is_recurring
+  const needsRating = task.confidence_rating_required
 
   function wordCount(s: string) {
     return s.trim().split(/\s+/).filter(Boolean).length
@@ -262,7 +263,7 @@ function SignOffOverlay({
   const errors = {
     notes: wordCount(notes) < 20,
     coaching: wordCount(coaching) < 20,
-    rating: rating === 0,
+    rating: needsRating && rating === 0,
   }
 
   const hasErrors = Object.values(errors).some(Boolean)
@@ -273,7 +274,7 @@ function SignOffOverlay({
     await onSignOff({
       manager_notes: notes.trim(),
       manager_coaching: coaching.trim(),
-      manager_rating: rating,
+      manager_rating: needsRating ? rating : null,
     })
     setSubmitting(false)
   }
@@ -410,36 +411,38 @@ function SignOffOverlay({
                 )}
               </div>
 
-              {/* Manager Rating */}
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
-                  Manager Rating <span className="text-red-400">*</span>
-                </label>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <button
-                      key={star}
-                      onClick={() => { if (!isAlreadySignedOff) setRating(star) }}
-                      className={`p-1 transition-transform ${isAlreadySignedOff ? '' : 'hover:scale-110'}`}
-                      disabled={isAlreadySignedOff}
-                    >
-                      <svg
-                        width="28"
-                        height="28"
-                        viewBox="0 0 24 24"
-                        fill={star <= rating ? '#C9A96E' : 'none'}
-                        stroke={star <= rating ? '#C9A96E' : '#D1D5DB'}
-                        strokeWidth="1.5"
+              {/* Manager Rating — only if trainee has confidence rating */}
+              {needsRating && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
+                    Manager Rating <span className="text-red-400">*</span>
+                  </label>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star}
+                        onClick={() => { if (!isAlreadySignedOff) setRating(star) }}
+                        className={`p-1 transition-transform ${isAlreadySignedOff ? '' : 'hover:scale-110'}`}
+                        disabled={isAlreadySignedOff}
                       >
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                      </svg>
-                    </button>
-                  ))}
+                        <svg
+                          width="28"
+                          height="28"
+                          viewBox="0 0 24 24"
+                          fill={star <= rating ? '#C9A96E' : 'none'}
+                          stroke={star <= rating ? '#C9A96E' : '#D1D5DB'}
+                          strokeWidth="1.5"
+                        >
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+                  {showErrors && errors.rating && (
+                    <p className="text-[10px] text-red-400 mt-1">Please select a rating</p>
+                  )}
                 </div>
-                {showErrors && errors.rating && (
-                  <p className="text-[10px] text-red-400 mt-1">Please select a rating</p>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>

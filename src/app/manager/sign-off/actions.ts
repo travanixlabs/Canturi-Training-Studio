@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function signOffCompletion(
   completionId: string,
-  data: { manager_notes: string; manager_coaching: string; manager_rating: number }
+  data: { manager_notes: string; manager_coaching: string; manager_rating: number | null }
 ) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
