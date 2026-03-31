@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Eye, EyeOff, GripVertical } from 'lucide-react'
+import { X, Plus, ChevronDown, ChevronUp, Pencil, Trash2, Eye, EyeOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Course, Category } from '@/types'
@@ -57,8 +57,6 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
   // Drag and drop
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null)
   const [dragOverCategoryId, setDragOverCategoryId] = useState<string | null>(null)
-  const [draggedItemId, setDraggedItemId] = useState<string | null>(null)
-  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null)
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null)
@@ -265,30 +263,29 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
     )
   }
 
-  async function handleItemDrop(targetItemId: string, courseId: string) {
-    if (!draggedItemId || draggedItemId === targetItemId) return
+  async function moveCategoryItem(itemId: string, courseId: string, direction: 'up' | 'down') {
+    const courseItems = categories.filter(i => i.course_id === courseId).sort((a, b) => a.sort_order - b.sort_order)
+    const idx = courseItems.findIndex(i => i.id === itemId)
+    if (idx === -1) return
+    if (direction === 'up' && idx === 0) return
+    if (direction === 'down' && idx === courseItems.length - 1) return
 
-    const courseItems = categories.filter(i => i.course_id === courseId)
-    const fromIdx = courseItems.findIndex(i => i.id === draggedItemId)
-    const toIdx = courseItems.findIndex(i => i.id === targetItemId)
-    if (fromIdx === -1 || toIdx === -1) return
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    const a = courseItems[idx]
+    const b = courseItems[swapIdx]
 
-    const reordered = [...courseItems]
-    const [moved] = reordered.splice(fromIdx, 1)
-    reordered.splice(toIdx, 0, moved)
-
-    // Update local state with new sort orders
-    const updatedIds = new Map(reordered.map((item, i) => [item.id, i]))
-    setCategorys(prev => prev.map(item =>
-      updatedIds.has(item.id) ? { ...item, sort_order: updatedIds.get(item.id)! } : item
-    ))
-    setDraggedItemId(null)
-    setDragOverItemId(null)
+    // Swap sort orders in local state
+    setCategorys(prev => prev.map(item => {
+      if (item.id === a.id) return { ...item, sort_order: b.sort_order }
+      if (item.id === b.id) return { ...item, sort_order: a.sort_order }
+      return item
+    }))
 
     // Persist to DB
-    await Promise.all(
-      reordered.map((item, i) => supabase.from('categories').update({ sort_order: i }).eq('id', item.id))
-    )
+    await Promise.all([
+      supabase.from('categories').update({ sort_order: b.sort_order }).eq('id', a.id),
+      supabase.from('categories').update({ sort_order: a.sort_order }).eq('id', b.id),
+    ])
   }
 
   async function changeCourseStatus(cat: Course, status: 'active' | 'hidden') {
@@ -455,19 +452,16 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
                       </button>
                     </div>
                   ) : (
-                    items.map(item => (
+                    items.map((item, idx) => (
                       <CourseRow
                         key={item.id}
                         item={item}
-                        isDragging={draggedItemId === item.id}
-                        isDragOver={dragOverItemId === item.id && draggedItemId !== item.id}
+                        isFirst={idx === 0}
+                        isLast={idx === items.length - 1}
                         onEdit={() => router.push(`/head-office/courses/${item.id}`)}
                         onDelete={() => setDeleteTarget(item)}
-                        onDragStart={() => setDraggedItemId(item.id)}
-                        onDragEnd={() => { setDraggedItemId(null); setDragOverItemId(null) }}
-                        onDragOver={e => { e.preventDefault(); setDragOverItemId(item.id) }}
-                        onDragLeave={() => setDragOverItemId(null)}
-                        onDrop={() => handleItemDrop(item.id, category.id)}
+                        onMoveUp={() => moveCategoryItem(item.id, category.id, 'up')}
+                        onMoveDown={() => moveCategoryItem(item.id, category.id, 'down')}
                       />
                     ))
                   )}
@@ -726,39 +720,38 @@ export function CourseEditor({ courses: initialCourses, categories: initialItems
 
 function CourseRow({
   item,
-  isDragging,
-  isDragOver,
+  isFirst,
+  isLast,
   onEdit,
   onDelete,
-  onDragStart,
-  onDragEnd,
-  onDragOver,
-  onDragLeave,
-  onDrop,
+  onMoveUp,
+  onMoveDown,
 }: {
   item: Category
-  isDragging: boolean
-  isDragOver: boolean
+  isFirst: boolean
+  isLast: boolean
   onEdit: () => void
   onDelete: () => void
-  onDragStart: () => void
-  onDragEnd: () => void
-  onDragOver: (e: React.DragEvent) => void
-  onDragLeave: () => void
-  onDrop: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
 }) {
   return (
-    <div
-      className={`flex items-center gap-0 transition-all ${isDragging ? 'opacity-40 scale-[0.97]' : ''} ${isDragOver && !isDragging ? 'bg-gold/5 border-l-2 border-gold' : ''}`}
-      draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-    >
-      <div className="pl-3 pr-1 py-3.5 cursor-grab active:cursor-grabbing text-charcoal/15 hover:text-charcoal/30">
-        <GripVertical size={14} />
+    <div className="flex items-center gap-0 transition-all">
+      <div className="flex flex-col items-center pl-2 pr-1 flex-shrink-0">
+        <button
+          onClick={onMoveUp}
+          disabled={isFirst}
+          className="w-6 h-6 flex items-center justify-center text-charcoal/20 hover:text-charcoal/50 transition-colors disabled:opacity-0"
+        >
+          <ChevronUp size={14} />
+        </button>
+        <button
+          onClick={onMoveDown}
+          disabled={isLast}
+          className="w-6 h-6 flex items-center justify-center text-charcoal/20 hover:text-charcoal/50 transition-colors disabled:opacity-0"
+        >
+          <ChevronDown size={14} />
+        </button>
       </div>
       <div className="flex-1 min-w-0 py-3.5 pr-2">
         <p className="text-[14px] font-medium text-charcoal leading-snug">{item.title}</p>
