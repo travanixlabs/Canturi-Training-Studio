@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Search, X, Info } from 'lucide-react'
+import { ChevronDown, ChevronUp, Search, X, Info, Check } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
 import { savePlateAssignments } from '@/app/manager/build-plate/actions'
 import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned } from '@/types'
@@ -970,6 +970,70 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                 {content.length === 0 && (
                   <p className="text-sm text-charcoal/30 text-center py-4">No content attached to this task</p>
                 )}
+
+                {/* Completions for selected trainee */}
+                {(() => {
+                  const taskCompletions = traineeCompletions.filter(c => c.training_task_id === previewTaskId).sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
+                  if (taskCompletions.length === 0) return null
+                  const isRecurring = task.is_recurring
+                  return (
+                    <div className="border-t border-black/5 pt-4 mt-4">
+                      <p className="text-[10px] text-charcoal/30 uppercase tracking-wider font-medium mb-3">
+                        Completions ({taskCompletions.length}/{task.is_recurring && task.recurring_count ? task.recurring_count : 1})
+                      </p>
+                      <div className="space-y-4">
+                        {taskCompletions.map((c, idx) => (
+                          <div key={c.id} className={`rounded-xl p-3 ${c.signed_off_at ? 'bg-green-50/50' : 'bg-charcoal/[0.02]'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-[10px] text-charcoal/30">
+                                {isRecurring ? `Completion ${taskCompletions.length - idx}` : 'Completion'} · {new Date(c.completed_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                              {c.signed_off_at && <span className="text-[10px] text-green-600 flex items-center gap-0.5"><Check size={10} /> Signed off</span>}
+                            </div>
+
+                            {/* Trainee answers */}
+                            <div className="space-y-2">
+                              <div>
+                                <p className="text-[10px] font-medium text-charcoal/40 mb-0.5">{isRecurring ? 'What did you observe?' : 'Key Takeaways'}</p>
+                                <p className="text-xs text-charcoal/70 leading-relaxed whitespace-pre-wrap">{c.takeaways}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-medium text-charcoal/40 mb-0.5">{isRecurring ? 'Questions / Want to know more' : 'Summary'}</p>
+                                <p className="text-xs text-charcoal/70 leading-relaxed whitespace-pre-wrap">{c.summary}</p>
+                              </div>
+                              {c.confidence_rating && (
+                                <div className="flex items-center gap-1">
+                                  <p className="text-[10px] font-medium text-charcoal/40">Self:</p>
+                                  <div className="flex gap-0.5">{[1,2,3,4,5].map(s => <svg key={s} width="12" height="12" viewBox="0 0 24 24" fill={s <= c.confidence_rating! ? '#C9A96E' : 'none'} stroke={s <= c.confidence_rating! ? '#C9A96E' : '#D1D5DB'} strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>)}</div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Manager sign-off data */}
+                            {c.signed_off_at && (
+                              <div className="border-t border-black/5 mt-2 pt-2 space-y-2">
+                                <div>
+                                  <p className="text-[10px] font-medium text-charcoal/40 mb-0.5">Manager Notes</p>
+                                  <p className="text-xs text-charcoal/70 leading-relaxed whitespace-pre-wrap">{c.manager_notes}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-medium text-charcoal/40 mb-0.5">Manager Coaching</p>
+                                  <p className="text-xs text-charcoal/70 leading-relaxed whitespace-pre-wrap">{c.manager_coaching}</p>
+                                </div>
+                                {c.manager_rating && (
+                                  <div className="flex items-center gap-1">
+                                    <p className="text-[10px] font-medium text-charcoal/40">Manager:</p>
+                                    <div className="flex gap-0.5">{[1,2,3,4,5].map(s => <svg key={s} width="12" height="12" viewBox="0 0 24 24" fill={s <= c.manager_rating! ? '#C9A96E' : 'none'} stroke={s <= c.manager_rating! ? '#C9A96E' : '#D1D5DB'} strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>)}</div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           </div>
