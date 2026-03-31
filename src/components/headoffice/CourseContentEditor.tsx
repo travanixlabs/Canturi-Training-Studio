@@ -715,67 +715,7 @@ function TrainingTaskEditor({
       {showDetails && (
       <div className="space-y-5 pl-1">
 
-      {/* 1. Trainer Type */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-          Trainer Type <span className="text-red-400">*</span>
-        </label>
-        <select
-          className={`input ${err('trainer_type') ? 'border-red-300 bg-red-50/30' : ''}`}
-          value={task.trainer_type}
-          onChange={e => { setTouched(true); onUpdate({ trainer_type: e.target.value as TrainerType }) }}
-        >
-          <option value="" disabled>Select trainer type…</option>
-          {TRAINER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
-
-      {/* 2. Modality */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-          Modality <span className="text-red-400">*</span>
-        </label>
-        <select
-          className={`input ${err('modality') ? 'border-red-300 bg-red-50/30' : ''}`}
-          value={task.modality}
-          onChange={e => { setTouched(true); onUpdate({ modality: e.target.value as Modality }) }}
-        >
-          <option value="" disabled>Select modality…</option>
-          {MODALITIES.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-      </div>
-
-      {/* 3. Role Level */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-          Role Level <span className="text-red-400">*</span>
-        </label>
-        <select
-          className={`input ${err('role_level') ? 'border-red-300 bg-red-50/30' : ''}`}
-          value={task.role_level}
-          onChange={e => { setTouched(true); onUpdate({ role_level: e.target.value as RoleLevel }) }}
-        >
-          <option value="" disabled>Select role level…</option>
-          {ROLE_LEVELS.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-      </div>
-
-      {/* 4. Priority Level */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-          Priority Level <span className="text-red-400">*</span>
-        </label>
-        <select
-          className={`input ${err('priority_level') ? 'border-red-300 bg-red-50/30' : ''}`}
-          value={task.priority_level}
-          onChange={e => { setTouched(true); onUpdate({ priority_level: e.target.value as PriorityLevel }) }}
-        >
-          <option value="" disabled>Select priority level…</option>
-          {PRIORITY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
-      </div>
-
-      {/* 5. Prerequisites */}
+      {/* 1. Prerequisites */}
       <div>
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Prerequisites</label>
         {siblingTasks.length === 0 ? (
@@ -816,6 +756,66 @@ function TrainingTaskEditor({
             </details>
           )
         })()}
+      </div>
+
+      {/* 2. Trainer Type */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Trainer Type <span className="text-red-400">*</span>
+        </label>
+        <select
+          className={`input ${err('trainer_type') ? 'border-red-300 bg-red-50/30' : ''}`}
+          value={task.trainer_type}
+          onChange={e => { setTouched(true); onUpdate({ trainer_type: e.target.value as TrainerType }) }}
+        >
+          <option value="" disabled>Select trainer type…</option>
+          {TRAINER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      {/* 3. Modality */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Modality <span className="text-red-400">*</span>
+        </label>
+        <select
+          className={`input ${err('modality') ? 'border-red-300 bg-red-50/30' : ''}`}
+          value={task.modality}
+          onChange={e => { setTouched(true); onUpdate({ modality: e.target.value as Modality }) }}
+        >
+          <option value="" disabled>Select modality…</option>
+          {MODALITIES.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </div>
+
+      {/* 4. Role Level */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Role Level <span className="text-red-400">*</span>
+        </label>
+        <select
+          className={`input ${err('role_level') ? 'border-red-300 bg-red-50/30' : ''}`}
+          value={task.role_level}
+          onChange={e => { setTouched(true); onUpdate({ role_level: e.target.value as RoleLevel }) }}
+        >
+          <option value="" disabled>Select role level…</option>
+          {ROLE_LEVELS.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+
+      {/* 5. Priority Level */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Priority Level <span className="text-red-400">*</span>
+        </label>
+        <select
+          className={`input ${err('priority_level') ? 'border-red-300 bg-red-50/30' : ''}`}
+          value={task.priority_level}
+          onChange={e => { setTouched(true); onUpdate({ priority_level: e.target.value as PriorityLevel }) }}
+        >
+          <option value="" disabled>Select priority level…</option>
+          {PRIORITY_LEVELS.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
       </div>
 
       {/* 6. Recurring */}
