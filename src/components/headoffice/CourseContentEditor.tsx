@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Globe, Upload, FileText } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Copy, ChevronUp, ChevronDown, Globe, Upload, FileText } from 'lucide-react'
 import { CourseBadge } from '@/components/ui/CourseBadge'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -323,6 +323,53 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     }
   }
 
+  async function copyTrainingTask(id: string) {
+    const source = trainingTasks.find(t => t.id === id)
+    if (!source || draftTaskIds.has(id)) return
+
+    const siblingTasks = getTasksForSubcategory(source.subcategory_id)
+    const sourceIndex = siblingTasks.findIndex(t => t.id === id)
+    const newSortOrder = source.sort_order + 1
+
+    // Bump sort_order for tasks after the source
+    const toShift = siblingTasks.filter(t => t.sort_order >= newSortOrder)
+    for (const t of toShift) {
+      await supabase.from('training_tasks').update({ sort_order: t.sort_order + 1 }).eq('id', t.id)
+    }
+    setTrainingTasks(prev => prev.map(t =>
+      t.subcategory_id === source.subcategory_id && t.sort_order >= newSortOrder
+        ? { ...t, sort_order: t.sort_order + 1 }
+        : t
+    ))
+
+    // Insert the copy
+    const { id: _id, created_at: _ca, deleted_at: _da, ...payload } = source
+    const { data, error } = await supabase.from('training_tasks').insert({
+      ...payload,
+      title: source.title + ' (copy)',
+      sort_order: newSortOrder,
+    }).select().single()
+    if (error || !data) {
+      alert('Failed to copy training task' + (error ? ': ' + error.message : ''))
+      return
+    }
+
+    setTrainingTasks(prev => [...prev, data as TrainingTask])
+
+    // Copy attachments
+    const sourceAttachments = attachments.filter(a => a.training_task_id === id)
+    for (const att of sourceAttachments) {
+      const { id: _attId, created_at: _attCa, deleted_at: _attDa, training_task_id: _tid, ...attPayload } = att
+      const { data: newAtt } = await supabase.from('training_task_content').insert({
+        ...attPayload,
+        training_task_id: data.id,
+      }).select().single()
+      if (newAtt) setAttachments(prev => [...prev, newAtt as TrainingTaskContent])
+    }
+
+    selectTrainingTask(data.id)
+  }
+
   function handleBack() {
     guardNavigation(() => {
       router.push('/head-office/courses')
@@ -456,6 +503,15 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                             >
                               <span className="leading-snug">{task.title}</span>
                             </button>
+                            {!draftTaskIds.has(task.id) && (
+                              <button
+                                onClick={() => copyTrainingTask(task.id)}
+                                className="hidden group-hover/task:block p-1 text-charcoal/20 hover:text-blue-500 flex-shrink-0"
+                                title="Duplicate"
+                              >
+                                <Copy size={10} />
+                              </button>
+                            )}
                             <button
                               onClick={() => deleteTrainingTask(task.id)}
                               className="hidden group-hover/task:block p-1 text-charcoal/20 hover:text-red-500 flex-shrink-0"
