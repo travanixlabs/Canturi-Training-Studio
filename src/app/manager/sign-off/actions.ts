@@ -10,14 +10,15 @@ export async function signOffCompletion(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Not authenticated' }
 
-  const { error } = await supabase.from('training_task_completions').update({
+  const { data: updated, error } = await supabase.from('training_task_completions').update({
     manager_notes: data.manager_notes,
     manager_coaching: data.manager_coaching,
     manager_rating: data.manager_rating,
     signed_off_at: new Date().toISOString(),
     signed_off_by: user.id,
-  }).eq('id', completionId)
+  }).eq('id', completionId).select()
 
   if (error) return { error: error.message }
+  if (!updated || updated.length === 0) return { error: 'No rows updated — check RLS policies on training_task_completions' }
   return { success: true }
 }
