@@ -8,12 +8,9 @@ export default async function DayPlatePage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const today = new Date()
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-
   const [{ data: profile }, { data: assignments }, { data: trainingTasks }, { data: taskContent }, { data: completions }, { data: subcategories }, { data: categories }, { data: courses }] = await Promise.all([
     supabase.from('users').select('*').eq('id', authUser.id).single(),
-    supabase.from('training_task_assigned').select('*').eq('trainee_id', authUser.id).eq('assigned_date', todayKey),
+    supabase.from('training_task_assigned').select('*').eq('trainee_id', authUser.id),
     supabase.from('training_tasks').select('*').is('deleted_at', null),
     supabase.from('training_task_content').select('*').is('deleted_at', null).order('sort_order'),
     supabase.from('training_task_completions').select('*').eq('trainee_id', authUser.id),
