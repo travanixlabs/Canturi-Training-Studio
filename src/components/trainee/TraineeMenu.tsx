@@ -28,7 +28,16 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const supabase = createClient()
   const router = useRouter()
 
-  const isTaskCompleted = (taskId: string) => completions.some(c => c.training_task_id === taskId)
+  const getCompletionCount = (taskId: string) => completions.filter(c => c.training_task_id === taskId).length
+
+  const getRequiredCount = (task: TrainingTask) =>
+    task.is_recurring && task.recurring_count ? task.recurring_count : 1
+
+  const isTaskCompleted = (taskId: string) => {
+    const task = trainingTasks.find(t => t.id === taskId)
+    if (!task) return false
+    return getCompletionCount(taskId) >= getRequiredCount(task)
+  }
 
   const isSubCompleted = (subId: string) => {
     const tasks = getTasksForSub(subId)
@@ -95,10 +104,15 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const getContentForTask = (taskId: string) =>
     taskContent.filter(c => c.training_task_id === taskId).sort((a, b) => a.sort_order - b.sort_order)
 
-  // Progress stats helpers
+  // Progress stats helpers — recurring tasks count as their recurring_count value
+  const taskCompletedCount = (t: TrainingTask) => Math.min(getCompletionCount(t.id), getRequiredCount(t))
+
   const subStats = (subId: string) => {
     const tasks = getTasksForSub(subId)
-    return { completed: tasks.filter(t => isTaskCompleted(t.id)).length, total: tasks.length }
+    return {
+      completed: tasks.reduce((sum, t) => sum + taskCompletedCount(t), 0),
+      total: tasks.reduce((sum, t) => sum + getRequiredCount(t), 0),
+    }
   }
 
   const catStats = (catId: string) => {
@@ -106,7 +120,8 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     const tasks = subs.flatMap(s => getTasksForSub(s.id))
     return {
       subCompleted: subs.filter(s => isSubCompleted(s.id)).length, subTotal: subs.length,
-      taskCompleted: tasks.filter(t => isTaskCompleted(t.id)).length, taskTotal: tasks.length,
+      taskCompleted: tasks.reduce((sum, t) => sum + taskCompletedCount(t), 0),
+      taskTotal: tasks.reduce((sum, t) => sum + getRequiredCount(t), 0),
     }
   }
 
@@ -117,7 +132,8 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     return {
       catCompleted: cats.filter(c => isCatCompleted(c.id)).length, catTotal: cats.length,
       subCompleted: subs.filter(s => isSubCompleted(s.id)).length, subTotal: subs.length,
-      taskCompleted: tasks.filter(t => isTaskCompleted(t.id)).length, taskTotal: tasks.length,
+      taskCompleted: tasks.reduce((sum, t) => sum + taskCompletedCount(t), 0),
+      taskTotal: tasks.reduce((sum, t) => sum + getRequiredCount(t), 0),
     }
   }
 
@@ -131,7 +147,8 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
       courseCompleted: wsCourses.filter(c => isCourseCompleted(c.id)).length, courseTotal: wsCourses.length,
       catCompleted: cats.filter(c => isCatCompleted(c.id)).length, catTotal: cats.length,
       subCompleted: subs.filter(s => isSubCompleted(s.id)).length, subTotal: subs.length,
-      taskCompleted: tasks.filter(t => isTaskCompleted(t.id)).length, taskTotal: tasks.length,
+      taskCompleted: tasks.reduce((sum, t) => sum + taskCompletedCount(t), 0),
+      taskTotal: tasks.reduce((sum, t) => sum + getRequiredCount(t), 0),
     }
   }
 
@@ -330,7 +347,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                                         <button
                                                           key={task.id}
                                                           onClick={() => setSelection({ type: 'task', id: task.id })}
-                                                          className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all ${
+                                                          className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all flex items-center ${
                                                             selection?.type === 'task' && selection.id === task.id
                                                               ? 'bg-gold/10 text-gold font-medium'
                                                               : isTaskCompleted(task.id)
@@ -338,7 +355,8 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                                               : 'text-charcoal/40 hover:bg-charcoal/3 hover:text-charcoal/60'
                                                           }`}
                                                         >
-                                                          {task.title}
+                                                          <span className="flex-1">{task.title}</span>
+                                                          <span className="text-[9px] text-charcoal/30 flex-shrink-0 ml-1">{taskCompletedCount(task)}/{getRequiredCount(task)}</span>
                                                         </button>
                                                       )
                                                     })}
@@ -503,6 +521,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {task.trainer_type && <span className="text-[10px] px-2 py-0.5 rounded-full bg-charcoal/5 text-charcoal/40">{task.trainer_type}</span>}
                           {task.modality && <span className="text-[10px] px-2 py-0.5 rounded-full bg-charcoal/5 text-charcoal/40">{task.modality}</span>}
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-charcoal/5 text-charcoal/40">{taskCompletedCount(task)}/{getRequiredCount(task)}</span>
                         </div>
                       </div>
                       <span className="text-charcoal/20 mt-0.5">&rsaquo;</span>
@@ -562,19 +581,29 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 
             {/* Mark as Complete */}
             <div className="mt-8 pt-6 border-t border-black/5">
-              {isTaskCompleted(selTask.id) ? (
-                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 text-green-700 text-sm font-medium">
-                  <Check size={16} />
-                  Completed
-                </div>
-              ) : (
-                <button
-                  onClick={() => setCompletionOverlay(selTask.id)}
-                  className="w-full px-4 py-3 rounded-xl bg-gold text-white font-medium text-sm hover:bg-gold/90 transition-colors"
-                >
-                  Mark as Complete
-                </button>
-              )}
+              {(() => {
+                const count = getCompletionCount(selTask.id)
+                const required = getRequiredCount(selTask)
+                const done = count >= required
+                const isLast = count === required - 1
+
+                return done ? (
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-green-50 text-green-700 text-sm font-medium">
+                    <Check size={16} />
+                    Completed ({count}/{required})
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs text-charcoal/40 mb-2">Progress: {count}/{required} completion{required !== 1 ? 's' : ''}</p>
+                    <button
+                      onClick={() => setCompletionOverlay(selTask.id)}
+                      className="w-full px-4 py-3 rounded-xl bg-gold text-white font-medium text-sm hover:bg-gold/90 transition-colors"
+                    >
+                      {isLast ? 'Mark as Complete' : selTask.is_recurring ? 'Record Task as Complete' : 'Mark as Complete'}
+                    </button>
+                  </>
+                )
+              })()}
             </div>
           </div>
         )}
@@ -590,14 +619,24 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
         )}
       </div>
       {/* Completion overlay */}
-      {completionOverlay && (
-        <CompletionOverlay
-          task={trainingTasks.find(t => t.id === completionOverlay)!}
-          submitting={completing}
-          onSubmit={(data) => submitCompletion(completionOverlay, data)}
-          onClose={() => setCompletionOverlay(null)}
-        />
-      )}
+      {completionOverlay && (() => {
+        const overlayTask = trainingTasks.find(t => t.id === completionOverlay)!
+        const count = getCompletionCount(completionOverlay)
+        const required = getRequiredCount(overlayTask)
+        const taskCompletions = completions.filter(c => c.training_task_id === completionOverlay)
+        const hasPreviousCertificate = taskCompletions.some(c => c.certificate_url !== null)
+        return (
+          <CompletionOverlay
+            task={overlayTask}
+            submitting={completing}
+            completionNumber={count + 1}
+            requiredCount={required}
+            hasPreviousCertificate={hasPreviousCertificate}
+            onSubmit={(data) => submitCompletion(completionOverlay, data)}
+            onClose={() => setCompletionOverlay(null)}
+          />
+        )
+      })()}
     </div>
   )
 }
@@ -605,11 +644,17 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 function CompletionOverlay({
   task,
   submitting,
+  completionNumber,
+  requiredCount,
+  hasPreviousCertificate,
   onSubmit,
   onClose,
 }: {
   task: TrainingTask
   submitting: boolean
+  completionNumber: number
+  requiredCount: number
+  hasPreviousCertificate: boolean
   onSubmit: (data: { takeaways: string; summary: string; confidence_rating: number | null; certificate_reference: string | null; certificate_url: string | null }) => void
   onClose: () => void
 }) {
@@ -622,8 +667,11 @@ function CompletionOverlay({
   const [showErrors, setShowErrors] = useState(false)
   const supabase = createClient()
 
+  const isRecurring = task.is_recurring
   const needsRating = task.confidence_rating_required
   const needsCert = task.certificate_required
+  const showCertUpload = needsCert && !hasPreviousCertificate
+  const isLast = completionNumber >= requiredCount
 
   function wordCount(s: string) {
     return s.trim().split(/\s+/).filter(Boolean).length
@@ -659,7 +707,7 @@ function CompletionOverlay({
       summary: summary.trim(),
       confidence_rating: needsRating ? rating : null,
       certificate_reference: needsCert && certRef.trim() ? certRef.trim() : null,
-      certificate_url: needsCert ? certFile : null,
+      certificate_url: showCertUpload ? certFile : null,
     })
   }
 
@@ -669,38 +717,38 @@ function CompletionOverlay({
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg mx-0 sm:mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="px-5 pt-5 pb-3 border-b border-black/5">
-          <h2 className="font-serif text-lg text-charcoal">Complete Training Task</h2>
+          <h2 className="font-serif text-lg text-charcoal">{isRecurring ? `Record Completion ${completionNumber}/${requiredCount}` : 'Complete Training Task'}</h2>
           <p className="text-xs text-charcoal/40 mt-0.5 line-clamp-1">{task.title}</p>
         </div>
 
         {/* Form */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {/* Key Takeaways */}
+          {/* Question 1 */}
           <div>
             <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-              What were your three key takeaways? <span className="text-red-400">*</span>
+              {isRecurring ? 'What did you observe?' : 'What were your three key takeaways?'} <span className="text-red-400">*</span>
             </label>
             <textarea
               className={`textarea text-sm ${showErrors && errors.takeaways ? 'border-red-300 bg-red-50/30' : ''}`}
               rows={5}
               value={takeaways}
               onChange={e => setTakeaways(e.target.value)}
-              placeholder="Share your three key takeaways... (minimum 20 words)"
+              placeholder={isRecurring ? 'Describe what you observed... (minimum 20 words)' : 'Share your three key takeaways... (minimum 20 words)'}
             />
             <p className={`text-[10px] mt-1 ${showErrors && errors.takeaways ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaways)} / 20 words min</p>
           </div>
 
-          {/* Summary */}
+          {/* Question 2 */}
           <div>
             <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-              Brief Summary <span className="text-red-400">*</span>
+              {isRecurring ? 'What questions do you have, or what would you like to know more about?' : 'Brief Summary'} <span className="text-red-400">*</span>
             </label>
             <textarea
               className={`textarea text-sm ${showErrors && errors.summary ? 'border-red-300 bg-red-50/30' : ''}`}
               rows={4}
               value={summary}
               onChange={e => setSummary(e.target.value)}
-              placeholder="Write a brief summary of what you covered — not an essay, just the essence (minimum 20 words)"
+              placeholder={isRecurring ? 'Share your questions or areas of interest... (minimum 20 words)' : 'Write a brief summary of what you covered — not an essay, just the essence (minimum 20 words)'}
             />
             <p className={`text-[10px] mt-1 ${showErrors && errors.summary ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(summary)} / 20 words min</p>
           </div>
@@ -752,25 +800,27 @@ function CompletionOverlay({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-                  Certificate Upload
-                </label>
-                {certFile ? (
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2"><path d="M20 6L9 17l-5-5" /></svg>
-                    <span className="text-sm text-green-700 flex-1 truncate">Certificate uploaded</span>
-                    <button onClick={() => setCertFile(null)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
-                  </div>
-                ) : (
-                  <label className="card p-4 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-charcoal/30"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
-                    <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload certificate'}</p>
-                    <p className="text-xs text-charcoal/25">PDF, JPG, PNG</p>
-                    <input type="file" accept=".pdf,image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCertUpload(e.target.files[0])} />
+              {showCertUpload && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+                    Certificate Upload
                   </label>
-                )}
-              </div>
+                  {certFile ? (
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2"><path d="M20 6L9 17l-5-5" /></svg>
+                      <span className="text-sm text-green-700 flex-1 truncate">Certificate uploaded</span>
+                      <button onClick={() => setCertFile(null)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                    </div>
+                  ) : (
+                    <label className="card p-4 flex flex-col items-center gap-2 cursor-pointer hover:shadow-md transition-shadow">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-charcoal/30"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg>
+                      <p className="text-sm text-charcoal/40">{uploading ? 'Uploading...' : 'Click to upload certificate'}</p>
+                      <p className="text-xs text-charcoal/25">PDF, JPG, PNG</p>
+                      <input type="file" accept=".pdf,image/*" className="hidden" onChange={e => e.target.files?.[0] && handleCertUpload(e.target.files[0])} />
+                    </label>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -788,7 +838,7 @@ function CompletionOverlay({
             disabled={submitting}
             className="flex-1 px-4 py-2.5 text-sm font-medium bg-gold text-white rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50"
           >
-            {submitting ? 'Submitting...' : 'Complete Task'}
+            {submitting ? 'Submitting...' : isLast ? 'Complete Task' : 'Record Completion'}
           </button>
         </div>
       </div>
