@@ -768,7 +768,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                       onClick={() => setCompletionOverlay(selTask.id)}
                       className="w-full px-4 py-3 rounded-xl bg-gold text-white font-medium text-sm hover:bg-gold/90 transition-colors"
                     >
-                      {isLast ? 'Mark as Complete' : selTask.is_recurring ? 'Record Task as Complete' : 'Mark as Complete'}
+                      {isLast ? 'Mark as Complete' : selTask.is_recurring ? 'Shadow Task' : 'Mark as Complete'}
                     </button>
                   </>
                 )
@@ -886,7 +886,7 @@ function CompletionOverlay({
       <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg mx-0 sm:mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="px-5 pt-5 pb-3 border-b border-black/5">
-          <h2 className="font-serif text-lg text-charcoal">{isRecurring ? `Record Completion ${completionNumber}/${requiredCount}` : 'Complete Training Task'}</h2>
+          <h2 className="font-serif text-lg text-charcoal">{isRecurring ? `Mark as Shadowed ${completionNumber}/${requiredCount}` : 'Complete Training Task'}</h2>
           <p className="text-xs text-charcoal/40 mt-0.5 line-clamp-1">{task.title}</p>
         </div>
 
@@ -1007,7 +1007,7 @@ function CompletionOverlay({
             disabled={submitting}
             className="flex-1 px-4 py-2.5 text-sm font-medium bg-gold text-white rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50"
           >
-            {submitting ? 'Submitting...' : isLast ? 'Complete Task' : 'Record Completion'}
+            {submitting ? 'Submitting...' : isLast ? 'Complete Task' : 'Mark as Shadowed'}
           </button>
         </div>
       </div>
