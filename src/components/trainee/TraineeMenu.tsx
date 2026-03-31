@@ -27,7 +27,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const [completing, setCompleting] = useState(false)
   const [completionOverlay, setCompletionOverlay] = useState<string | null>(null) // task id
   const [searchQuery, setSearchQuery] = useState('')
-  const [filter, setFilter] = useState<'all' | 'todo' | 'completed'>('all')
+  const [filter, setFilter] = useState<'all' | 'todo' | 'assigned' | 'completed'>('all')
   const supabase = createClient()
   const router = useRouter()
 
@@ -149,8 +149,15 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     taskContent.filter(c => c.training_task_id === taskId).sort((a, b) => a.sort_order - b.sort_order)
 
   // Filtered getters for sidebar (respects filter pills)
-  const taskMatchesFilter = (taskId: string) =>
-    filter === 'all' || (filter === 'completed' ? isTaskCompleted(taskId) : !isTaskCompleted(taskId))
+  const isTaskAssigned = (taskId: string) => assignments.some(a => a.training_task_id === taskId)
+
+  const taskMatchesFilter = (taskId: string) => {
+    if (filter === 'all') return true
+    if (filter === 'completed') return isTaskCompleted(taskId)
+    if (filter === 'assigned') return isTaskAssigned(taskId) && !isTaskCompleted(taskId)
+    // todo: not completed and not assigned
+    return !isTaskCompleted(taskId) && !isTaskAssigned(taskId)
+  }
 
   const getFilteredTasksForSub = (subId: string) =>
     getTasksForSub(subId).filter(t => taskMatchesFilter(t.id))
@@ -340,7 +347,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 
           {/* Filter pills */}
           <div className="flex gap-1.5 mb-4">
-            {(['all', 'todo', 'completed'] as const).map(f => (
+            {(['all', 'todo', 'assigned', 'completed'] as const).map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -350,7 +357,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                     : 'bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10'
                 }`}
               >
-                {f === 'all' ? 'All' : f === 'todo' ? 'To Do' : 'Completed'}
+                {f === 'all' ? 'All' : f === 'todo' ? 'To Do' : f === 'assigned' ? 'Assigned' : 'Completed'}
               </button>
             ))}
           </div>

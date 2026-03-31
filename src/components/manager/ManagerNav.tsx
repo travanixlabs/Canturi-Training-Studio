@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const tabs = [
-  { href: '/manager/build-plate', label: 'Build Plate' },
+  { href: '/manager/build-plate', label: 'Build Menu' },
 ]
 
 export function ManagerNav() {

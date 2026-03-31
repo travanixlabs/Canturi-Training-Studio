@@ -80,7 +80,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [selection, setSelection] = useState<{ type: 'workshop' | 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filter, setFilter] = useState<'all' | 'todo' | 'completed'>('all')
+  const [filter, setFilter] = useState<'all' | 'todo' | 'assigned' | 'completed'>('all')
   const [previewTaskId, setPreviewTaskId] = useState<string | null>(null)
 
   // Content helpers
@@ -291,8 +291,14 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
   }
 
   // Filter helpers
-  const taskMatchesFilter = (taskId: string) =>
-    filter === 'all' || (filter === 'completed' ? isTaskCompleted(taskId) : !isTaskCompleted(taskId))
+  const isTaskAssigned = (taskId: string) => traineeAssignments.some(a => a.training_task_id === taskId)
+
+  const taskMatchesFilter = (taskId: string) => {
+    if (filter === 'all') return true
+    if (filter === 'completed') return isTaskCompleted(taskId)
+    if (filter === 'assigned') return isTaskAssigned(taskId) && !isTaskCompleted(taskId)
+    return !isTaskCompleted(taskId) && !isTaskAssigned(taskId)
+  }
 
   const getFilteredTasksForSub = (subId: string) =>
     getTasksForSub(subId).filter(t => taskMatchesFilter(t.id))
@@ -444,7 +450,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
 
           {/* Filter pills */}
           <div className="flex gap-1.5 mb-4">
-            {(['all', 'todo', 'completed'] as const).map(f => (
+            {(['all', 'todo', 'assigned', 'completed'] as const).map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -454,7 +460,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                     : 'bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10'
                 }`}
               >
-                {f === 'all' ? 'All' : f === 'todo' ? 'To Do' : 'Completed'}
+                {f === 'all' ? 'All' : f === 'todo' ? 'To Do' : f === 'assigned' ? 'Assigned' : 'Completed'}
               </button>
             ))}
           </div>
