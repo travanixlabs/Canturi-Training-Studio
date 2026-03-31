@@ -69,7 +69,12 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
       trainee_id: currentUser.id,
       ...data,
     }).select().single()
-    if (!error && result) {
+    if (error) {
+      alert('Failed to save completion: ' + error.message)
+      setCompleting(false)
+      return
+    }
+    if (result) {
       setCompletions(prev => [...prev, result as TrainingTaskCompletion])
     }
     setCompleting(false)
