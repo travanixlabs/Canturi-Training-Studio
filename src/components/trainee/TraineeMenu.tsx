@@ -95,6 +95,46 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const getContentForTask = (taskId: string) =>
     taskContent.filter(c => c.training_task_id === taskId).sort((a, b) => a.sort_order - b.sort_order)
 
+  // Progress stats helpers
+  const subStats = (subId: string) => {
+    const tasks = getTasksForSub(subId)
+    return { completed: tasks.filter(t => isTaskCompleted(t.id)).length, total: tasks.length }
+  }
+
+  const catStats = (catId: string) => {
+    const subs = getSubsForCat(catId)
+    const tasks = subs.flatMap(s => getTasksForSub(s.id))
+    return {
+      subCompleted: subs.filter(s => isSubCompleted(s.id)).length, subTotal: subs.length,
+      taskCompleted: tasks.filter(t => isTaskCompleted(t.id)).length, taskTotal: tasks.length,
+    }
+  }
+
+  const courseStats = (courseId: string) => {
+    const cats = getCatsForCourse(courseId)
+    const subs = cats.flatMap(c => getSubsForCat(c.id))
+    const tasks = subs.flatMap(s => getTasksForSub(s.id))
+    return {
+      catCompleted: cats.filter(c => isCatCompleted(c.id)).length, catTotal: cats.length,
+      subCompleted: subs.filter(s => isSubCompleted(s.id)).length, subTotal: subs.length,
+      taskCompleted: tasks.filter(t => isTaskCompleted(t.id)).length, taskTotal: tasks.length,
+    }
+  }
+
+  const workshopStats = (wsId: string) => {
+    const courseIds = new Set(workshopCourses.filter(wc => wc.workshop_id === wsId).map(wc => wc.course_id))
+    const wsCourses = courses.filter(c => courseIds.has(c.id))
+    const cats = wsCourses.flatMap(c => getCatsForCourse(c.id))
+    const subs = cats.flatMap(c => getSubsForCat(c.id))
+    const tasks = subs.flatMap(s => getTasksForSub(s.id))
+    return {
+      courseCompleted: wsCourses.filter(c => isCourseCompleted(c.id)).length, courseTotal: wsCourses.length,
+      catCompleted: cats.filter(c => isCatCompleted(c.id)).length, catTotal: cats.length,
+      subCompleted: subs.filter(s => isSubCompleted(s.id)).length, subTotal: subs.length,
+      taskCompleted: tasks.filter(t => isTaskCompleted(t.id)).length, taskTotal: tasks.length,
+    }
+  }
+
   function getEmbedUrl(url: string): string {
     const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
     if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
@@ -176,7 +216,12 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                     }`}
                   >
                     <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] flex-shrink-0 font-serif ${isWorkshopCompleted(workshop.id) ? 'bg-green-100 text-green-700' : 'bg-gold/10 text-gold'}`}>W</span>
-                    <span className={`text-sm font-medium flex-1 ${isWorkshopCompleted(workshop.id) ? 'text-green-700' : 'text-charcoal'}`}>{workshop.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-sm font-medium ${isWorkshopCompleted(workshop.id) ? 'text-green-700' : 'text-charcoal'}`}>{workshop.name}</span>
+                      {(() => { const s = workshopStats(workshop.id); return (
+                        <p className="text-[9px] text-charcoal/30 leading-tight mt-0.5">{s.courseCompleted}/{s.courseTotal} courses · {s.catCompleted}/{s.catTotal} categories · {s.subCompleted}/{s.subTotal} subcategories · {s.taskCompleted}/{s.taskTotal} tasks</p>
+                      )})()}
+                    </div>
                     {wsOpen ? <ChevronUp size={14} className="text-charcoal/30" /> : <ChevronDown size={14} className="text-charcoal/30" />}
                   </button>
 
@@ -211,7 +256,12 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                               >
                                 {isCourseCompleted(course.id) ? '✓' : course.icon}
                               </span>
-                              <span className={`text-sm flex-1 ${isCourseCompleted(course.id) ? 'text-green-700' : 'text-charcoal/70'}`}>{course.name}</span>
+                              <div className="flex-1 min-w-0">
+                                <span className={`text-sm ${isCourseCompleted(course.id) ? 'text-green-700' : 'text-charcoal/70'}`}>{course.name}</span>
+                                {(() => { const s = courseStats(course.id); return (
+                                  <p className="text-[9px] text-charcoal/30 leading-tight mt-0.5">{s.catCompleted}/{s.catTotal} categories · {s.subCompleted}/{s.subTotal} subcategories · {s.taskCompleted}/{s.taskTotal} tasks</p>
+                                )})()}
+                              </div>
                               {cOpen ? <ChevronUp size={12} className="text-charcoal/20" /> : <ChevronDown size={12} className="text-charcoal/20" />}
                             </button>
 
@@ -233,7 +283,12 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                           : 'hover:bg-charcoal/3'
                                         }`}
                                       >
-                                        <span className={`text-xs flex-1 ${isCatCompleted(cat.id) ? 'text-green-700 font-medium' : 'text-charcoal/50'}`}>{cat.title}</span>
+                                        <div className="flex-1 min-w-0">
+                                          <span className={`text-xs ${isCatCompleted(cat.id) ? 'text-green-700 font-medium' : 'text-charcoal/50'}`}>{cat.title}</span>
+                                          {(() => { const s = catStats(cat.id); return (
+                                            <p className="text-[9px] text-charcoal/30 leading-tight mt-0.5">{s.subCompleted}/{s.subTotal} subcategories · {s.taskCompleted}/{s.taskTotal} tasks</p>
+                                          )})()}
+                                        </div>
                                         {subs.length > 0 && (
                                           catOpen ? <ChevronUp size={10} className="text-charcoal/20" /> : <ChevronDown size={10} className="text-charcoal/20" />
                                         )}
@@ -257,7 +312,12 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                                     : 'hover:bg-charcoal/3'
                                                   }`}
                                                 >
-                                                  <span className={`text-xs flex-1 ${isSubCompleted(sub.id) ? 'text-green-700 font-medium' : 'text-charcoal/40'}`}>{sub.title}</span>
+                                                  <div className="flex-1 min-w-0">
+                                                    <span className={`text-xs ${isSubCompleted(sub.id) ? 'text-green-700 font-medium' : 'text-charcoal/40'}`}>{sub.title}</span>
+                                                    {(() => { const s = subStats(sub.id); return (
+                                                      <p className="text-[9px] text-charcoal/30 leading-tight mt-0.5">{s.completed}/{s.total} tasks</p>
+                                                    )})()}
+                                                  </div>
                                                   {tasks.length > 0 && (
                                                     subOpen ? <ChevronUp size={10} className="text-charcoal/15" /> : <ChevronDown size={10} className="text-charcoal/15" />
                                                   )}
