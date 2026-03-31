@@ -69,7 +69,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
 
   const [selectedTraineeId, setSelectedTraineeId] = useState<string>(sortedTrainees[0]?.id ?? '')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const [selection, setSelection] = useState<{ type: 'workshop' | 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'todo' | 'completed'>('all')
 
@@ -277,38 +277,34 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
     setExpanded(prev => { const next = new Set(prev); for (const k of keys) next.delete(k); return next })
   }
 
-  // Selection handlers — workshops/courses/categories/subcategories just toggle expand
+  // Selection handlers — expand and select
   function selectWorkshop(wsId: string) {
     toggle(`ws-${wsId}`)
-    setSelectedTaskId(null)
+    setSelection({ type: 'workshop', id: wsId })
   }
   function selectCourse(courseId: string) {
     toggle(`c-${courseId}`)
-    setSelectedTaskId(null)
+    setSelection({ type: 'course', id: courseId })
   }
   function selectCategory(catId: string) {
     toggle(`cat-${catId}`)
-    setSelectedTaskId(null)
+    setSelection({ type: 'category', id: catId })
   }
   function selectSubcategory(subId: string) {
     toggle(`sub-${subId}`)
-    setSelectedTaskId(null)
+    setSelection({ type: 'subcategory', id: subId })
   }
   function selectTask(taskId: string) {
-    setSelectedTaskId(taskId === selectedTaskId ? null : taskId)
+    setSelection(selection?.type === 'task' && selection.id === taskId ? null : { type: 'task', id: taskId })
   }
 
   // Search result selection
   function selectSearchResult(type: string, id: string) {
     setSearchQuery('')
-    if (type === 'task') {
-      setSelectedTaskId(id)
-    } else {
-      setSelectedTaskId(null)
-      if (type === 'course') toggle(`c-${id}`)
-      else if (type === 'category') toggle(`cat-${id}`)
-      else if (type === 'subcategory') toggle(`sub-${id}`)
-    }
+    setSelection({ type: type as 'course' | 'category' | 'subcategory' | 'task', id })
+    if (type === 'course') toggle(`c-${id}`)
+    else if (type === 'category') toggle(`cat-${id}`)
+    else if (type === 'subcategory') toggle(`sub-${id}`)
   }
 
   return (
@@ -387,7 +383,9 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                   <button
                     onClick={() => selectWorkshop(workshop.id)}
                     className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
-                      isWorkshopCompleted(workshop.id) ? 'bg-green-50' : 'hover:bg-charcoal/3'
+                      selection?.type === 'workshop' && selection.id === workshop.id ? 'bg-gold/10'
+                      : isWorkshopCompleted(workshop.id) ? 'bg-green-50'
+                      : 'hover:bg-charcoal/3'
                     }`}
                   >
                     <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] flex-shrink-0 font-serif ${isWorkshopCompleted(workshop.id) ? 'bg-green-100 text-green-700' : 'bg-gold/10 text-gold'}`}>W</span>
@@ -419,7 +417,9 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                             <button
                               onClick={() => selectCourse(course.id)}
                               className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
-                                isCourseCompleted(course.id) ? 'bg-green-50' : 'hover:bg-charcoal/3'
+                                selection?.type === 'course' && selection.id === course.id ? 'bg-gold/10'
+                                : isCourseCompleted(course.id) ? 'bg-green-50'
+                                : 'hover:bg-charcoal/3'
                               }`}
                             >
                               <span
@@ -449,7 +449,9 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                       <button
                                         onClick={() => selectCategory(cat.id)}
                                         className={`w-full text-left px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
-                                          isCatCompleted(cat.id) ? 'bg-green-50' : 'hover:bg-charcoal/3'
+                                          selection?.type === 'category' && selection.id === cat.id ? 'bg-gold/10'
+                                          : isCatCompleted(cat.id) ? 'bg-green-50'
+                                          : 'hover:bg-charcoal/3'
                                         }`}
                                       >
                                         <div className="flex-1 min-w-0">
@@ -475,7 +477,9 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                 <button
                                                   onClick={() => selectSubcategory(sub.id)}
                                                   className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
-                                                    isSubCompleted(sub.id) ? 'bg-green-50' : 'hover:bg-charcoal/3'
+                                                    selection?.type === 'subcategory' && selection.id === sub.id ? 'bg-gold/10'
+                                                    : isSubCompleted(sub.id) ? 'bg-green-50'
+                                                    : 'hover:bg-charcoal/3'
                                                   }`}
                                                 >
                                                   <div className="flex-1 min-w-0">
@@ -496,7 +500,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                         key={task.id}
                                                         onClick={() => selectTask(task.id)}
                                                         className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all flex items-center ${
-                                                          selectedTaskId === task.id
+                                                          selection?.type === 'task' && selection.id === task.id
                                                             ? 'bg-gold/10 text-gold font-medium'
                                                             : isTaskCompleted(task.id)
                                                             ? 'bg-green-50 text-green-700'
@@ -540,7 +544,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
             {sortedTrainees.map(trainee => (
               <button
                 key={trainee.id}
-                onClick={() => { setSelectedTraineeId(trainee.id); setSelectedTaskId(null) }}
+                onClick={() => { setSelectedTraineeId(trainee.id); setSelection(null) }}
                 className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
                   selectedTraineeId === trainee.id
                     ? 'bg-gold text-white'
