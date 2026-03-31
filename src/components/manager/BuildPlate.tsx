@@ -618,7 +618,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                           e.dataTransfer.effectAllowed = 'copy'
                                                         }}
                                                         onClick={() => selectTask(task.id)}
-                                                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all flex items-center cursor-grab active:cursor-grabbing ${
+                                                        className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all flex items-center gap-1.5 cursor-grab active:cursor-grabbing ${
                                                           selection?.type === 'task' && selection.id === task.id
                                                             ? 'bg-gold/10 text-gold font-medium'
                                                             : isTaskCompleted(task.id)
