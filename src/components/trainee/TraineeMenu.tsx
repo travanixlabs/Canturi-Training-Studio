@@ -127,6 +127,61 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     })
   }
 
+  // Expand all ancestors so an item is visible in the sidebar, then scroll to it
+  function expandToItem(type: 'course' | 'category' | 'subcategory' | 'task', id: string) {
+    const keys: string[] = []
+
+    if (type === 'task') {
+      const task = trainingTasks.find(t => t.id === id)
+      if (task) {
+        const sub = subcategories.find(s => s.id === task.subcategory_id)
+        if (sub) {
+          keys.push(`sub-${sub.id}`)
+          const cat = categories.find(c => c.id === sub.category_id)
+          if (cat) {
+            keys.push(`cat-${cat.id}`)
+            keys.push(`c-${cat.course_id}`)
+            const ws = workshops.find(w => workshopCourses.some(wc => wc.workshop_id === w.id && wc.course_id === cat.course_id))
+            if (ws) keys.push(`ws-${ws.id}`)
+          }
+        }
+      }
+    } else if (type === 'subcategory') {
+      const sub = subcategories.find(s => s.id === id)
+      if (sub) {
+        const cat = categories.find(c => c.id === sub.category_id)
+        if (cat) {
+          keys.push(`cat-${cat.id}`)
+          keys.push(`c-${cat.course_id}`)
+          const ws = workshops.find(w => workshopCourses.some(wc => wc.workshop_id === w.id && wc.course_id === cat.course_id))
+          if (ws) keys.push(`ws-${ws.id}`)
+        }
+      }
+    } else if (type === 'category') {
+      const cat = categories.find(c => c.id === id)
+      if (cat) {
+        keys.push(`c-${cat.course_id}`)
+        const ws = workshops.find(w => workshopCourses.some(wc => wc.workshop_id === w.id && wc.course_id === cat.course_id))
+        if (ws) keys.push(`ws-${ws.id}`)
+      }
+    } else if (type === 'course') {
+      const ws = workshops.find(w => workshopCourses.some(wc => wc.workshop_id === w.id && wc.course_id === id))
+      if (ws) keys.push(`ws-${ws.id}`)
+    }
+
+    setExpanded(prev => {
+      const next = new Set(prev)
+      for (const k of keys) next.add(k)
+      return next
+    })
+
+    // Scroll to the item after DOM updates
+    setTimeout(() => {
+      const el = document.getElementById(`sidebar-${type}-${id}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+  }
+
   // Build hierarchy
   const workshopHierarchy = useMemo(() => {
     return workshops.map(ws => {
@@ -373,7 +428,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                   {searchResults.map(r => (
                     <button
                       key={`${r.type}-${r.id}`}
-                      onClick={() => { setSelection({ type: r.type, id: r.id }); setSearchQuery('') }}
+                      onClick={() => { setSelection({ type: r.type, id: r.id }); setSearchQuery(''); expandToItem(r.type, r.id) }}
                       className="w-full text-left px-3 py-2 rounded-lg hover:bg-charcoal/3 transition-all"
                     >
                       <p className="text-sm text-charcoal leading-snug">{r.title}</p>
@@ -394,6 +449,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                 <div key={workshop.id}>
                   {/* Workshop */}
                   <button
+                    id={`sidebar-workshop-${workshop.id}`}
                     onClick={() => { toggle(wsKey); setSelection({ type: 'workshop', id: workshop.id }) }}
                     className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
                       selection?.type === 'workshop' && selection.id === workshop.id ? 'bg-gold/10'
@@ -430,6 +486,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                           <div key={course.id}>
                             {/* Course */}
                             <button
+                              id={`sidebar-course-${course.id}`}
                               onClick={() => { toggle(cKey); setSelection({ type: 'course', id: course.id }) }}
                               className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
                                 selection?.type === 'course' && selection.id === course.id ? 'bg-gold/10'
@@ -464,6 +521,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                     <div key={cat.id}>
                                       {/* Category */}
                                       <button
+                                        id={`sidebar-category-${cat.id}`}
                                         onClick={() => { toggle(catKey); setSelection({ type: 'category', id: cat.id }) }}
                                         className={`w-full text-left px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
                                           selection?.type === 'category' && selection.id === cat.id ? 'bg-gold/10'
@@ -494,6 +552,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                               <div key={sub.id}>
                                                 {/* Subcategory */}
                                                 <button
+                                                  id={`sidebar-subcategory-${sub.id}`}
                                                   onClick={() => { toggle(subKey); setSelection({ type: 'subcategory', id: sub.id }) }}
                                                   className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
                                                     selection?.type === 'subcategory' && selection.id === sub.id ? 'bg-gold/10'
@@ -519,6 +578,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                                                       return (
                                                         <button
                                                           key={task.id}
+                                                          id={`sidebar-task-${task.id}`}
                                                           onClick={() => setSelection({ type: 'task', id: task.id })}
                                                           className={`w-full text-left px-2 py-1.5 rounded-lg text-xs leading-snug transition-all flex items-center ${
                                                             selection?.type === 'task' && selection.id === task.id

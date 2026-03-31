@@ -426,13 +426,66 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
     setSelection(selection?.type === 'task' && selection.id === taskId ? null : { type: 'task', id: taskId })
   }
 
+  // Expand all ancestors so an item is visible in the sidebar, then scroll to it
+  function expandToItem(type: 'course' | 'category' | 'subcategory' | 'task', id: string) {
+    const keys: string[] = []
+
+    if (type === 'task') {
+      const task = trainingTasks.find(t => t.id === id)
+      if (task) {
+        const sub = subcategories.find(s => s.id === task.subcategory_id)
+        if (sub) {
+          keys.push(`sub-${sub.id}`)
+          const cat = categories.find(c => c.id === sub.category_id)
+          if (cat) {
+            keys.push(`cat-${cat.id}`)
+            keys.push(`c-${cat.course_id}`)
+            const ws = workshops.find(w => workshopCourses.some(wc => wc.workshop_id === w.id && wc.course_id === cat.course_id))
+            if (ws) keys.push(`ws-${ws.id}`)
+          }
+        }
+      }
+    } else if (type === 'subcategory') {
+      const sub = subcategories.find(s => s.id === id)
+      if (sub) {
+        const cat = categories.find(c => c.id === sub.category_id)
+        if (cat) {
+          keys.push(`cat-${cat.id}`)
+          keys.push(`c-${cat.course_id}`)
+          const ws = workshops.find(w => workshopCourses.some(wc => wc.workshop_id === w.id && wc.course_id === cat.course_id))
+          if (ws) keys.push(`ws-${ws.id}`)
+        }
+      }
+    } else if (type === 'category') {
+      const cat = categories.find(c => c.id === id)
+      if (cat) {
+        keys.push(`c-${cat.course_id}`)
+        const ws = workshops.find(w => workshopCourses.some(wc => wc.workshop_id === w.id && wc.course_id === cat.course_id))
+        if (ws) keys.push(`ws-${ws.id}`)
+      }
+    } else if (type === 'course') {
+      const ws = workshops.find(w => workshopCourses.some(wc => wc.workshop_id === w.id && wc.course_id === id))
+      if (ws) keys.push(`ws-${ws.id}`)
+    }
+
+    setExpanded(prev => {
+      const next = new Set(prev)
+      for (const k of keys) next.add(k)
+      return next
+    })
+
+    setTimeout(() => {
+      const el = document.getElementById(`bp-sidebar-${type}-${id}`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+  }
+
   // Search result selection
   function selectSearchResult(type: string, id: string) {
     setSearchQuery('')
-    setSelection({ type: type as 'course' | 'category' | 'subcategory' | 'task', id })
-    if (type === 'course') toggle(`c-${id}`)
-    else if (type === 'category') toggle(`cat-${id}`)
-    else if (type === 'subcategory') toggle(`sub-${id}`)
+    const t = type as 'course' | 'category' | 'subcategory' | 'task'
+    setSelection({ type: t, id })
+    expandToItem(t, id)
   }
 
   return (
@@ -509,6 +562,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                 <div key={workshop.id}>
                   {/* Workshop */}
                   <button
+                    id={`bp-sidebar-workshop-${workshop.id}`}
                     onClick={() => selectWorkshop(workshop.id)}
                     className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
                       selection?.type === 'workshop' && selection.id === workshop.id ? 'bg-gold/10'
@@ -544,6 +598,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                         return (
                           <div key={course.id}>
                             <button
+                              id={`bp-sidebar-course-${course.id}`}
                               onClick={() => selectCourse(course.id)}
                               className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
                                 selection?.type === 'course' && selection.id === course.id ? 'bg-gold/10'
@@ -577,6 +632,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                   return (
                                     <div key={cat.id}>
                                       <button
+                                        id={`bp-sidebar-category-${cat.id}`}
                                         onClick={() => selectCategory(cat.id)}
                                         className={`w-full text-left px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
                                           selection?.type === 'category' && selection.id === cat.id ? 'bg-gold/10'
@@ -606,6 +662,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                             return (
                                               <div key={sub.id}>
                                                 <button
+                                                  id={`bp-sidebar-subcategory-${sub.id}`}
                                                   onClick={() => selectSubcategory(sub.id)}
                                                   className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
                                                     selection?.type === 'subcategory' && selection.id === sub.id ? 'bg-gold/10'
@@ -630,6 +687,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                     {tasks.map(task => (
                                                       <button
                                                         key={task.id}
+                                                        id={`bp-sidebar-task-${task.id}`}
                                                         draggable="true"
                                                         onDragStart={(e) => {
                                                           e.dataTransfer.setData('text/plain', task.id)
