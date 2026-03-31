@@ -8,7 +8,7 @@ export default async function TraineeMenuPage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: courses }, { data: categories }, { data: profile }, { data: workshops }, { data: workshopCourses }, { data: subcategories }, { data: trainingTasks }, { data: taskContent }, { data: completions }] = await Promise.all([
+  const [{ data: courses }, { data: categories }, { data: profile }, { data: workshops }, { data: workshopCourses }, { data: subcategories }, { data: trainingTasks }, { data: taskContent }, { data: completions }, { data: assignments }] = await Promise.all([
     supabase.from('courses').select('*').eq('status', 'active').is('deleted_at', null).order('sort_order'),
     supabase.from('categories').select('*, course:courses(*)').is('deleted_at', null).order('sort_order'),
     supabase.from('users').select('*').eq('id', authUser.id).single(),
@@ -18,6 +18,7 @@ export default async function TraineeMenuPage() {
     supabase.from('training_tasks').select('*').is('deleted_at', null).order('sort_order'),
     supabase.from('training_task_content').select('*').is('deleted_at', null).order('sort_order'),
     supabase.from('training_task_completions').select('*').eq('trainee_id', authUser.id),
+    supabase.from('training_task_assigned').select('*').eq('trainee_id', authUser.id),
   ])
 
   return (
@@ -31,6 +32,7 @@ export default async function TraineeMenuPage() {
       trainingTasks={trainingTasks ?? []}
       taskContent={taskContent ?? []}
       completions={completions ?? []}
+      assignments={assignments ?? []}
     />
   )
 }

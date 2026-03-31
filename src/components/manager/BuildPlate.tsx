@@ -164,6 +164,46 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
     return wsCourses.length > 0 && wsCourses.every(c => isCourseCompleted(c.id))
   }
 
+  // Blue status: assigned today or future, not yet completed for that date
+  const todayKey = toDateKey(today)
+
+  const traineeAssignments = useMemo(() =>
+    assignments.filter(a => a.trainee_id === selectedTraineeId),
+    [assignments, selectedTraineeId]
+  )
+
+  const isTaskBlue = (taskId: string) => {
+    if (isTaskCompleted(taskId)) return false
+    const taskAssigns = traineeAssignments.filter(a => a.training_task_id === taskId && a.assigned_date >= todayKey)
+    if (taskAssigns.length === 0) return false
+    const task = trainingTasks.find(t => t.id === taskId)
+    if (!task) return false
+    if (!task.is_recurring) return true
+    const completionDates = new Set(traineeCompletions.filter(c => c.training_task_id === taskId).map(c => c.completed_at.split('T')[0]))
+    return taskAssigns.some(a => !completionDates.has(a.assigned_date))
+  }
+
+  const isSubBlue = (subId: string) => {
+    const tasks = getTasksForSub(subId)
+    return tasks.length > 0 && tasks.every(t => isTaskCompleted(t.id) || isTaskBlue(t.id)) && tasks.some(t => isTaskBlue(t.id))
+  }
+
+  const isCatBlue = (catId: string) => {
+    const subs = getSubsForCat(catId)
+    return subs.length > 0 && subs.every(s => isSubCompleted(s.id) || isSubBlue(s.id)) && subs.some(s => isSubBlue(s.id))
+  }
+
+  const isCourseBlue = (courseId: string) => {
+    const cats = getCatsForCourse(courseId)
+    return cats.length > 0 && cats.every(c => isCatCompleted(c.id) || isCatBlue(c.id)) && cats.some(c => isCatBlue(c.id))
+  }
+
+  const isWorkshopBlue = (wsId: string) => {
+    const courseIds = new Set(workshopCourses.filter(wc => wc.workshop_id === wsId).map(wc => wc.course_id))
+    const wsCourses = courses.filter(c => courseIds.has(c.id))
+    return wsCourses.length > 0 && wsCourses.every(c => isCourseCompleted(c.id) || isCourseBlue(c.id)) && wsCourses.some(c => isCourseBlue(c.id))
+  }
+
   // Hierarchy helpers
   const workshopHierarchy = useMemo(() => {
     return workshops.map(ws => {
@@ -435,12 +475,13 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                     className={`w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-3 transition-all ${
                       selection?.type === 'workshop' && selection.id === workshop.id ? 'bg-gold/10'
                       : isWorkshopCompleted(workshop.id) ? 'bg-green-50'
+                      : isWorkshopBlue(workshop.id) ? 'bg-blue-50'
                       : 'hover:bg-charcoal/3'
                     }`}
                   >
-                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] flex-shrink-0 font-serif ${isWorkshopCompleted(workshop.id) ? 'bg-green-100 text-green-700' : 'bg-gold/10 text-gold'}`}>W</span>
+                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] flex-shrink-0 font-serif ${isWorkshopCompleted(workshop.id) ? 'bg-green-100 text-green-700' : isWorkshopBlue(workshop.id) ? 'bg-blue-100 text-blue-700' : 'bg-gold/10 text-gold'}`}>W</span>
                     <div className="flex-1 min-w-0">
-                      <span className={`text-sm font-medium ${isWorkshopCompleted(workshop.id) ? 'text-green-700' : 'text-charcoal'}`}>{workshop.name}</span>
+                      <span className={`text-sm font-medium ${isWorkshopCompleted(workshop.id) ? 'text-green-700' : isWorkshopBlue(workshop.id) ? 'text-blue-700' : 'text-charcoal'}`}>{workshop.name}</span>
                       {(() => { const s = workshopStats(workshop.id); return (
                         <p className="text-[9px] text-charcoal/30 leading-tight mt-0.5">{s.courseCompleted}/{s.courseTotal} courses · {s.catCompleted}/{s.catTotal} categories · {s.subCompleted}/{s.subTotal} subcategories · {s.taskCompleted}/{s.taskTotal} tasks</p>
                       )})()}
@@ -469,17 +510,18 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                               className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-all ${
                                 selection?.type === 'course' && selection.id === course.id ? 'bg-gold/10'
                                 : isCourseCompleted(course.id) ? 'bg-green-50'
+                                : isCourseBlue(course.id) ? 'bg-blue-50'
                                 : 'hover:bg-charcoal/3'
                               }`}
                             >
                               <span
-                                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 ${isCourseCompleted(course.id) ? 'bg-green-200 text-green-700' : ''}`}
-                                style={isCourseCompleted(course.id) ? {} : { backgroundColor: colour + '20', color: colour }}
+                                className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 ${isCourseCompleted(course.id) ? 'bg-green-200 text-green-700' : isCourseBlue(course.id) ? 'bg-blue-200 text-blue-700' : ''}`}
+                                style={isCourseCompleted(course.id) || isCourseBlue(course.id) ? {} : { backgroundColor: colour + '20', color: colour }}
                               >
                                 {isCourseCompleted(course.id) ? '✓' : course.icon}
                               </span>
                               <div className="flex-1 min-w-0">
-                                <span className={`text-sm ${isCourseCompleted(course.id) ? 'text-green-700' : 'text-charcoal/70'}`}>{course.name}</span>
+                                <span className={`text-sm ${isCourseCompleted(course.id) ? 'text-green-700' : isCourseBlue(course.id) ? 'text-blue-700' : 'text-charcoal/70'}`}>{course.name}</span>
                                 {(() => { const s = courseStats(course.id); return (
                                   <p className="text-[9px] text-charcoal/30 leading-tight mt-0.5">{s.catCompleted}/{s.catTotal} categories · {s.subCompleted}/{s.subTotal} subcategories · {s.taskCompleted}/{s.taskTotal} tasks</p>
                                 )})()}
@@ -501,11 +543,12 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                         className={`w-full text-left px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
                                           selection?.type === 'category' && selection.id === cat.id ? 'bg-gold/10'
                                           : isCatCompleted(cat.id) ? 'bg-green-50'
+                                          : isCatBlue(cat.id) ? 'bg-blue-50'
                                           : 'hover:bg-charcoal/3'
                                         }`}
                                       >
                                         <div className="flex-1 min-w-0">
-                                          <span className={`text-xs ${isCatCompleted(cat.id) ? 'text-green-700 font-medium' : 'text-charcoal/50'}`}>{cat.title}</span>
+                                          <span className={`text-xs ${isCatCompleted(cat.id) ? 'text-green-700 font-medium' : isCatBlue(cat.id) ? 'text-blue-700 font-medium' : 'text-charcoal/50'}`}>{cat.title}</span>
                                           {(() => { const s = catStats(cat.id); return (
                                             <p className="text-[9px] text-charcoal/30 leading-tight mt-0.5">{s.subCompleted}/{s.subTotal} subcategories · {s.taskCompleted}/{s.taskTotal} tasks</p>
                                           )})()}
@@ -529,11 +572,12 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                   className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 transition-all ${
                                                     selection?.type === 'subcategory' && selection.id === sub.id ? 'bg-gold/10'
                                                     : isSubCompleted(sub.id) ? 'bg-green-50'
+                                                    : isSubBlue(sub.id) ? 'bg-blue-50'
                                                     : 'hover:bg-charcoal/3'
                                                   }`}
                                                 >
                                                   <div className="flex-1 min-w-0">
-                                                    <span className={`text-xs ${isSubCompleted(sub.id) ? 'text-green-700 font-medium' : 'text-charcoal/40'}`}>{sub.title}</span>
+                                                    <span className={`text-xs ${isSubCompleted(sub.id) ? 'text-green-700 font-medium' : isSubBlue(sub.id) ? 'text-blue-700 font-medium' : 'text-charcoal/40'}`}>{sub.title}</span>
                                                     {(() => { const s = subStats(sub.id); return (
                                                       <p className="text-[9px] text-charcoal/30 leading-tight mt-0.5">{s.completed}/{s.total} tasks</p>
                                                     )})()}
@@ -559,6 +603,8 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                             ? 'bg-gold/10 text-gold font-medium'
                                                             : isTaskCompleted(task.id)
                                                             ? 'bg-green-50 text-green-700'
+                                                            : isTaskBlue(task.id)
+                                                            ? 'bg-blue-50 text-blue-700'
                                                             : 'text-charcoal/40 hover:bg-charcoal/3 hover:text-charcoal/60'
                                                         }`}
                                                       >
