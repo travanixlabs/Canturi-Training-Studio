@@ -100,6 +100,11 @@ export interface TrainingTaskCompletion {
   certificate_reference: string | null
   certificate_url: string | null
   completed_at: string
+  manager_notes: string | null
+  manager_coaching: string | null
+  manager_rating: number | null
+  signed_off_at: string | null
+  signed_off_by: string | null
 }
 
 export interface Workshop {
