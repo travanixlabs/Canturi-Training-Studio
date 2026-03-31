@@ -60,12 +60,12 @@ export async function POST() {
 
     if (pastIncompleteTasks.length === 0) continue
 
-    // Get all future assignments for this trainee (dates after today)
+    // Get all assignments for this trainee from today onwards (including today)
     const { data: futureAssignments } = await supabase
       .from('training_task_assigned')
       .select('*')
       .eq('trainee_id', traineeId)
-      .gt('assigned_date', todayKey)
+      .gte('assigned_date', todayKey)
       .order('assigned_date')
 
     if (!futureAssignments || futureAssignments.length === 0) continue
