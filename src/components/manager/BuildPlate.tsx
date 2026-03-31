@@ -784,18 +784,20 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                     const dateKey = toDateKey(day)
                     const dayTasks = localPlate[dateKey] ?? []
                     const status = daySaveStatus[dateKey]
+                    const isPast = dateKey < todayKey
 
                     return (
                       <div
                         key={di}
-                        onDragOver={(e) => { e.preventDefault(); setDragOverDate(dateKey) }}
-                        onDragEnter={(e) => { e.preventDefault() }}
+                        onDragOver={(e) => { if (!isPast) { e.preventDefault(); setDragOverDate(dateKey) } }}
+                        onDragEnter={(e) => { if (!isPast) e.preventDefault() }}
                         onDragLeave={(e) => {
                           if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverDate(null)
                         }}
                         onDrop={(e) => {
                           e.preventDefault()
                           setDragOverDate(null)
+                          if (isPast) return
                           const taskId = e.dataTransfer.getData('text/plain')
                           const sourceDate = e.dataTransfer.getData('source-date')
                           if (!taskId || dayTasks.includes(taskId)) return
@@ -824,7 +826,9 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                             return n
                           })
                         }}
-                        className={`p-2 flex flex-col min-h-[100px] bg-white transition-all ${
+                        className={`p-2 flex flex-col min-h-[100px] transition-all ${
+                          isPast ? 'bg-charcoal/[0.03]' : 'bg-white'
+                        } ${
                           isToday ? 'ring-2 ring-inset ring-gold/30' : ''
                         } ${
                           dragOverDate === dateKey ? 'bg-gold/5' : ''
@@ -862,13 +866,14 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                             return (
                               <div
                                 key={`${taskId}-${idx}`}
-                                draggable="true"
+                                draggable={!isPast}
                                 onDragStart={(e) => {
+                                  if (isPast) { e.preventDefault(); return }
                                   e.dataTransfer.setData('text/plain', taskId)
                                   e.dataTransfer.setData('source-date', dateKey)
                                   e.dataTransfer.effectAllowed = 'move'
                                 }}
-                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-snug group cursor-grab active:cursor-grabbing ${
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-snug group ${isPast ? '' : 'cursor-grab active:cursor-grabbing'} ${
                                   isTaskCompletedOnDate(taskId, dateKey) ? 'bg-green-50 text-green-700'
                                   : isTaskBlue(taskId) ? 'bg-blue-50 text-blue-700'
                                   : ''
@@ -876,18 +881,20 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                 style={isTaskCompletedOnDate(taskId, dateKey) || isTaskBlue(taskId) ? {} : { backgroundColor: colour + '15', color: colour }}
                               >
                                 <span className="flex-1">{task.title}</span>
-                                <button
-                                  onClick={() => {
-                                    setLocalPlate(prev => ({
-                                      ...prev,
-                                      [dateKey]: (prev[dateKey] ?? []).filter(id => id !== taskId)
-                                    }))
-                                    setDaySaveStatus(prev => { const n = { ...prev }; delete n[dateKey]; return n })
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                                >
-                                  <X size={10} />
-                                </button>
+                                {!isPast && (
+                                  <button
+                                    onClick={() => {
+                                      setLocalPlate(prev => ({
+                                        ...prev,
+                                        [dateKey]: (prev[dateKey] ?? []).filter(id => id !== taskId)
+                                      }))
+                                      setDaySaveStatus(prev => { const n = { ...prev }; delete n[dateKey]; return n })
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                                  >
+                                    <X size={10} />
+                                  </button>
+                                )}
                               </div>
                             )
                           })}
