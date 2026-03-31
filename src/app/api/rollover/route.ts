@@ -1,14 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-function toDateKey(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+function toDateKeyAEST() {
+  // Use Australia/Sydney timezone to determine "today"
+  const parts = new Intl.DateTimeFormat('en-AU', {
+    timeZone: 'Australia/Sydney',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date())
+  const year = parts.find(p => p.type === 'year')!.value
+  const month = parts.find(p => p.type === 'month')!.value
+  const day = parts.find(p => p.type === 'day')!.value
+  return `${year}-${month}-${day}`
 }
 
 export async function POST() {
   const supabase = await createClient()
 
-  const todayKey = toDateKey(new Date())
+  const todayKey = toDateKeyAEST()
 
   // Get all assignments for today and past dates (anything before tomorrow)
   const { data: pastAndTodayAssignments } = await supabase
