@@ -697,19 +697,32 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                           e.preventDefault()
                           setDragOverDate(null)
                           const taskId = e.dataTransfer.getData('text/plain')
+                          const sourceDate = e.dataTransfer.getData('source-date')
                           if (!taskId || dayTasks.includes(taskId)) return
+                          if (sourceDate === dateKey) return // same cell
                           const task = taskMap.get(taskId)
                           if (!task) return
-                          // Non-recurring tasks can only appear once across the entire calendar
-                          if (!task.is_recurring) {
+                          // Non-recurring tasks can only appear once (except when moving)
+                          if (!task.is_recurring && !sourceDate) {
                             const alreadyAssigned = Object.entries(localPlate).some(([d, ids]) => d !== dateKey && ids.includes(taskId))
                             if (alreadyAssigned) return
                           }
-                          setLocalPlate(prev => ({
-                            ...prev,
-                            [dateKey]: [...(prev[dateKey] ?? []), taskId]
-                          }))
-                          setDaySaveStatus(prev => { const n = { ...prev }; delete n[dateKey]; return n })
+                          setLocalPlate(prev => {
+                            const next = { ...prev }
+                            // Remove from source date if moving between calendar cells
+                            if (sourceDate && next[sourceDate]) {
+                              next[sourceDate] = next[sourceDate].filter(id => id !== taskId)
+                            }
+                            // Add to target date
+                            next[dateKey] = [...(next[dateKey] ?? []), taskId]
+                            return next
+                          })
+                          setDaySaveStatus(prev => {
+                            const n = { ...prev }
+                            delete n[dateKey]
+                            if (sourceDate) delete n[sourceDate]
+                            return n
+                          })
                         }}
                         className={`p-2 flex flex-col min-h-[100px] bg-white transition-all ${
                           isToday ? 'ring-2 ring-inset ring-gold/30' : ''
@@ -749,7 +762,13 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                             return (
                               <div
                                 key={`${taskId}-${idx}`}
-                                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-snug group"
+                                draggable="true"
+                                onDragStart={(e) => {
+                                  e.dataTransfer.setData('text/plain', taskId)
+                                  e.dataTransfer.setData('source-date', dateKey)
+                                  e.dataTransfer.effectAllowed = 'move'
+                                }}
+                                className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs leading-snug group cursor-grab active:cursor-grabbing"
                                 style={{ backgroundColor: colour + '15', color: colour }}
                               >
                                 <span className="flex-1 truncate">{task.title}</span>
