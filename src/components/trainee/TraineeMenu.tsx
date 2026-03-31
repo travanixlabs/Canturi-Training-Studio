@@ -781,6 +781,27 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                 )
               })()}
             </div>
+
+            {/* From Your Mentor */}
+            {(() => {
+              const taskCompletions = completions.filter(c => c.training_task_id === selTask.id && c.manager_coaching)
+              if (taskCompletions.length === 0) return null
+              return (
+                <div className="mt-6 pt-6 border-t border-black/5">
+                  <p className="text-xs text-charcoal/30 uppercase tracking-wider font-medium mb-3">From Your Mentor</p>
+                  <div className="space-y-3">
+                    {taskCompletions.map(c => (
+                      <div key={c.id} className="rounded-xl bg-gold/5 border border-gold/10 p-3">
+                        <p className="text-sm text-charcoal/70 leading-relaxed whitespace-pre-wrap">{c.manager_coaching}</p>
+                        <p className="text-[10px] text-charcoal/30 mt-2">
+                          {new Date(c.signed_off_at!).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
         )}
 
