@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ChevronDown, ChevronUp, Search, X, Info } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
 import { savePlateAssignments } from '@/app/manager/build-plate/actions'
-import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskCompletion, TrainingTaskAssigned } from '@/types'
+import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned } from '@/types'
 
 interface Props {
   trainees: User[]
@@ -14,6 +15,7 @@ interface Props {
   workshopCourses: WorkshopCourse[]
   subcategories: Subcategory[]
   trainingTasks: TrainingTask[]
+  taskContent: TrainingTaskContent[]
   completions: TrainingTaskCompletion[]
   assignments: TrainingTaskAssigned[]
 }
@@ -67,17 +69,35 @@ function toDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-export function BuildPlate({ trainees, courses, categories, workshops, workshopCourses, subcategories, trainingTasks, completions, assignments }: Props) {
+export function BuildPlate({ trainees, courses, categories, workshops, workshopCourses, subcategories, trainingTasks, taskContent, completions, assignments }: Props) {
   const sortedTrainees = useMemo(() =>
     [...trainees].sort((a, b) => a.name.localeCompare(b.name)),
     [trainees]
   )
 
+  const router = useRouter()
   const [selectedTraineeId, setSelectedTraineeId] = useState<string>(sortedTrainees[0]?.id ?? '')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [selection, setSelection] = useState<{ type: 'workshop' | 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'todo' | 'completed'>('all')
+  const [previewTaskId, setPreviewTaskId] = useState<string | null>(null)
+
+  // Content helpers
+  const getContentForTask = (taskId: string) =>
+    taskContent.filter(c => c.training_task_id === taskId).sort((a, b) => a.sort_order - b.sort_order)
+
+  function getEmbedUrl(url: string): string {
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s]+)/)
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`
+    return url
+  }
+
+  function isEmbeddable(url: string) {
+    return url.includes('youtube') || url.includes('vimeo') || url.includes('youtu.be')
+  }
 
   // Plate assignment state
   const buildInitialPlate = useCallback((traineeId: string) => {
@@ -608,6 +628,13 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                             : 'text-charcoal/40 hover:bg-charcoal/3 hover:text-charcoal/60'
                                                         }`}
                                                       >
+                                                        <button
+                                                          onClick={(e) => { e.stopPropagation(); setPreviewTaskId(task.id) }}
+                                                          className="flex-shrink-0 text-charcoal/20 hover:text-gold transition-colors"
+                                                          title="Click for more details"
+                                                        >
+                                                          <Info size={12} />
+                                                        </button>
                                                         <span className="flex-1">{task.title}</span>
                                                         <span className="text-[9px] text-charcoal/30 flex-shrink-0 ml-1">{taskCompletedCount(task)}/{getRequiredCount(task)}</span>
                                                       </button>
@@ -695,6 +722,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                   for (const d of Object.keys(result.errors ?? {})) newStatus[d] = 'error'
                   setDaySaveStatus(newStatus)
                   setSaving(false)
+                  router.refresh()
                 }}
                 disabled={saving || !isDirty}
                 className={`px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
@@ -843,6 +871,83 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
           </div>
         </div>
       </div>
+
+      {/* Task preview overlay */}
+      {previewTaskId && (() => {
+        const task = taskMap.get(previewTaskId)
+        if (!task) return null
+        const sub = subcategories.find(s => s.id === task.subcategory_id)
+        const cat = sub ? categories.find(c => c.id === sub.category_id) : null
+        const course = cat ? courses.find(c => c.id === cat.course_id) : null
+        const content = getContentForTask(task.id)
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => setPreviewTaskId(null)}>
+            <div className="fixed inset-0 bg-black/30" />
+            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="px-5 pt-5 pb-3 border-b border-black/5 flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-charcoal/30 mb-1">
+                    {course && <span>{course.name} &rsaquo; </span>}
+                    {cat && <span>{cat.title} &rsaquo; </span>}
+                    {sub && <span>{sub.title}</span>}
+                  </p>
+                  <h2 className="font-serif text-lg text-charcoal">{task.title}</h2>
+                </div>
+                <button onClick={() => setPreviewTaskId(null)} className="p-1 text-charcoal/30 hover:text-charcoal/60 transition-colors">
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                {/* Tags */}
+                <div className="flex flex-wrap gap-2 mb-5">
+                  {task.trainer_type && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{task.trainer_type}</span>}
+                  {task.modality && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{task.modality}</span>}
+                  {task.role_level && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{task.role_level}</span>}
+                  {task.priority_level && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{task.priority_level}</span>}
+                  {task.is_recurring && <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">Recurring ×{task.recurring_count}</span>}
+                  {(task.tags ?? []).map(tag => (
+                    <span key={tag} className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{tag}</span>
+                  ))}
+                </div>
+
+                {/* Content */}
+                {content.length > 0 && (
+                  <div className="space-y-4">
+                    {content.map(c => (
+                      <div key={c.id}>
+                        {c.title && c.type !== 'text' && <p className="text-xs font-medium text-charcoal/50 mb-1.5">{c.title}</p>}
+                        {c.type === 'text' && c.url && <div className="text-sm text-charcoal/70 leading-relaxed whitespace-pre-wrap">{c.url}</div>}
+                        {c.type === 'webpage' && c.url && <a href={c.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-gold hover:text-gold/80 underline underline-offset-2 break-all">{c.url}</a>}
+                        {c.type === 'image' && c.url && <img src={c.url} alt={c.title || ''} className="max-w-full rounded-lg border border-black/5" />}
+                        {c.type === 'video' && c.url && (
+                          isEmbeddable(c.url) ? (
+                            <div className="rounded-lg overflow-hidden" style={{ height: '320px' }}>
+                              <iframe src={getEmbedUrl(c.url)} className="w-full h-full border-0" title={c.title || 'Video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                            </div>
+                          ) : <video src={c.url} controls className="max-w-full rounded-lg" />
+                        )}
+                        {c.type === 'pdf' && c.url && (
+                          <div className="rounded-lg overflow-hidden border border-black/5" style={{ height: '400px' }}>
+                            <iframe src={c.url} className="w-full h-full border-0" title={c.title || 'PDF'} />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {content.length === 0 && (
+                  <p className="text-sm text-charcoal/30 text-center py-4">No content attached to this task</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
