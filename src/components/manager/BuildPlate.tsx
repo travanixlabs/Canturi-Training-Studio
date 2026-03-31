@@ -628,13 +628,15 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                                                             : 'text-charcoal/40 hover:bg-charcoal/3 hover:text-charcoal/60'
                                                         }`}
                                                       >
-                                                        <button
-                                                          onClick={(e) => { e.stopPropagation(); setPreviewTaskId(task.id) }}
-                                                          className="flex-shrink-0 text-charcoal/20 hover:text-gold transition-colors"
-                                                          title="Click for more details"
-                                                        >
-                                                          <Info size={12} />
-                                                        </button>
+                                                        {selection?.type === 'task' && selection.id === task.id && (
+                                                          <button
+                                                            onClick={(e) => { e.stopPropagation(); setPreviewTaskId(task.id) }}
+                                                            className="flex-shrink-0 text-gold/50 hover:text-gold transition-colors"
+                                                            title="Click for more details"
+                                                          >
+                                                            <Info size={16} />
+                                                          </button>
+                                                        )}
                                                         <span className="flex-1">{task.title}</span>
                                                         <span className="text-[9px] text-charcoal/30 flex-shrink-0 ml-1">{taskCompletedCount(task)}/{getRequiredCount(task)}</span>
                                                       </button>
