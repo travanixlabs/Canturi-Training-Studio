@@ -814,7 +814,21 @@ function TrainingTaskEditor({
         })()}
       </div>
 
-      {/* 2. Trainer Type */}
+      {/* 2. Tags */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+          Tags <span className="text-red-400">*</span> <span className="text-charcoal/30 normal-case font-normal">(comma-separated)</span>
+        </label>
+        <input
+          className={`input ${err('tags') ? 'border-red-300 bg-red-50/30' : ''}`}
+          value={tagsInput}
+          onChange={e => setTagsInput(e.target.value)}
+          onBlur={handleTagsBlur}
+          placeholder="e.g. diamonds, consultation, sales"
+        />
+      </div>
+
+      {/* 3. Trainer Type */}
       <div>
         <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
           Trainer Type <span className="text-red-400">*</span>
@@ -923,20 +937,6 @@ function TrainingTaskEditor({
           <option value="No">No</option>
           <option value="Yes">Yes</option>
         </select>
-      </div>
-
-      {/* 11. Tags */}
-      <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
-          Tags <span className="text-red-400">*</span> <span className="text-charcoal/30 normal-case font-normal">(comma-separated)</span>
-        </label>
-        <input
-          className={`input ${err('tags') ? 'border-red-300 bg-red-50/30' : ''}`}
-          value={tagsInput}
-          onChange={e => setTagsInput(e.target.value)}
-          onBlur={handleTagsBlur}
-          placeholder="e.g. diamonds, consultation, sales"
-        />
       </div>
 
       </div>
