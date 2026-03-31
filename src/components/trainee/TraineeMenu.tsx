@@ -383,10 +383,10 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
             {(() => {
               const wsCourseIds = new Set(workshopCourses.filter(wc => wc.workshop_id === selWorkshop.id).map(wc => wc.course_id))
               const wsCourses = courses.filter(c => wsCourseIds.has(c.id)).sort((a, b) => a.sort_order - b.sort_order)
-              const totalCats = wsCourses.reduce((sum, c) => sum + getCatsForCourse(c.id).length, 0)
+              const s = workshopStats(selWorkshop.id)
               return (
                 <>
-                  <p className="text-sm text-charcoal/50 mb-4">{wsCourses.length} courses · {totalCats} categories</p>
+                  <p className="text-sm text-charcoal/50 mb-4">{s.courseCompleted}/{s.courseTotal} courses · {s.catCompleted}/{s.catTotal} categories · {s.subCompleted}/{s.subTotal} subcategories · {s.taskCompleted}/{s.taskTotal} tasks</p>
                   <p className="text-xs text-charcoal/30 uppercase tracking-wider mb-3">Courses</p>
                   <div className="space-y-2">
                     {wsCourses.map(course => {
@@ -424,7 +424,9 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
           <div className="px-5 py-6 max-w-2xl">
             <span className="text-xs text-charcoal/30 uppercase tracking-wider">Course</span>
             <h1 className="font-serif text-2xl text-charcoal mt-1 mb-3">{selCourse.name}</h1>
-            <p className="text-sm text-charcoal/50 mb-4">{getCatsForCourse(selCourse.id).length} categories</p>
+            {(() => { const s = courseStats(selCourse.id); return (
+              <p className="text-sm text-charcoal/50 mb-4">{s.catCompleted}/{s.catTotal} categories · {s.subCompleted}/{s.subTotal} subcategories · {s.taskCompleted}/{s.taskTotal} tasks</p>
+            )})()}
             <div className="space-y-2">
               {getCatsForCourse(selCourse.id).map((cat, i) => (
                 <button
@@ -449,7 +451,10 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
           <div className="px-5 py-6 max-w-2xl">
             {selCategory.course && <span className="text-xs text-charcoal/30">{(selCategory.course as Course).name}</span>}
             <h1 className="font-serif text-2xl text-charcoal mt-1 mb-2">{selCategory.title}</h1>
-            {selCategory.description && <p className="text-sm text-charcoal/60 leading-relaxed mb-4">{selCategory.description}</p>}
+            {selCategory.description && <p className="text-sm text-charcoal/60 leading-relaxed mb-2">{selCategory.description}</p>}
+            {(() => { const s = catStats(selCategory.id); return (
+              <p className="text-sm text-charcoal/50 mb-4">{s.subCompleted}/{s.subTotal} subcategories · {s.taskCompleted}/{s.taskTotal} tasks</p>
+            )})()}
             <p className="text-xs text-charcoal/30 uppercase tracking-wider mb-3">Subcategories</p>
             <div className="space-y-2">
               {getSubsForCat(selCategory.id).map((sub, i) => (
@@ -479,7 +484,10 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
             <div className="px-5 py-6 max-w-2xl">
               {parentCat && <span className="text-xs text-charcoal/30">{parentCat.course ? (parentCat.course as Course).name + ' › ' : ''}{parentCat.title}</span>}
               <h1 className="font-serif text-2xl text-charcoal mt-1 mb-2">{selSubcategory.title}</h1>
-              {selSubcategory.content && <p className="text-sm text-charcoal/60 leading-relaxed mb-4">{selSubcategory.content}</p>}
+              {selSubcategory.content && <p className="text-sm text-charcoal/60 leading-relaxed mb-2">{selSubcategory.content}</p>}
+              {(() => { const s = subStats(selSubcategory.id); return (
+                <p className="text-sm text-charcoal/50 mb-4">{s.completed}/{s.total} tasks</p>
+              )})()}
               <p className="text-xs text-charcoal/30 uppercase tracking-wider mb-3">Training Tasks</p>
               <div className="space-y-2">
                 {tasks.map((task, i) => (
