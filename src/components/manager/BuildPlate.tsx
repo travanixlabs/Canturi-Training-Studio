@@ -579,13 +579,10 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                 <div key={wi} className="grid grid-cols-7 gap-px">
                   {week.days.map((day, di) => {
                     const isToday = isSameDay(day, today)
-                    const isWeekend = di >= 5
                     return (
                       <div
                         key={di}
-                        className={`p-2 flex flex-col min-h-[100px] ${
-                          isWeekend ? 'bg-charcoal/[0.02]' : 'bg-white'
-                        } ${isToday ? 'ring-2 ring-inset ring-gold/30' : ''}`}
+                        className={`p-2 flex flex-col min-h-[100px] bg-white ${isToday ? 'ring-2 ring-inset ring-gold/30' : ''}`}
                       >
                         <div className="flex items-center gap-1 mb-1">
                           <span className={`text-xs font-medium ${
