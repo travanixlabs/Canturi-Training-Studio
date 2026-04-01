@@ -131,6 +131,14 @@ export interface TrainingTaskAssigned {
   created_at: string
 }
 
+export interface UserWorkingDay {
+  id: string
+  user_id: string
+  working_date: string
+  created_at: string
+  created_by: string
+}
+
 export interface UserNotification {
   id: string
   user_id: string

@@ -6,9 +6,10 @@ import { ChevronDown, ChevronUp, Search, X, Info, Check, RefreshCw } from 'lucid
 import { COURSE_COLOURS } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { savePlateAssignments } from '@/app/manager/build-plate/actions'
-import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned } from '@/types'
+import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned, UserWorkingDay } from '@/types'
 
 interface Props {
+  manager: User
   trainees: User[]
   courses: Course[]
   categories: Category[]
@@ -19,6 +20,7 @@ interface Props {
   taskContent: TrainingTaskContent[]
   completions: TrainingTaskCompletion[]
   assignments: TrainingTaskAssigned[]
+  workingDays: UserWorkingDay[]
 }
 
 function getWeekStart(date: Date) {
@@ -73,7 +75,7 @@ function toDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
-export function BuildPlate({ trainees, courses, categories, workshops, workshopCourses, subcategories, trainingTasks, taskContent, completions, assignments }: Props) {
+export function BuildPlate({ manager, trainees, courses, categories, workshops, workshopCourses, subcategories, trainingTasks, taskContent, completions, assignments, workingDays: initialWorkingDays }: Props) {
   const sortedTrainees = useMemo(() =>
     [...trainees].sort((a, b) => a.name.localeCompare(b.name)),
     [trainees]
@@ -89,6 +91,17 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
   const [typeFilter, setTypeFilter] = useState<'all' | 'shadow' | 'task'>('all')
   const [previewTaskId, setPreviewTaskId] = useState<string | null>(null)
   const [recurringRequestTaskId, setRecurringRequestTaskId] = useState<string | null>(null)
+  const [workingDays, setWorkingDays] = useState<UserWorkingDay[]>(initialWorkingDays)
+  const [workingDayOverlayDate, setWorkingDayOverlayDate] = useState<string | null>(null)
+
+  // Working days for selected trainee
+  const traineeWorkingDays = useMemo(() => {
+    const set = new Set<string>()
+    for (const wd of workingDays.filter(w => w.user_id === selectedTraineeId)) set.add(wd.working_date)
+    return set
+  }, [workingDays, selectedTraineeId])
+
+  const isWorkingDay = (dateKey: string) => traineeWorkingDays.has(dateKey)
 
   // Content helpers
   const getContentForTask = (taskId: string) =>
@@ -875,19 +888,22 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                     const dayTasks = localPlate[dateKey] ?? []
                     const status = daySaveStatus[dateKey]
                     const isPast = dateKey < todayKey
+                    const isWorking = isWorkingDay(dateKey)
+                    const isDroppable = !isPast && isWorking
 
                     return (
                       <div
                         key={di}
-                        onDragOver={(e) => { if (!isPast) { e.preventDefault(); setDragOverDate(dateKey) } }}
-                        onDragEnter={(e) => { if (!isPast) e.preventDefault() }}
+                        onClick={() => { if (!isPast) setWorkingDayOverlayDate(dateKey) }}
+                        onDragOver={(e) => { if (isDroppable) { e.preventDefault(); setDragOverDate(dateKey) } }}
+                        onDragEnter={(e) => { if (isDroppable) e.preventDefault() }}
                         onDragLeave={(e) => {
                           if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverDate(null)
                         }}
                         onDrop={(e) => {
                           e.preventDefault()
                           setDragOverDate(null)
-                          if (isPast) return
+                          if (!isDroppable) return
                           const taskId = e.dataTransfer.getData('text/plain')
                           const sourceDate = e.dataTransfer.getData('source-date')
                           if (!taskId || dayTasks.includes(taskId)) return
@@ -916,8 +932,8 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                             return n
                           })
                         }}
-                        className={`p-2 flex flex-col min-h-[100px] transition-all ${
-                          isPast ? 'bg-charcoal/[0.03]' : 'bg-white'
+                        className={`p-2 flex flex-col min-h-[100px] transition-all cursor-pointer ${
+                          isPast || !isWorking ? 'bg-charcoal/[0.03]' : 'bg-white'
                         } ${
                           isToday ? 'ring-2 ring-inset ring-gold/30' : ''
                         } ${
@@ -1187,6 +1203,81 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
             taskId={task.id}
             onClose={() => setRecurringRequestTaskId(null)}
           />
+        )
+      })()}
+
+      {/* Working day overlay */}
+      {workingDayOverlayDate && (() => {
+        const dateKey = workingDayOverlayDate
+        const isWorking = isWorkingDay(dateKey)
+        const dayTasks = localPlate[dateKey] ?? []
+        const hasTasks = dayTasks.length > 0
+        const dateDisplay = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+        const selectedTrainee = sortedTrainees.find(t => t.id === selectedTraineeId)
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setWorkingDayOverlayDate(null)}>
+            <div className="fixed inset-0 bg-black/30" />
+            <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm mx-0 sm:mx-4 p-6" onClick={e => e.stopPropagation()}>
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="font-serif text-lg text-charcoal">{dateDisplay}</h3>
+                  <p className="text-xs text-charcoal/40 mt-0.5">{selectedTrainee?.name}</p>
+                </div>
+                <button onClick={() => setWorkingDayOverlayDate(null)} className="p-1 text-charcoal/30 hover:text-charcoal/60">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 mb-5">
+                <span className={`w-2.5 h-2.5 rounded-full ${isWorking ? 'bg-green-500' : 'bg-charcoal/20'}`} />
+                <span className="text-sm text-charcoal/70">{isWorking ? 'Scheduled to work' : 'Not scheduled to work'}</span>
+              </div>
+
+              {isWorking && hasTasks && (
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 mb-5">
+                  <p className="text-xs text-amber-700">This date has {dayTasks.length} training task{dayTasks.length !== 1 ? 's' : ''} assigned. Remove them before marking as not working.</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={() => setWorkingDayOverlayDate(null)} className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors">
+                  Cancel
+                </button>
+                {isWorking ? (
+                  <button
+                    onClick={async () => {
+                      if (hasTasks) return
+                      await supabase.from('users_working_days').delete().eq('user_id', selectedTraineeId).eq('working_date', dateKey)
+                      setWorkingDays(prev => prev.filter(w => !(w.user_id === selectedTraineeId && w.working_date === dateKey)))
+                      setWorkingDayOverlayDate(null)
+                      router.refresh()
+                    }}
+                    disabled={hasTasks}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Mark Not Working
+                  </button>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      const { data } = await supabase.from('users_working_days').insert({
+                        user_id: selectedTraineeId,
+                        working_date: dateKey,
+                        created_by: manager.id,
+                      }).select().single()
+                      if (data) setWorkingDays(prev => [...prev, data as UserWorkingDay])
+                      setWorkingDayOverlayDate(null)
+                      router.refresh()
+                    }}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
+                  >
+                    Mark Working
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         )
       })()}
     </div>

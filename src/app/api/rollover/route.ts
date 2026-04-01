@@ -75,12 +75,23 @@ export async function POST() {
       futureDates.get(a.assigned_date)!.push(a.training_task_id)
     }
 
-    // Build list of target dates: start from today, up to 28 days ahead
+    // Get working days for this trainee from today onwards
+    const { data: workingDaysData } = await supabase
+      .from('users_working_days')
+      .select('working_date')
+      .eq('user_id', traineeId)
+      .gte('working_date', todayKey)
+      .order('working_date')
+
+    const workingDatesSet = new Set((workingDaysData ?? []).map((w: { working_date: string }) => w.working_date))
+
+    // Build list of target dates: only working days, up to 28 days ahead
     const targetDates: { date: string; existing: string[] }[] = []
     for (let i = 0; i < 28; i++) {
       const d = new Date()
       d.setDate(d.getDate() + i)
       const dk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      if (!workingDatesSet.has(dk)) continue // skip non-working days
       targetDates.push({ date: dk, existing: futureDates.get(dk) ?? [] })
     }
 
