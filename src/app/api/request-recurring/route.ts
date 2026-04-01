@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const { data: manager } = await supabase.from('users').select('*').eq('id', user.id).single()
   const managerName = manager?.name ?? 'A manager'
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL!
   const taskLink = `${appUrl}/head-office/courses`
 
   await resend.emails.send({

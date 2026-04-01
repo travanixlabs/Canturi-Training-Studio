@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   const breadcrumb = [courseName, cat?.title, sub?.title].filter(Boolean).join(' › ')
 
   // Determine app URL
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL!
 
   const signOffLink = `/manager/sign-off?completion=${completionId}`
 
