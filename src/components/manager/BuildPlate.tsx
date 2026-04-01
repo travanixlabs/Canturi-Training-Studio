@@ -150,12 +150,13 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const [todayLocalKey, setTodayLocalKey] = useState('')
+  const [weeks, setWeeks] = useState<{ weekStart: Date; days: Date[] }[]>([])
 
-  const weeks = useMemo(() => getCalendarWeeks(), [mounted])
-  const today = new Date()
-  const todayLocalKey = toDateKey(today)
+  useEffect(() => {
+    setTodayLocalKey(toDateKey(new Date()))
+    setWeeks(getCalendarWeeks())
+  }, [])
 
   // Completions for selected trainee
   const traineeCompletions = useMemo(() =>
