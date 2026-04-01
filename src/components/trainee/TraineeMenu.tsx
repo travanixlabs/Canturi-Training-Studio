@@ -65,7 +65,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   }
 
   // Blue status: assigned today or future, not yet completed for that date
-  const todayKey = new Date().toISOString().split('T')[0]
+  const todayKey = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })()
 
   const isTaskBlue = (taskId: string) => {
     if (isTaskCompleted(taskId)) return false

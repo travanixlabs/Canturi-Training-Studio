@@ -150,8 +150,14 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
-  const weeks = useMemo(() => getCalendarWeeks(), [])
-  const today = new Date()
+  const [weeks, setWeeks] = useState(() => getCalendarWeeks())
+  const [today, setToday] = useState(() => new Date())
+
+  // Recalculate on client mount to fix SSR UTC vs local timezone mismatch
+  useEffect(() => {
+    setWeeks(getCalendarWeeks())
+    setToday(new Date())
+  }, [])
 
   // Completions for selected trainee
   const traineeCompletions = useMemo(() =>
