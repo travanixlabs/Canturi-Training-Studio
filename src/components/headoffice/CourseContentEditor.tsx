@@ -198,8 +198,6 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       rewards_eligible: false,
       confidence_rating_required: true,
       tags: [],
-      description: '',
-      content: '',
       sort_order: existing.length,
       created_at: new Date().toISOString(),
       deleted_at: null,
@@ -1124,15 +1122,12 @@ function TrainingTaskEditor({
       </div>
 
       {/* Preview */}
-      {(task.title || task.description || attachments.length > 0) && (
+      {(task.title || attachments.length > 0) && (
         <div className="pt-6 border-t border-black/5">
           <p className="text-xs font-medium text-charcoal/40 uppercase tracking-wider mb-4">Preview</p>
           <div className="card p-5 space-y-4">
             {task.title && (
               <h3 className="font-serif text-lg text-charcoal">{task.title}</h3>
-            )}
-            {task.description && (
-              <p className="text-sm text-charcoal/60 leading-relaxed">{task.description}</p>
             )}
             {attachments.length > 0 && (
               <div className="space-y-3 pt-2">

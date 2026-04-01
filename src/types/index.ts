@@ -70,8 +70,6 @@ export interface TrainingTask {
   rewards_eligible: boolean
   confidence_rating_required: boolean
   tags: string[]
-  description: string
-  content: string
   sort_order: number
   created_at: string
   deleted_at: string | null
