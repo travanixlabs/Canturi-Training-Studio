@@ -84,6 +84,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
   const [selection, setSelection] = useState<{ type: 'workshop' | 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'todo' | 'assigned' | 'completed'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'shadow' | 'task'>('all')
   const [previewTaskId, setPreviewTaskId] = useState<string | null>(null)
 
   // Content helpers
@@ -306,6 +307,14 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
   const isTaskAssigned = (taskId: string) => traineeAssignments.some(a => a.training_task_id === taskId)
 
   const taskMatchesFilter = (taskId: string) => {
+    // Type filter
+    if (typeFilter !== 'all') {
+      const task = taskMap.get(taskId)
+      if (!task) return false
+      if (typeFilter === 'shadow' && !task.is_recurring) return false
+      if (typeFilter === 'task' && task.is_recurring) return false
+    }
+    // Status filter
     if (filter === 'all') return true
     if (filter === 'completed') return isTaskCompleted(taskId)
     if (filter === 'assigned') return isTaskAssigned(taskId) && !isTaskCompleted(taskId)
@@ -322,13 +331,13 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
     getCatsForCourse(courseId).filter(c => getFilteredSubsForCat(c.id).length > 0)
 
   const filteredWorkshopHierarchy = useMemo(() => {
-    if (filter === 'all') return workshopHierarchy
+    if (filter === 'all' && typeFilter === 'all') return workshopHierarchy
     return workshopHierarchy.map(({ workshop, courses: wsCourses }) => ({
       workshop,
       courses: wsCourses.filter(c => getFilteredCatsForCourse(c.id).length > 0),
     })).filter(ws => ws.courses.length > 0)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workshopHierarchy, filter, traineeCompletions])
+  }, [workshopHierarchy, filter, typeFilter, traineeCompletions])
 
   // Search
   const searchResults = useMemo(() => {
@@ -514,7 +523,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
           </div>
 
           {/* Filter pills */}
-          <div className="flex gap-1.5 mb-4">
+          <div className="flex gap-1.5 mb-2">
             {(['all', 'todo', 'assigned', 'completed'] as const).map(f => (
               <button
                 key={f}
@@ -526,6 +535,21 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                 }`}
               >
                 {f === 'all' ? 'All' : f === 'todo' ? 'To Do' : f === 'assigned' ? 'Assigned' : 'Completed'}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5 mb-4">
+            {(['all', 'shadow', 'task'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setTypeFilter(f)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  typeFilter === f
+                    ? 'bg-gold text-white'
+                    : 'bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10'
+                }`}
+              >
+                {f === 'all' ? 'All' : f === 'shadow' ? 'Shadow Task' : 'Task'}
               </button>
             ))}
           </div>

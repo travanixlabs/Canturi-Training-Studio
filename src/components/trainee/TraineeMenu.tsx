@@ -28,6 +28,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const [completionOverlay, setCompletionOverlay] = useState<string | null>(null) // task id
   const [searchQuery, setSearchQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'todo' | 'assigned' | 'completed'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'shadow' | 'task'>('all')
   const supabase = createClient()
   const router = useRouter()
 
@@ -207,10 +208,17 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const isTaskAssigned = (taskId: string) => assignments.some(a => a.training_task_id === taskId)
 
   const taskMatchesFilter = (taskId: string) => {
+    // Type filter
+    if (typeFilter !== 'all') {
+      const task = trainingTasks.find(t => t.id === taskId)
+      if (!task) return false
+      if (typeFilter === 'shadow' && !task.is_recurring) return false
+      if (typeFilter === 'task' && task.is_recurring) return false
+    }
+    // Status filter
     if (filter === 'all') return true
     if (filter === 'completed') return isTaskCompleted(taskId)
     if (filter === 'assigned') return isTaskAssigned(taskId) && !isTaskCompleted(taskId)
-    // todo: not completed and not assigned
     return !isTaskCompleted(taskId) && !isTaskAssigned(taskId)
   }
 
@@ -224,12 +232,13 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
     getCatsForCourse(courseId).filter(c => getFilteredSubsForCat(c.id).length > 0)
 
   const filteredWorkshopHierarchy = useMemo(() => {
-    if (filter === 'all') return workshopHierarchy
+    if (filter === 'all' && typeFilter === 'all') return workshopHierarchy
     return workshopHierarchy.map(({ workshop, courses: wsCourses }) => ({
       workshop,
       courses: wsCourses.filter(c => getFilteredCatsForCourse(c.id).length > 0),
     })).filter(ws => ws.courses.length > 0)
-  }, [workshopHierarchy, filter, completions])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workshopHierarchy, filter, typeFilter, completions])
 
   // Progress stats helpers — recurring tasks count as their recurring_count value
   const taskCompletedCount = (t: TrainingTask) => Math.min(getCompletionCount(t.id), getRequiredCount(t))
@@ -401,7 +410,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
           </div>
 
           {/* Filter pills */}
-          <div className="flex gap-1.5 mb-4">
+          <div className="flex gap-1.5 mb-2">
             {(['all', 'todo', 'assigned', 'completed'] as const).map(f => (
               <button
                 key={f}
@@ -413,6 +422,21 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
                 }`}
               >
                 {f === 'all' ? 'All' : f === 'todo' ? 'To Do' : f === 'assigned' ? 'Assigned' : 'Completed'}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-1.5 mb-4">
+            {(['all', 'shadow', 'task'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setTypeFilter(f)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  typeFilter === f
+                    ? 'bg-gold text-white'
+                    : 'bg-charcoal/5 text-charcoal/40 hover:bg-charcoal/10'
+                }`}
+              >
+                {f === 'all' ? 'All' : f === 'shadow' ? 'Shadow Task' : 'Task'}
               </button>
             ))}
           </div>
