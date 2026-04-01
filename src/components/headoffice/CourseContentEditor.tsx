@@ -196,7 +196,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       recurring_count: null,
       certificate_required: false,
       rewards_eligible: false,
-      confidence_rating_required: false,
+      confidence_rating_required: true,
       tags: [],
       description: '',
       content: '',
