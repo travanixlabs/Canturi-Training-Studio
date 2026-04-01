@@ -1034,11 +1034,11 @@ function CompletionOverlay({
             <p className={`text-[10px] mt-1 ${showErrors && errors.summary ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(summary)} / 20 words min</p>
           </div>
 
-          {/* Confidence Rating */}
+          {/* Competence Rating */}
           {needsRating && (
             <div>
               <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
-                Confidence Level <span className="text-red-400">*</span>
+                Competence Rating <span className="text-red-400">*</span>
               </label>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map(star => (
@@ -1061,7 +1061,7 @@ function CompletionOverlay({
                 ))}
               </div>
               {showErrors && errors.rating && (
-                <p className="text-[10px] text-red-400 mt-1">Please select a confidence level</p>
+                <p className="text-[10px] text-red-400 mt-1">Please select a competence rating</p>
               )}
             </div>
           )}

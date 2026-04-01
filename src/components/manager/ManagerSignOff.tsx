@@ -329,7 +329,7 @@ function SignOffOverlay({
 
               {completion.confidence_rating && (
                 <div>
-                  <label className="block text-xs font-medium text-charcoal/50 mb-1">Confidence Level</label>
+                  <label className="block text-xs font-medium text-charcoal/50 mb-1">Competence Rating</label>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map(star => (
                       <svg key={star} width="20" height="20" viewBox="0 0 24 24"
@@ -411,7 +411,7 @@ function SignOffOverlay({
                 )}
               </div>
 
-              {/* Manager Rating — only if trainee has confidence rating */}
+              {/* Manager Rating — only if trainee has competence rating */}
               {needsRating && (
                 <div>
                   <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">

@@ -545,7 +545,7 @@ function CompletionOverlay({
           </div>
           {needsRating && (
             <div>
-              <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Confidence Level <span className="text-red-400">*</span></label>
+              <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Competence Rating <span className="text-red-400">*</span></label>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map(star => (
                   <button key={star} onClick={() => setRating(star)} className="p-1 transition-transform hover:scale-110">
@@ -553,7 +553,7 @@ function CompletionOverlay({
                   </button>
                 ))}
               </div>
-              {showErrors && errors.rating && <p className="text-[10px] text-red-400 mt-1">Please select a confidence level</p>}
+              {showErrors && errors.rating && <p className="text-[10px] text-red-400 mt-1">Please select a competence rating</p>}
             </div>
           )}
           {needsCert && (

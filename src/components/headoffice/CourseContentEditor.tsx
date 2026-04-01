@@ -990,9 +990,9 @@ function TrainingTaskEditor({
         </select>
       </div>
 
-      {/* 10. Confidence Rating Required */}
+      {/* 10. Competence Rating Required */}
       <div>
-        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Confidence Rating Required</label>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Competence Rating Required</label>
         <select className="input" value={task.confidence_rating_required ? 'Yes' : 'No'} onChange={e => onUpdate({ confidence_rating_required: e.target.value === 'Yes' })}>
           <option value="No">No</option>
           <option value="Yes">Yes</option>
