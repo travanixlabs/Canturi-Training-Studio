@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
 export default function TraineePage() {
-  redirect('/trainee/menu')
+  redirect('/trainee/day-plate')
 }
