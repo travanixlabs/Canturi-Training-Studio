@@ -68,22 +68,27 @@ export async function POST() {
       .gte('assigned_date', todayKey)
       .order('assigned_date')
 
-    if (!futureAssignments || futureAssignments.length === 0) continue
-
     // Group future assignments by date
     const futureDates = new Map<string, string[]>()
-    for (const a of futureAssignments) {
+    for (const a of (futureAssignments ?? [])) {
       if (!futureDates.has(a.assigned_date)) futureDates.set(a.assigned_date, [])
       futureDates.get(a.assigned_date)!.push(a.training_task_id)
     }
 
-    const sortedDates = [...futureDates.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+    // Build list of target dates: start from today, up to 28 days ahead
+    const targetDates: { date: string; existing: string[] }[] = []
+    for (let i = 0; i < 28; i++) {
+      const d = new Date()
+      d.setDate(d.getDate() + i)
+      const dk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      targetDates.push({ date: dk, existing: futureDates.get(dk) ?? [] })
+    }
 
-    // Distribute past incomplete tasks to future dates with capacity
+    // Distribute past incomplete tasks to dates with capacity
     const tasksToDistribute = [...pastIncompleteTasks]
     const assignedBy = pastIncompleteTasks[0].assigned_by
 
-    for (const [date, existingTaskIds] of sortedDates) {
+    for (const { date, existing: existingTaskIds } of targetDates) {
       if (tasksToDistribute.length === 0) break
 
       const capacity = 10 - existingTaskIds.length
