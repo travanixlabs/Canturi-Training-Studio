@@ -46,7 +46,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
   // Get training tasks for a specific subcategory
   const getTasksForSubcategory = (subcategoryId: string) =>
-    trainingTasks.filter(t => t.subcategory_id === subcategoryId)
+    trainingTasks.filter(t => t.subcategory_id === subcategoryId).sort((a, b) => a.sort_order - b.sort_order)
 
   // Guard: check if current task is an incomplete draft before navigating away
   function guardNavigation(proceed: () => void) {
