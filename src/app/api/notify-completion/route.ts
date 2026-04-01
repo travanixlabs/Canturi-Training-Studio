@@ -62,7 +62,9 @@ export async function POST(req: NextRequest) {
     ? `https://${process.env.VERCEL_URL}`
     : 'http://localhost:3000'
 
-  // Send email to each manager
+  const signOffLink = `/manager/sign-off?completion=${completionId}`
+
+  // Send email + in-app notification to each manager
   const sent: string[] = []
   for (const manager of managers) {
     try {
@@ -79,6 +81,15 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       console.error(`Failed to email ${manager.email}:`, e)
     }
+
+    // In-app notification
+    await supabase.from('user_notifications').insert({
+      user_id: manager.id,
+      type: 'sign_off_pending',
+      title: `${trainee.name} completed a task`,
+      message: `"${task.title}" is ready for your feedback.`,
+      link: signOffLink,
+    })
   }
 
   return NextResponse.json({ sent })

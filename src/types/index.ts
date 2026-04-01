@@ -131,6 +131,17 @@ export interface TrainingTaskAssigned {
   created_at: string
 }
 
+export interface UserNotification {
+  id: string
+  user_id: string
+  type: string
+  title: string
+  message: string
+  link: string | null
+  read_at: string | null
+  created_at: string
+}
+
 // Course colour mapping
 export const COURSE_COLOURS: Record<string, string> = {
   'Services': '#8B6355',
