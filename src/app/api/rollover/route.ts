@@ -86,7 +86,7 @@ export async function POST() {
     for (const [date, existingTaskIds] of sortedDates) {
       if (tasksToDistribute.length === 0) break
 
-      const capacity = 6 - existingTaskIds.length
+      const capacity = 10 - existingTaskIds.length
       if (capacity <= 0) continue
 
       const batch = tasksToDistribute.splice(0, capacity)

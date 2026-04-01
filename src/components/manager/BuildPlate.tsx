@@ -932,8 +932,8 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
                           )}
                           {dayTasks.length > 0 && (
                             <span className={`text-[9px] ml-auto ${
-                              dayTasks.length <= 6 ? 'text-charcoal/30' : 'text-red-400'
-                            }`}>{dayTasks.length}/6</span>
+                              dayTasks.length <= 10 ? 'text-charcoal/30' : 'text-red-400'
+                            }`}>{dayTasks.length}/10</span>
                           )}
                         </div>
                         {/* Task chips */}

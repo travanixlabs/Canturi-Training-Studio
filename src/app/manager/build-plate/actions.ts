@@ -15,8 +15,8 @@ export async function savePlateAssignments(
 
   for (const [date, taskIds] of Object.entries(assignments)) {
     // Reject 7+ tasks; allow 0 (clear) and 1-6 (valid)
-    if (taskIds.length > 6) {
-      errors[date] = `Maximum 6 tasks per day (has ${taskIds.length})`
+    if (taskIds.length > 10) {
+      errors[date] = `Maximum 10 tasks per day (has ${taskIds.length})`
       continue
     }
 
