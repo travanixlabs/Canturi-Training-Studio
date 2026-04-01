@@ -490,7 +490,7 @@ function CompletionOverlay({
   function wordCount(s: string) { return s.trim().split(/\s+/).filter(Boolean).length }
 
   const errors = {
-    takeaways: wordCount(takeaways) < 20,
+    takeaways: wordCount(takeaways) < 10,
     summary: wordCount(summary) < 20,
     rating: needsRating && rating === 0,
   }
@@ -533,8 +533,8 @@ function CompletionOverlay({
             <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
               {isRecurring ? 'What did you observe?' : 'What were your three key takeaways?'} <span className="text-red-400">*</span>
             </label>
-            <textarea className={`textarea text-sm ${showErrors && errors.takeaways ? 'border-red-300 bg-red-50/30' : ''}`} rows={5} value={takeaways} onChange={e => setTakeaways(e.target.value)} placeholder={isRecurring ? 'Describe what you observed... (minimum 20 words)' : 'Share your three key takeaways... (minimum 20 words)'} />
-            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaways ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaways)} / 20 words min</p>
+            <textarea className={`textarea text-sm ${showErrors && errors.takeaways ? 'border-red-300 bg-red-50/30' : ''}`} rows={5} value={takeaways} onChange={e => setTakeaways(e.target.value)} placeholder={isRecurring ? 'Describe what you observed... (minimum 10 words)' : 'Share your three key takeaways... (minimum 10 words)'} />
+            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaways ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaways)} / 10 words min</p>
           </div>
           <div>
             <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">

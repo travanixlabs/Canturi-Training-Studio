@@ -959,7 +959,7 @@ function CompletionOverlay({
   }
 
   const errors = {
-    takeaways: wordCount(takeaways) < 20,
+    takeaways: wordCount(takeaways) < 10,
     summary: wordCount(summary) < 20,
     rating: needsRating && rating === 0,
   }
@@ -1014,9 +1014,9 @@ function CompletionOverlay({
               rows={5}
               value={takeaways}
               onChange={e => setTakeaways(e.target.value)}
-              placeholder={isRecurring ? 'Describe what you observed... (minimum 20 words)' : 'Share your three key takeaways... (minimum 20 words)'}
+              placeholder={isRecurring ? 'Describe what you observed... (minimum 10 words)' : 'Share your three key takeaways... (minimum 10 words)'}
             />
-            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaways ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaways)} / 20 words min</p>
+            <p className={`text-[10px] mt-1 ${showErrors && errors.takeaways ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaways)} / 10 words min</p>
           </div>
 
           {/* Question 2 */}
