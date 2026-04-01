@@ -211,6 +211,10 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     attachments.filter(a => a.training_task_id === taskId).sort((a, b) => a.sort_order - b.sort_order)
 
   async function addAttachment(taskId: string, type: AttachmentType, url: string, insertAtIndex?: number) {
+    if (draftTaskIds.has(taskId)) {
+      alert('Please fill in all mandatory fields and save the training task before adding content.')
+      return
+    }
     const existing = getAttachmentsForTask(taskId)
     const typeLabel = type.charAt(0).toUpperCase() + type.slice(1)
     const sortOrder = insertAtIndex ?? existing.length
