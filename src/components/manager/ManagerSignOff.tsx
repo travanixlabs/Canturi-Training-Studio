@@ -56,8 +56,13 @@ export function ManagerSignOff({ manager, trainees, completions: initialCompleti
     [completions, selectedTraineeId]
   )
 
-  const pendingCompletions = traineeCompletions.filter(c => !c.signed_off_at)
-  const signedOffCompletions = traineeCompletions.filter(c => c.signed_off_at)
+  // Only show completions for tasks that require sign off (trainer_type !== 'Self Directed')
+  const signOffCompletions = traineeCompletions.filter(c => {
+    const task = taskMap.get(c.training_task_id)
+    return task && task.trainer_type !== 'Self Directed'
+  })
+  const pendingCompletions = signOffCompletions.filter(c => !c.signed_off_at)
+  const signedOffCompletions = signOffCompletions.filter(c => c.signed_off_at)
 
   const overlayCompletion = overlayCompletionId ? completions.find(c => c.id === overlayCompletionId) : null
   const overlayTask = overlayCompletion ? taskMap.get(overlayCompletion.training_task_id) : null
