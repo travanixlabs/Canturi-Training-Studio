@@ -173,6 +173,25 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     )
   }
 
+  async function moveTrainingTask(taskId: string, subcategoryId: string, direction: 'up' | 'down') {
+    const tasks = getTasksForSubcategory(subcategoryId)
+    const idx = tasks.findIndex(t => t.id === taskId)
+    if (direction === 'up' && idx <= 0) return
+    if (direction === 'down' && idx >= tasks.length - 1) return
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    const a = tasks[idx]
+    const b = tasks[swapIdx]
+    setTrainingTasks(prev => prev.map(t => {
+      if (t.id === a.id) return { ...t, sort_order: b.sort_order }
+      if (t.id === b.id) return { ...t, sort_order: a.sort_order }
+      return t
+    }))
+    await Promise.all([
+      supabase.from('training_tasks').update({ sort_order: b.sort_order }).eq('id', a.id),
+      supabase.from('training_tasks').update({ sort_order: a.sort_order }).eq('id', b.id),
+    ])
+  }
+
   // Track which tasks are local drafts (not yet saved to DB)
   const [draftTaskIds, setDraftTaskIds] = useState<Set<string>>(new Set())
 
@@ -513,8 +532,24 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                     {/* Training tasks — always visible if tasks exist, add button only when selected */}
                     {(subTasks.length > 0 || isExpanded) && (
                       <div className="ml-6 pl-3 border-l border-charcoal/10 mt-1 mb-2 space-y-1">
-                        {subTasks.map(task => (
+                        {subTasks.map((task, tIdx) => (
                           <div key={task.id} className="group/task flex items-center gap-1">
+                            <div className="hidden group-hover/task:flex flex-col flex-shrink-0">
+                              <button
+                                onClick={() => moveTrainingTask(task.id, sub.id, 'up')}
+                                disabled={tIdx === 0}
+                                className="w-4 h-4 flex items-center justify-center text-charcoal/20 hover:text-charcoal/50 disabled:opacity-0"
+                              >
+                                <ChevronUp size={10} />
+                              </button>
+                              <button
+                                onClick={() => moveTrainingTask(task.id, sub.id, 'down')}
+                                disabled={tIdx === subTasks.length - 1}
+                                className="w-4 h-4 flex items-center justify-center text-charcoal/20 hover:text-charcoal/50 disabled:opacity-0"
+                              >
+                                <ChevronDown size={10} />
+                              </button>
+                            </div>
                             <button
                               onClick={() => selectTrainingTask(task.id)}
                               className={`flex-1 text-left px-3 py-2 rounded-lg flex items-center gap-2 transition-all text-xs ${
