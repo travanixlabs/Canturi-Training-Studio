@@ -150,14 +150,12 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
-  const [weeks, setWeeks] = useState(() => getCalendarWeeks())
-  const [today, setToday] = useState(() => new Date())
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
-  // Recalculate on client mount to fix SSR UTC vs local timezone mismatch
-  useEffect(() => {
-    setWeeks(getCalendarWeeks())
-    setToday(new Date())
-  }, [])
+  const weeks = useMemo(() => getCalendarWeeks(), [mounted])
+  const today = new Date()
+  const todayLocalKey = toDateKey(today)
 
   // Completions for selected trainee
   const traineeCompletions = useMemo(() =>
@@ -198,7 +196,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
   }
 
   // Blue status: assigned today or future, not yet completed for that date
-  const todayKey = toDateKey(today)
+  const todayKey = todayLocalKey
 
   const traineeAssignments = useMemo(() =>
     assignments.filter(a => a.trainee_id === selectedTraineeId),
@@ -871,8 +869,8 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
               {weeks.map((week, wi) => (
                 <div key={wi} className="grid grid-cols-7 gap-px">
                   {week.days.map((day, di) => {
-                    const isToday = isSameDay(day, today)
                     const dateKey = toDateKey(day)
+                    const isToday = dateKey === todayLocalKey
                     const dayTasks = localPlate[dateKey] ?? []
                     const status = daySaveStatus[dateKey]
                     const isPast = dateKey < todayKey
