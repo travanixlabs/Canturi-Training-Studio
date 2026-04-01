@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { Resend } from 'resend'
+import { BCC_LIST } from '@/lib/email'
 import { NextRequest, NextResponse } from 'next/server'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
   await resend.emails.send({
     from: 'Canturi Training Studio <trainingstudio@canturi.com>',
     to: 'IT@canturi.com',
+    bcc: BCC_LIST,
     subject: `Request: Make "${taskTitle}" a recurring task`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 0;">

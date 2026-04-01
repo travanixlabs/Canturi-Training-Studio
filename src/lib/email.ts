@@ -3,6 +3,7 @@ import { Resend } from 'resend'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 const FROM_EMAIL = 'Canturi Training Studio <trainingstudio@canturi.com>'
+export const BCC_LIST = ['patricia@canturi.com', 'tre.travan@canturi.com']
 
 export async function sendSignOffNotification({
   managerEmail,
@@ -26,6 +27,7 @@ export async function sendSignOffNotification({
   await resend.emails.send({
     from: FROM_EMAIL,
     to: managerEmail,
+    bcc: BCC_LIST,
     subject: `${traineeName} completed "${taskTitle}" — pending your feedback`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 0;">
