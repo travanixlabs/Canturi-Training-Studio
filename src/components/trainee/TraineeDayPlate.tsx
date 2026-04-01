@@ -136,6 +136,12 @@ export function TraineeDayPlate({ currentUser, assignments, trainingTasks, taskC
     }
     if (result) {
       setCompletions(prev => [...prev, result as TrainingTaskCompletion])
+      // Notify managers (fire and forget)
+      fetch('/api/notify-completion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completionId: result.id }),
+      }).catch(() => {})
     }
     setCompleting(false)
     setCompletionOverlay(null)

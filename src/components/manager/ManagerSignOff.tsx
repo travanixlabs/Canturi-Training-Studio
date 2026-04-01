@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { X, Check, Clock } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signOffCompletion } from '@/app/manager/sign-off/actions'
 import { COURSE_COLOURS } from '@/types'
 import type { User, Course, Category, Subcategory, TrainingTask, TrainingTaskCompletion } from '@/types'
@@ -19,10 +19,23 @@ interface Props {
 
 export function ManagerSignOff({ manager, trainees, completions: initialCompletions, trainingTasks, subcategories, categories, courses }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const sortedTrainees = useMemo(() => [...trainees].sort((a, b) => a.name.localeCompare(b.name)), [trainees])
   const [selectedTraineeId, setSelectedTraineeId] = useState<string>(sortedTrainees[0]?.id ?? '')
   const [completions, setCompletions] = useState(initialCompletions)
   const [overlayCompletionId, setOverlayCompletionId] = useState<string | null>(null)
+
+  // Auto-open completion from email link
+  useEffect(() => {
+    const completionParam = searchParams.get('completion')
+    if (completionParam) {
+      const completion = initialCompletions.find(c => c.id === completionParam)
+      if (completion) {
+        setSelectedTraineeId(completion.trainee_id)
+        setOverlayCompletionId(completionParam)
+      }
+    }
+  }, [searchParams, initialCompletions])
 
   // Task lookup
   const taskMap = useMemo(() => {
