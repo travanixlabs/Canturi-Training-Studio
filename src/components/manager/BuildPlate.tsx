@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Search, X, Info, Check, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronUp, Search, X, Info, Check, RefreshCw, AlertTriangle } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { savePlateAssignments } from '@/app/manager/build-plate/actions'
@@ -91,6 +91,7 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
   const [typeFilter, setTypeFilter] = useState<'all' | 'shadow' | 'task'>('all')
   const [previewTaskId, setPreviewTaskId] = useState<string | null>(null)
   const [recurringRequestTaskId, setRecurringRequestTaskId] = useState<string | null>(null)
+  const [reportIssueTaskId, setReportIssueTaskId] = useState<string | null>(null)
   const [workingDays, setWorkingDays] = useState<UserWorkingDay[]>(initialWorkingDays)
   const [workingDayOverlayDate, setWorkingDayOverlayDate] = useState<string | null>(null)
 
@@ -1039,6 +1040,13 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                   <h2 className="font-serif text-lg text-charcoal">{task.title}</h2>
                 </div>
                 <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setPreviewTaskId(null); setReportIssueTaskId(task.id) }}
+                    className="p-1.5 text-charcoal/30 hover:text-amber-500 transition-colors rounded-lg hover:bg-amber-50"
+                    title="Report issue"
+                  >
+                    <AlertTriangle size={16} />
+                  </button>
                   {!task.is_recurring && (
                     <button
                       onClick={() => { setPreviewTaskId(null); setRecurringRequestTaskId(task.id) }}
@@ -1184,6 +1192,25 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
               </div>
             </div>
           </div>
+        )
+      })()}
+
+      {/* Report issue overlay */}
+      {reportIssueTaskId && (() => {
+        const task = taskMap.get(reportIssueTaskId)
+        if (!task) return null
+        const sub = subcategories.find(s => s.id === task.subcategory_id)
+        const cat = sub ? categories.find(c => c.id === sub.category_id) : null
+        const course = cat ? courses.find(c => c.id === cat.course_id) : null
+        const breadcrumb = [course?.name, cat?.title, sub?.title].filter(Boolean).join(' › ')
+
+        return (
+          <ReportIssueOverlay
+            taskTitle={task.title}
+            breadcrumb={breadcrumb}
+            taskId={task.id}
+            onClose={() => setReportIssueTaskId(null)}
+          />
         )
       })()}
 
@@ -1388,6 +1415,96 @@ function RecurringRequestOverlay({ taskTitle, breadcrumb, taskId, onClose }: {
             className="flex-1 px-4 py-2.5 text-sm font-medium bg-gold text-white rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50"
           >
             {submitting ? 'Sending...' : 'Send Request'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ReportIssueOverlay({ taskTitle, breadcrumb, taskId, onClose }: {
+  taskTitle: string
+  breadcrumb: string
+  taskId: string
+  onClose: () => void
+}) {
+  const [issue, setIssue] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  async function handleSubmit() {
+    if (!issue.trim()) return
+    setSubmitting(true)
+    try {
+      await fetch('/api/report-issue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId, taskTitle, breadcrumb, issue: issue.trim() }),
+      })
+      setSubmitted(true)
+    } catch {
+      alert('Failed to send report')
+    }
+    setSubmitting(false)
+  }
+
+  if (submitted) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/30" />
+        <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm mx-0 sm:mx-4 p-8 text-center" onClick={e => e.stopPropagation()}>
+          <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+            <Check size={24} className="text-green-600" />
+          </div>
+          <h3 className="font-serif text-lg text-charcoal mb-2">Issue Reported</h3>
+          <p className="text-sm text-charcoal/50 mb-6">IT has been notified about this issue.</p>
+          <button onClick={onClose} className="px-6 py-2.5 rounded-xl bg-gold text-white text-sm font-medium hover:bg-gold/90 transition-colors">Done</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="fixed inset-0 bg-black/30" />
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg mx-0 sm:mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="px-5 pt-5 pb-3 border-b border-black/5 flex items-start justify-between">
+          <div>
+            <p className="text-xs text-charcoal/30 mb-1">{breadcrumb}</p>
+            <h2 className="font-serif text-lg text-charcoal flex items-center gap-2">
+              <AlertTriangle size={18} className="text-amber-500" />
+              Report Issue
+            </h2>
+            <p className="text-xs text-charcoal/40 mt-0.5">{taskTitle}</p>
+          </div>
+          <button onClick={onClose} className="p-1 text-charcoal/30 hover:text-charcoal/60 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div>
+            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
+              What is the issue? <span className="text-red-400">*</span>
+            </label>
+            <textarea
+              className="textarea text-sm"
+              rows={5}
+              value={issue}
+              onChange={e => setIssue(e.target.value)}
+              placeholder="Describe the issue with this training task..."
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 px-5 py-4 border-t border-black/5">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors">Cancel</button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !issue.trim()}
+            className="flex-1 px-4 py-2.5 text-sm font-medium bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-50"
+          >
+            {submitting ? 'Sending...' : 'Report Issue'}
           </button>
         </div>
       </div>
