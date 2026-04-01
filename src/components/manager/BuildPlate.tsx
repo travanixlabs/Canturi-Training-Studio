@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, ChevronUp, Search, X, Info, Check, RefreshCw } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
+import { createClient } from '@/lib/supabase/client'
 import { savePlateAssignments } from '@/app/manager/build-plate/actions'
 import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned } from '@/types'
 
@@ -79,6 +80,7 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
   )
 
   const router = useRouter()
+  const supabase = createClient()
   const [selectedTraineeId, setSelectedTraineeId] = useState<string>(sortedTrainees[0]?.id ?? '')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [selection, setSelection] = useState<{ type: 'workshop' | 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
@@ -1033,9 +1035,29 @@ export function BuildPlate({ trainees, courses, categories, workshops, workshopC
 
               {/* Body */}
               <div className="flex-1 overflow-y-auto px-5 py-4">
+                {/* Trainer Type — editable */}
+                <div className="mb-4">
+                  <label className="block text-[10px] text-charcoal/30 uppercase tracking-wider mb-1">Trainer Type</label>
+                  <select
+                    className="input text-sm py-1.5"
+                    value={task.trainer_type}
+                    onChange={async (e) => {
+                      const newType = e.target.value
+                      // Update local state
+                      const updated = { ...task, trainer_type: newType }
+                      taskMap.set(task.id, updated as TrainingTask)
+                      // Persist to DB
+                      await supabase.from('training_tasks').update({ trainer_type: newType }).eq('id', task.id)
+                      router.refresh()
+                    }}
+                  >
+                    <option value="">Select trainer type…</option>
+                    {['Self Directed', 'Senior', 'Manager'].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2 mb-5">
-                  {task.trainer_type && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{task.trainer_type}</span>}
                   {task.modality && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{task.modality}</span>}
                   {task.role_level && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{task.role_level}</span>}
                   {task.priority_level && <span className="text-xs px-2.5 py-1 rounded-full bg-charcoal/5 text-charcoal/50">{task.priority_level}</span>}
