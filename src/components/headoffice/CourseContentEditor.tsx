@@ -258,6 +258,26 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     await supabase.from('training_task_content').update(updates).eq('id', id)
   }
 
+  async function moveAttachment(taskId: string, attId: string, direction: 'up' | 'down') {
+    const taskAtts = getAttachmentsForTask(taskId)
+    const idx = taskAtts.findIndex(a => a.id === attId)
+    if (idx === -1) return
+    if (direction === 'up' && idx === 0) return
+    if (direction === 'down' && idx === taskAtts.length - 1) return
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+    const a = taskAtts[idx]
+    const b = taskAtts[swapIdx]
+    setAttachments(prev => prev.map(att => {
+      if (att.id === a.id) return { ...att, sort_order: b.sort_order }
+      if (att.id === b.id) return { ...att, sort_order: a.sort_order }
+      return att
+    }))
+    await Promise.all([
+      supabase.from('training_task_content').update({ sort_order: b.sort_order }).eq('id', a.id),
+      supabase.from('training_task_content').update({ sort_order: a.sort_order }).eq('id', b.id),
+    ])
+  }
+
   async function handleAttachmentUpload(taskId: string, file: File, type: AttachmentType) {
     setUploading(true)
     const ext = file.name.split('.').pop()
@@ -593,6 +613,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
               onAddAttachment={(type, url, insertAt) => addAttachment(activeTrainingTask.id, type, url, insertAt)}
               onUpdateAttachment={updateAttachment}
               onRemoveAttachment={removeAttachment}
+              onMoveAttachment={(id, dir) => moveAttachment(activeTrainingTask.id, id, dir)}
               onFileUpload={(file, type) => handleAttachmentUpload(activeTrainingTask.id, file, type)}
             />
           )}
@@ -658,6 +679,7 @@ function TrainingTaskEditor({
   onAddAttachment,
   onUpdateAttachment,
   onRemoveAttachment,
+  onMoveAttachment,
   onFileUpload,
 }: {
   task: TrainingTask
@@ -668,6 +690,7 @@ function TrainingTaskEditor({
   onAddAttachment: (type: AttachmentType, url: string, insertAtIndex?: number) => void
   onUpdateAttachment: (id: string, updates: Partial<TrainingTaskContent>) => void
   onRemoveAttachment: (id: string) => void
+  onMoveAttachment: (id: string, direction: 'up' | 'down') => void
   onFileUpload: (file: File, type: AttachmentType) => void
 }) {
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false)
@@ -950,9 +973,25 @@ function TrainingTaskEditor({
 
         {attachments.length > 0 && (
           <div className="space-y-3 mb-4">
-            {attachments.map(att => (
+            {attachments.map((att, idx) => (
               <div key={att.id} className="card p-4">
                   <div className="flex items-center gap-2 mb-2">
+                    <div className="flex flex-col flex-shrink-0">
+                      <button
+                        onClick={() => onMoveAttachment(att.id, 'up')}
+                        disabled={idx === 0}
+                        className="w-5 h-5 flex items-center justify-center text-charcoal/20 hover:text-charcoal/50 transition-colors disabled:opacity-0"
+                      >
+                        <ChevronUp size={12} />
+                      </button>
+                      <button
+                        onClick={() => onMoveAttachment(att.id, 'down')}
+                        disabled={idx === attachments.length - 1}
+                        className="w-5 h-5 flex items-center justify-center text-charcoal/20 hover:text-charcoal/50 transition-colors disabled:opacity-0"
+                      >
+                        <ChevronDown size={12} />
+                      </button>
+                    </div>
                     <input
                       className="flex-1 text-xs font-medium text-charcoal/70 bg-transparent border-b border-transparent hover:border-charcoal/15 focus:border-gold focus:outline-none py-0.5 transition-colors"
                       value={att.title}
