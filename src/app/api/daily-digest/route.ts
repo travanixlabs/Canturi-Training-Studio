@@ -94,18 +94,11 @@ export async function POST() {
       const task = taskMap.get(a.training_task_id)
       if (!task) return ''
       const breadcrumb = getBreadcrumb(task.id)
-      const isRecurring = task.is_recurring
       return `
         <tr>
           <td style="padding: 10px 12px; border-bottom: 1px solid #f0ebe3;">
             <p style="font-size: 14px; font-weight: 500; color: #2D2926; margin: 0;">${task.title}</p>
             <p style="font-size: 11px; color: #999; margin: 2px 0 0;">${breadcrumb}</p>
-          </td>
-          <td style="padding: 10px 12px; border-bottom: 1px solid #f0ebe3; text-align: right; white-space: nowrap;">
-            ${isRecurring
-              ? '<span style="font-size: 10px; background: #EFF6FF; color: #2563EB; padding: 2px 8px; border-radius: 10px;">Shadow</span>'
-              : '<span style="font-size: 10px; background: #f5f5f4; color: #999; padding: 2px 8px; border-radius: 10px;">Task</span>'
-            }
           </td>
         </tr>
       `
@@ -132,7 +125,6 @@ export async function POST() {
                 <thead>
                   <tr>
                     <th style="text-align: left; font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 1px solid #e8e0d4;">Training Task</th>
-                    <th style="text-align: right; font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 1px solid #e8e0d4;">Type</th>
                   </tr>
                 </thead>
                 <tbody>
