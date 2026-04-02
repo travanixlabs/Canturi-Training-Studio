@@ -22,6 +22,8 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
   const router = useRouter()
   const [tasks, setTasks] = useState(initialTasks)
   const [search, setSearch] = useState('')
+  const [sortCol, setSortCol] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   // Build lookup maps
   const courseMap = useMemo(() => new Map(courses.map(c => [c.id, c])), [courses])
@@ -35,15 +37,56 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
     return { course, category: cat, subcategory: sub }
   }
 
-  // Filter by search
+  function getSortValue(task: TrainingTask, col: string): string {
+    const { course, category, subcategory } = getHierarchy(task)
+    switch (col) {
+      case 'Course': return course?.name ?? ''
+      case 'Category': return category?.title ?? ''
+      case 'Subcategory': return subcategory?.title ?? ''
+      case 'Training Task': return task.title
+      case 'Prerequisites': return (task.prerequisites ?? []).length.toString()
+      case 'Tags': return (task.tags ?? []).join(', ')
+      case 'Trainer Type': return task.trainer_type
+      case 'Modality': return task.modality
+      case 'Role Level': return task.role_level
+      case 'Priority Level': return task.priority_level
+      case 'Recurring': return task.is_recurring ? 'Yes' : 'No'
+      case 'Certificate': return task.certificate_required ? 'Yes' : 'No'
+      case 'Rewards': return task.rewards_eligible ? 'Yes' : 'No'
+      case 'Competence Rating': return task.confidence_rating_required ? 'Yes' : 'No'
+      default: return ''
+    }
+  }
+
+  function toggleSort(col: string) {
+    if (sortCol === col) {
+      setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
+
+  // Filter and sort
   const filteredTasks = useMemo(() => {
+    let result = tasks
     const q = search.toLowerCase().trim()
-    if (!q) return tasks
-    return tasks.filter(t => {
-      const { course, category, subcategory } = getHierarchy(t)
-      return [t.title, course?.name, category?.title, subcategory?.title, t.trainer_type, t.modality, ...(t.tags ?? [])].some(s => s && s.toLowerCase().includes(q))
-    })
-  }, [tasks, search])
+    if (q) {
+      result = result.filter(t => {
+        const { course, category, subcategory } = getHierarchy(t)
+        return [t.title, course?.name, category?.title, subcategory?.title, t.trainer_type, t.modality, ...(t.tags ?? [])].some(s => s && s.toLowerCase().includes(q))
+      })
+    }
+    if (sortCol) {
+      result = [...result].sort((a, b) => {
+        const va = getSortValue(a, sortCol).toLowerCase()
+        const vb = getSortValue(b, sortCol).toLowerCase()
+        const cmp = va.localeCompare(vb)
+        return sortDir === 'asc' ? cmp : -cmp
+      })
+    }
+    return result
+  }, [tasks, search, sortCol, sortDir])
 
   async function updateTask(id: string, updates: Partial<TrainingTask>) {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
@@ -71,7 +114,18 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
           <thead>
             <tr className="bg-charcoal/[0.02]">
               {['Course', 'Category', 'Subcategory', 'Training Task', 'Prerequisites', 'Tags', 'Trainer Type', 'Modality', 'Role Level', 'Priority Level', 'Recurring', 'Certificate', 'Rewards', 'Competence Rating'].map(h => (
-                <th key={h} className="px-3 py-2.5 text-[10px] font-medium text-charcoal/40 uppercase tracking-wider whitespace-nowrap border-b border-black/5">{h}</th>
+                <th
+                  key={h}
+                  onClick={() => toggleSort(h)}
+                  className="px-3 py-2.5 text-[10px] font-medium text-charcoal/40 uppercase tracking-wider whitespace-nowrap border-b border-black/5 cursor-pointer hover:text-charcoal/60 select-none"
+                >
+                  <span className="flex items-center gap-1">
+                    {h}
+                    {sortCol === h && (
+                      <span className="text-gold">{sortDir === 'asc' ? '▲' : '▼'}</span>
+                    )}
+                  </span>
+                </th>
               ))}
             </tr>
           </thead>
