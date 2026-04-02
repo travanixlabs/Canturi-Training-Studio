@@ -1055,12 +1055,23 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                               >
                                 {trainerCounts.sd} | {trainerCounts.sr} | {trainerCounts.mg}
                               </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setCourseBreakdownDate(dateKey) }}
-                                className="px-1.5 py-0.5 rounded bg-charcoal/5 text-[8px] text-charcoal/30 hover:text-charcoal/50 hover:bg-charcoal/10 transition-colors"
-                              >
-                                {courseList.map((c, i) => <span key={i}>{i > 0 ? ' | ' : ''}{c.count}</span>)}
-                              </button>
+                              {(() => {
+                                const totalCourses = courses.length
+                                const courseThreshold = totalCourses > 0 ? (1 / totalCourses) * 3 : 1
+                                const courseExceeds = total > 0 && courseList.some(c => c.count / total > courseThreshold)
+                                return (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setCourseBreakdownDate(dateKey) }}
+                                    className={`px-1.5 py-0.5 rounded text-[8px] transition-colors ${
+                                      courseExceeds
+                                        ? 'bg-red-100 text-red-500 hover:bg-red-200'
+                                        : 'bg-green-100 text-green-600 hover:bg-green-200'
+                                    }`}
+                                  >
+                                    {courseList.map((c, i) => <span key={i}>{i > 0 ? ' | ' : ''}{c.count}</span>)}
+                                  </button>
+                                )
+                              })()}
                             </div>
                           )
                         })()}
