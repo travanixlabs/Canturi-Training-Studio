@@ -1031,16 +1031,14 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                             else if (t.trainer_type === 'Manager') counts.mg++
                           }
                           return (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setTrainerTypeOverlayDate(dateKey) }}
-                              className="mt-auto pt-1 flex items-center justify-center gap-0.5 text-[8px] text-charcoal/30 hover:text-charcoal/50 transition-colors"
-                            >
-                              <span className="px-1.5 py-0.5 rounded bg-charcoal/5">{counts.sd}</span>
-                              <span className="text-charcoal/15">|</span>
-                              <span className="px-1.5 py-0.5 rounded bg-charcoal/5">{counts.sr}</span>
-                              <span className="text-charcoal/15">|</span>
-                              <span className="px-1.5 py-0.5 rounded bg-charcoal/5">{counts.mg}</span>
-                            </button>
+                            <div className="mt-auto pt-1 flex items-center">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setTrainerTypeOverlayDate(dateKey) }}
+                                className="px-1.5 py-0.5 rounded bg-charcoal/5 text-[8px] text-charcoal/30 hover:text-charcoal/50 hover:bg-charcoal/10 transition-colors"
+                              >
+                                {counts.sd} | {counts.sr} | {counts.mg}
+                              </button>
+                            </div>
                           )
                         })()}
                       </div>
