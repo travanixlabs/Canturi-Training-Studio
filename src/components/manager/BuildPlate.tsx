@@ -96,6 +96,7 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
   const [workingDays, setWorkingDays] = useState<UserWorkingDay[]>(initialWorkingDays)
   const [workingDayOverlayDate, setWorkingDayOverlayDate] = useState<string | null>(null)
   const [trainerTypeOverlayDate, setTrainerTypeOverlayDate] = useState<string | null>(null)
+  const [courseBreakdownDate, setCourseBreakdownDate] = useState<string | null>(null)
 
   // Working days for selected trainee
   const traineeWorkingDays = useMemo(() => {
@@ -1022,21 +1023,37 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                         </div>
                         {/* Trainer type analysis */}
                         {dayTasks.length > 0 && (() => {
-                          const counts = { sd: 0, sr: 0, mg: 0 }
+                          const trainerCounts = { sd: 0, sr: 0, mg: 0 }
+                          const courseCounts = new Map<string, { name: string; count: number; colour: string }>()
                           for (const tid of dayTasks) {
                             const t = taskMap.get(tid)
                             if (!t) continue
-                            if (t.trainer_type === 'Self Directed') counts.sd++
-                            else if (t.trainer_type === 'Senior') counts.sr++
-                            else if (t.trainer_type === 'Manager') counts.mg++
+                            if (t.trainer_type === 'Self Directed') trainerCounts.sd++
+                            else if (t.trainer_type === 'Senior') trainerCounts.sr++
+                            else if (t.trainer_type === 'Manager') trainerCounts.mg++
+                            const sub = subcategories.find(s => s.id === t.subcategory_id)
+                            const cat = sub ? categories.find(c => c.id === sub.category_id) : null
+                            const course = cat ? courses.find(c => c.id === cat.course_id) : null
+                            if (course) {
+                              const existing = courseCounts.get(course.id)
+                              if (existing) existing.count++
+                              else courseCounts.set(course.id, { name: course.name, count: 1, colour: course.colour_hex || COURSE_COLOURS[course.name] || '#C9A96E' })
+                            }
                           }
+                          const courseList = [...courseCounts.values()].sort((a, b) => b.count - a.count)
                           return (
-                            <div className="mt-auto pt-1 flex items-center">
+                            <div className="mt-auto pt-1 flex items-center justify-between">
                               <button
                                 onClick={(e) => { e.stopPropagation(); setTrainerTypeOverlayDate(dateKey) }}
                                 className="px-1.5 py-0.5 rounded bg-charcoal/5 text-[8px] text-charcoal/30 hover:text-charcoal/50 hover:bg-charcoal/10 transition-colors"
                               >
-                                {counts.sd} | {counts.sr} | {counts.mg}
+                                {trainerCounts.sd} | {trainerCounts.sr} | {trainerCounts.mg}
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setCourseBreakdownDate(dateKey) }}
+                                className="px-1.5 py-0.5 rounded bg-charcoal/5 text-[8px] text-charcoal/30 hover:text-charcoal/50 hover:bg-charcoal/10 transition-colors"
+                              >
+                                {courseList.map((c, i) => <span key={i}>{i > 0 ? ' | ' : ''}{c.count}</span>)}
                               </button>
                             </div>
                           )
@@ -1290,6 +1307,68 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
             taskId={task.id}
             onClose={() => setRecurringRequestTaskId(null)}
           />
+        )
+      })()}
+
+      {/* Course breakdown overlay */}
+      {courseBreakdownDate && (() => {
+        const dateKey = courseBreakdownDate
+        const dayTaskIds = localPlate[dateKey] ?? []
+        const dateDisplay = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+        const grouped = new Map<string, { course: { name: string; icon: string; colour: string }; tasks: TrainingTask[] }>()
+        for (const tid of dayTaskIds) {
+          const t = taskMap.get(tid)
+          if (!t) continue
+          const sub = subcategories.find(s => s.id === t.subcategory_id)
+          const cat = sub ? categories.find(c => c.id === sub.category_id) : null
+          const course = cat ? courses.find(c => c.id === cat.course_id) : null
+          if (course) {
+            const existing = grouped.get(course.id)
+            if (existing) existing.tasks.push(t)
+            else grouped.set(course.id, { course: { name: course.name, icon: course.icon, colour: course.colour_hex || COURSE_COLOURS[course.name] || '#C9A96E' }, tasks: [t] })
+          }
+        }
+        const courseGroups = [...grouped.values()].sort((a, b) => b.tasks.length - a.tasks.length)
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setCourseBreakdownDate(null)}>
+            <div className="fixed inset-0 bg-black/30" />
+            <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md mx-0 sm:mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="px-5 pt-5 pb-3 border-b border-black/5 flex items-start justify-between">
+                <div>
+                  <h3 className="font-serif text-lg text-charcoal">Course Breakdown</h3>
+                  <p className="text-xs text-charcoal/40 mt-0.5">{dateDisplay} · {dayTaskIds.length} tasks</p>
+                </div>
+                <button onClick={() => setCourseBreakdownDate(null)} className="p-1 text-charcoal/30 hover:text-charcoal/60"><X size={18} /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+                {courseGroups.map(({ course: c, tasks: items }) => (
+                  <div key={c.name}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] flex-shrink-0" style={{ backgroundColor: c.colour + '20', color: c.colour }}>{c.icon}</span>
+                      <span className="text-xs font-medium text-charcoal/50 uppercase tracking-wider">{c.name}</span>
+                      <span className="text-[10px] text-charcoal/30">{items.length}</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {items.map(task => {
+                        const sub = subcategories.find(s => s.id === task.subcategory_id)
+                        const cat = sub ? categories.find(ct => ct.id === sub.category_id) : null
+                        return (
+                          <div key={task.id} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ backgroundColor: c.colour + '08' }}>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-charcoal leading-snug">{task.title}</p>
+                              <p className="text-[9px] text-charcoal/30">{[cat?.title, sub?.title].filter(Boolean).join(' › ')}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         )
       })()}
 
