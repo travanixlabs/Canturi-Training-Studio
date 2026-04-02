@@ -24,7 +24,9 @@ export function ManagerCoaching({ manager, trainees, completions: initialComplet
   const [selectedTraineeId, setSelectedTraineeId] = useState<string>(sortedTrainees[0]?.id ?? '')
   const [completions, setCompletions] = useState(initialCompletions)
   const [overlayCompletionId, setOverlayCompletionId] = useState<string | null>(null)
-  const [ratingRange, setRatingRange] = useState<[number, number]>([1, 3])
+  const [competenceRange, setCompetenceRange] = useState<[number, number]>([1, 3])
+  const [managerRange, setManagerRange] = useState<[number, number]>([1, 3])
+  const [filterMode, setFilterMode] = useState<'and' | 'or'>('or')
 
   const taskMap = useMemo(() => {
     const m = new Map<string, TrainingTask>()
@@ -50,12 +52,18 @@ export function ManagerCoaching({ manager, trainees, completions: initialComplet
     return course?.colour_hex || COURSE_COLOURS[course?.name ?? ''] || '#C9A96E'
   }
 
-  // Filter completions: selected trainee, has confidence_rating, within range
+  // Filter completions by trainee and rating ranges
   const filteredCompletions = useMemo(() =>
     completions
-      .filter(c => c.trainee_id === selectedTraineeId && c.confidence_rating !== null && c.confidence_rating >= ratingRange[0] && c.confidence_rating <= ratingRange[1])
+      .filter(c => {
+        if (c.trainee_id !== selectedTraineeId) return false
+        const matchesCompetence = c.confidence_rating !== null && c.confidence_rating >= competenceRange[0] && c.confidence_rating <= competenceRange[1]
+        const matchesManager = c.manager_rating !== null && c.manager_rating >= managerRange[0] && c.manager_rating <= managerRange[1]
+        if (filterMode === 'and') return matchesCompetence && (c.manager_rating === null || matchesManager)
+        return matchesCompetence || matchesManager
+      })
       .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()),
-    [completions, selectedTraineeId, ratingRange]
+    [completions, selectedTraineeId, competenceRange, managerRange, filterMode]
   )
 
   const overlayCompletion = overlayCompletionId ? completions.find(c => c.id === overlayCompletionId) : null
@@ -96,46 +104,88 @@ export function ManagerCoaching({ manager, trainees, completions: initialComplet
         ))}
       </div>
 
-      {/* Rating slider */}
+      {/* Rating filters */}
       <div className="card p-4 mb-6">
-        <p className="text-xs text-charcoal/40 uppercase tracking-wider font-medium mb-3">Competence Rating Filter</p>
-        <div className="flex items-center gap-2">
-          {[1, 2, 3, 4, 5].map(n => {
-            const isSelected = n >= ratingRange[0] && n <= ratingRange[1]
-            return (
-              <button
-                key={n}
-                onClick={() => {
-                  // Toggle: if clicking an edge, shrink range. If clicking outside, expand.
-                  if (isSelected && n === ratingRange[0] && ratingRange[0] < ratingRange[1]) {
-                    setRatingRange([n + 1, ratingRange[1]])
-                  } else if (isSelected && n === ratingRange[1] && ratingRange[0] < ratingRange[1]) {
-                    setRatingRange([ratingRange[0], n - 1])
-                  } else if (!isSelected && n < ratingRange[0]) {
-                    setRatingRange([n, ratingRange[1]])
-                  } else if (!isSelected && n > ratingRange[1]) {
-                    setRatingRange([ratingRange[0], n])
-                  } else if (isSelected && ratingRange[0] === ratingRange[1]) {
-                    setRatingRange([1, 5]) // reset if deselecting single
-                  } else {
-                    setRatingRange([n, n]) // select single
-                  }
+        <div className="flex items-start gap-4">
+          {/* Competence Rating slider */}
+          <div className="flex-1">
+            <p className="text-xs text-charcoal/40 uppercase tracking-wider font-medium mb-2">Competence Rating</p>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-charcoal/30 w-3">{competenceRange[0]}</span>
+              <input
+                type="range"
+                min={1}
+                max={5}
+                value={competenceRange[0]}
+                onChange={e => {
+                  const v = parseInt(e.target.value)
+                  setCompetenceRange([Math.min(v, competenceRange[1]), competenceRange[1]])
                 }}
-                className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-1 ${
-                  isSelected
-                    ? 'bg-gold/10 text-gold border border-gold/30'
-                    : 'bg-charcoal/3 text-charcoal/30 border border-transparent hover:border-charcoal/10'
-                }`}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill={isSelected ? '#C9A96E' : 'none'} stroke={isSelected ? '#C9A96E' : '#D1D5DB'} strokeWidth="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                {n}
-              </button>
-            )
-          })}
+                className="flex-1 accent-gold h-1.5"
+              />
+              <input
+                type="range"
+                min={1}
+                max={5}
+                value={competenceRange[1]}
+                onChange={e => {
+                  const v = parseInt(e.target.value)
+                  setCompetenceRange([competenceRange[0], Math.max(v, competenceRange[0])])
+                }}
+                className="flex-1 accent-gold h-1.5"
+              />
+              <span className="text-xs text-charcoal/30 w-3">{competenceRange[1]}</span>
+            </div>
+            <p className="text-[10px] text-charcoal/30 text-center mt-1">{competenceRange[0]} – {competenceRange[1]}</p>
+          </div>
+
+          {/* AND / OR toggle */}
+          <div className="flex flex-col items-center pt-5">
+            <button
+              onClick={() => setFilterMode(prev => prev === 'and' ? 'or' : 'and')}
+              className={`px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider transition-all ${
+                filterMode === 'and'
+                  ? 'bg-charcoal/10 text-charcoal/60'
+                  : 'bg-gold/10 text-gold'
+              }`}
+            >
+              {filterMode.toUpperCase()}
+            </button>
+          </div>
+
+          {/* Manager Rating slider */}
+          <div className="flex-1">
+            <p className="text-xs text-charcoal/40 uppercase tracking-wider font-medium mb-2">Manager Rating</p>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-charcoal/30 w-3">{managerRange[0]}</span>
+              <input
+                type="range"
+                min={1}
+                max={5}
+                value={managerRange[0]}
+                onChange={e => {
+                  const v = parseInt(e.target.value)
+                  setManagerRange([Math.min(v, managerRange[1]), managerRange[1]])
+                }}
+                className="flex-1 accent-gold h-1.5"
+              />
+              <input
+                type="range"
+                min={1}
+                max={5}
+                value={managerRange[1]}
+                onChange={e => {
+                  const v = parseInt(e.target.value)
+                  setManagerRange([managerRange[0], Math.max(v, managerRange[0])])
+                }}
+                className="flex-1 accent-gold h-1.5"
+              />
+              <span className="text-xs text-charcoal/30 w-3">{managerRange[1]}</span>
+            </div>
+            <p className="text-[10px] text-charcoal/30 text-center mt-1">{managerRange[0]} – {managerRange[1]}</p>
+          </div>
         </div>
-        <p className="text-[10px] text-charcoal/30 text-center mt-2">
-          Showing ratings {ratingRange[0]}–{ratingRange[1]} · {filteredCompletions.length} item{filteredCompletions.length !== 1 ? 's' : ''}
-        </p>
+        <p className="text-[10px] text-charcoal/30 text-center mt-2">{filteredCompletions.length} item{filteredCompletions.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Completions list */}
