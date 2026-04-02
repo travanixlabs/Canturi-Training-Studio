@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { X, Check } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { coachingAddToPlate, coachingNotNow, coachingDismiss } from '@/app/manager/coaching/actions'
 import { COURSE_COLOURS } from '@/types'
 import type { User, Course, Category, Subcategory, TrainingTask, TrainingTaskCompletion } from '@/types'
@@ -19,6 +19,7 @@ interface Props {
 
 export function ManagerCoaching({ manager, trainees, completions: initialCompletions, trainingTasks, subcategories, categories, courses }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const sortedTrainees = useMemo(() => [...trainees].sort((a, b) => a.name.localeCompare(b.name)), [trainees])
   const [selectedTraineeId, setSelectedTraineeId] = useState<string>(sortedTrainees[0]?.id ?? '')
   const [completions, setCompletions] = useState(initialCompletions)
@@ -26,6 +27,20 @@ export function ManagerCoaching({ manager, trainees, completions: initialComplet
   const [competenceRange, setCompetenceRange] = useState<[number, number]>([1, 3])
   const [managerRange, setManagerRange] = useState<[number, number]>([1, 3])
   const [filterMode, setFilterMode] = useState<'and' | 'or'>('or')
+
+  // Auto-open completion from email link
+  useEffect(() => {
+    const completionParam = searchParams.get('completion')
+    if (completionParam) {
+      const completion = initialCompletions.find(c => c.id === completionParam)
+      if (completion) {
+        setSelectedTraineeId(completion.trainee_id)
+        setCompetenceRange([1, 5])
+        setManagerRange([1, 5])
+        setOverlayCompletionId(completionParam)
+      }
+    }
+  }, [searchParams, initialCompletions])
 
   const taskMap = useMemo(() => {
     const m = new Map<string, TrainingTask>()

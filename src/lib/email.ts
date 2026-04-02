@@ -27,7 +27,7 @@ export async function sendCompletionNotification({
   lowCompetenceRating: number | null
 }) {
   const signOffUrl = `${appUrl}/manager/sign-off?completion=${completionId}`
-  const coachingUrl = `${appUrl}/manager/coaching`
+  const coachingUrl = `${appUrl}/manager/coaching?completion=${completionId}`
   const greeting = managerNames.length === 1 ? `Hi ${managerNames[0]}` : `Hi ${managerNames.join(' & ')}`
   const hasLowRating = lowCompetenceRating !== null
   const stars = hasLowRating ? '★'.repeat(lowCompetenceRating) + '☆'.repeat(5 - lowCompetenceRating) : ''
