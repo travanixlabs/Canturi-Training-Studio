@@ -91,6 +91,7 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
   const [typeFilter, setTypeFilter] = useState<'all' | 'shadow' | 'task'>('all')
   const [previewTaskId, setPreviewTaskId] = useState<string | null>(null)
   const [recurringRequestTaskId, setRecurringRequestTaskId] = useState<string | null>(null)
+  const [recurringChangeTaskId, setRecurringChangeTaskId] = useState<string | null>(null)
   const [reportIssueTaskId, setReportIssueTaskId] = useState<string | null>(null)
   const [workingDays, setWorkingDays] = useState<UserWorkingDay[]>(initialWorkingDays)
   const [workingDayOverlayDate, setWorkingDayOverlayDate] = useState<string | null>(null)
@@ -1048,15 +1049,20 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                   >
                     <AlertTriangle size={16} />
                   </button>
-                  {!task.is_recurring && (
-                    <button
-                      onClick={() => { setPreviewTaskId(null); setRecurringRequestTaskId(task.id) }}
-                      className="p-1.5 text-charcoal/30 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
-                      title="Request to make recurring"
-                    >
-                      <RefreshCw size={16} />
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      setPreviewTaskId(null)
+                      if (task.is_recurring) {
+                        setRecurringChangeTaskId(task.id)
+                      } else {
+                        setRecurringRequestTaskId(task.id)
+                      }
+                    }}
+                    className={`p-1.5 text-charcoal/30 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50 ${task.is_recurring ? 'text-blue-400' : ''}`}
+                    title={task.is_recurring ? 'Change recurring settings' : 'Request to make recurring'}
+                  >
+                    <RefreshCw size={16} />
+                  </button>
                   <button onClick={() => setPreviewTaskId(null)} className="p-1 text-charcoal/30 hover:text-charcoal/60 transition-colors">
                     <X size={18} />
                   </button>
@@ -1211,6 +1217,26 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
             breadcrumb={breadcrumb}
             taskId={task.id}
             onClose={() => setReportIssueTaskId(null)}
+          />
+        )
+      })()}
+
+      {/* Recurring change overlay (for already-recurring tasks) */}
+      {recurringChangeTaskId && (() => {
+        const task = taskMap.get(recurringChangeTaskId)
+        if (!task) return null
+        const sub = subcategories.find(s => s.id === task.subcategory_id)
+        const cat = sub ? categories.find(c => c.id === sub.category_id) : null
+        const course = cat ? courses.find(c => c.id === cat.course_id) : null
+        const breadcrumb = [course?.name, cat?.title, sub?.title].filter(Boolean).join(' › ')
+
+        return (
+          <RecurringChangeOverlay
+            taskTitle={task.title}
+            breadcrumb={breadcrumb}
+            taskId={task.id}
+            currentCount={task.recurring_count ?? 10}
+            onClose={() => setRecurringChangeTaskId(null)}
           />
         )
       })()}
@@ -1506,6 +1532,149 @@ function ReportIssueOverlay({ taskTitle, breadcrumb, taskId, onClose }: {
             className="flex-1 px-4 py-2.5 text-sm font-medium bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-50"
           >
             {submitting ? 'Sending...' : 'Report Issue'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RecurringChangeOverlay({ taskTitle, breadcrumb, taskId, currentCount, onClose }: {
+  taskTitle: string
+  breadcrumb: string
+  taskId: string
+  currentCount: number
+  onClose: () => void
+}) {
+  const [stopRecurring, setStopRecurring] = useState<'yes' | 'no' | ''>('')
+  const [newCount, setNewCount] = useState('')
+  const [comments, setComments] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  const isValid = stopRecurring === 'yes' || (stopRecurring === 'no' && newCount && parseInt(newCount) >= 2)
+
+  async function handleSubmit() {
+    if (!isValid) return
+    setSubmitting(true)
+    try {
+      await fetch('/api/request-recurring-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId,
+          taskTitle,
+          breadcrumb,
+          stopRecurring: stopRecurring === 'yes',
+          newCount: stopRecurring === 'no' ? parseInt(newCount) : null,
+          currentCount,
+          comments: comments.trim(),
+        }),
+      })
+      setSubmitted(true)
+    } catch {
+      alert('Failed to send request')
+    }
+    setSubmitting(false)
+  }
+
+  if (submitted) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/30" />
+        <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm mx-0 sm:mx-4 p-8 text-center" onClick={e => e.stopPropagation()}>
+          <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
+            <Check size={24} className="text-green-600" />
+          </div>
+          <h3 className="font-serif text-lg text-charcoal mb-2">Request Sent</h3>
+          <p className="text-sm text-charcoal/50 mb-6">IT has been notified about the recurring change request.</p>
+          <button onClick={onClose} className="px-6 py-2.5 rounded-xl bg-gold text-white text-sm font-medium hover:bg-gold/90 transition-colors">Done</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="fixed inset-0 bg-black/30" />
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg mx-0 sm:mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="px-5 pt-5 pb-3 border-b border-black/5 flex items-start justify-between">
+          <div>
+            <p className="text-xs text-charcoal/30 mb-1">{breadcrumb}</p>
+            <h2 className="font-serif text-lg text-charcoal flex items-center gap-2">
+              <RefreshCw size={18} className="text-blue-500" />
+              Change Recurring Settings
+            </h2>
+            <p className="text-xs text-charcoal/40 mt-0.5">{taskTitle} · Currently ×{currentCount}</p>
+          </div>
+          <button onClick={onClose} className="p-1 text-charcoal/30 hover:text-charcoal/60 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          {/* Stop recurring? */}
+          <div>
+            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
+              Do you want this task to stop being a recurring task? <span className="text-red-400">*</span>
+            </label>
+            <div className="flex gap-2">
+              {(['yes', 'no'] as const).map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => { setStopRecurring(opt); if (opt === 'yes') setNewCount('') }}
+                  className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+                    stopRecurring === opt
+                      ? opt === 'yes' ? 'border-red-300 bg-red-50 text-red-700' : 'border-blue-300 bg-blue-50 text-blue-700'
+                      : 'border-charcoal/15 text-charcoal/40 hover:border-charcoal/30'
+                  }`}
+                >
+                  {opt === 'yes' ? 'Yes, stop recurring' : 'No, keep recurring'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Change count — only if keeping recurring */}
+          {stopRecurring === 'no' && (
+            <div>
+              <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
+                New recurring count <span className="text-red-400">*</span>
+              </label>
+              <select
+                className="input text-sm"
+                value={newCount}
+                onChange={e => setNewCount(e.target.value)}
+              >
+                <option value="">Select count...</option>
+                {Array.from({ length: 19 }, (_, i) => i + 2).map(n => (
+                  <option key={n} value={n}>{n}{n === currentCount ? ' (current)' : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Comments */}
+          <div>
+            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Comments</label>
+            <textarea
+              className="textarea text-sm"
+              rows={3}
+              value={comments}
+              onChange={e => setComments(e.target.value)}
+              placeholder="Optional — any additional context..."
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 px-5 py-4 border-t border-black/5">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors">Cancel</button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting || !isValid}
+            className="flex-1 px-4 py-2.5 text-sm font-medium bg-gold text-white rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50"
+          >
+            {submitting ? 'Sending...' : 'Send Request'}
           </button>
         </div>
       </div>
