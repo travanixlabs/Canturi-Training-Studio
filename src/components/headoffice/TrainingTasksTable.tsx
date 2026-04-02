@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Course, Category, Subcategory, TrainingTask, TrainerType, Modality, RoleLevel, PriorityLevel } from '@/types'
@@ -127,6 +128,7 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
                   </span>
                 </th>
               ))}
+              <th className="px-3 py-2.5 text-[10px] font-medium text-charcoal/40 uppercase tracking-wider whitespace-nowrap border-b border-black/5"></th>
             </tr>
           </thead>
           <tbody>
@@ -250,6 +252,20 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
                       <option value="No">No</option>
                       <option value="Yes">Yes</option>
                     </select>
+                  </td>
+
+                  {/* Edit */}
+                  <td className="px-3 py-2 text-center">
+                    <button
+                      onClick={() => {
+                        const catId = category?.id
+                        if (catId) router.push(`/head-office/courses/${catId}`)
+                      }}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-charcoal/30 hover:text-gold hover:bg-gold/10 transition-all"
+                      title="Edit in category view"
+                    >
+                      <Pencil size={13} />
+                    </button>
                   </td>
                 </tr>
               )
