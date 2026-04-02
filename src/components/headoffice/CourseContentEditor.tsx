@@ -125,6 +125,50 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     }
   }
 
+  async function addShadowTemplate() {
+    const categoryName = initialItem.title
+
+    // Bump all existing subcategory sort_orders by 1 to make room at the top
+    const bumped = subcategories.map(s => ({ ...s, sort_order: s.sort_order + 1 }))
+    setSubcategories(bumped)
+    await Promise.all(bumped.map(s => supabase.from('subcategories').update({ sort_order: s.sort_order }).eq('id', s.id)))
+
+    // Create the subcategory at sort_order 0
+    const { data: subData, error: subError } = await supabase.from('subcategories').insert({
+      category_id: initialItem.id,
+      title: `Shadowing for ${categoryName}`,
+      content: '',
+      sort_order: 0,
+    }).select().single()
+
+    if (subError || !subData) { alert('Failed to create shadow subcategory'); return }
+    setSubcategories(prev => [subData as Subcategory, ...prev])
+
+    // Create the training task within it
+    const { data: taskData, error: taskError } = await supabase.from('training_tasks').insert({
+      subcategory_id: subData.id,
+      title: 'Summarise my Shadow Sessions',
+      trainer_type: 'Manager',
+      modality: 'Shadowing',
+      role_level: 'Consultant',
+      priority_level: 'Essential',
+      is_recurring: true,
+      recurring_count: 20,
+      certificate_required: false,
+      rewards_eligible: false,
+      confidence_rating_required: true,
+      tags: ['shadow', categoryName.toLowerCase()],
+      prerequisites: [],
+      sort_order: 0,
+    }).select().single()
+
+    if (!taskError && taskData) {
+      setTrainingTasks(prev => [...prev, taskData as TrainingTask])
+    }
+
+    selectSubcategory(subData.id)
+  }
+
   async function updateSubcategory(id: string, updates: Partial<Subcategory>) {
     setSubcategories(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
     await supabase.from('subcategories').update(updates).eq('id', id)
@@ -599,6 +643,13 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
             >
               <Plus size={14} />
               <span className="text-sm">Add subcategory</span>
+            </button>
+            <button
+              onClick={addShadowTemplate}
+              className="w-full mt-2 px-3 py-2.5 rounded-xl flex items-center gap-3 border border-dashed border-blue-200 text-blue-400 hover:border-blue-400 hover:text-blue-600 transition-all"
+            >
+              <Plus size={14} />
+              <span className="text-sm">Add Shadow Template</span>
             </button>
           </div>
         </div>
