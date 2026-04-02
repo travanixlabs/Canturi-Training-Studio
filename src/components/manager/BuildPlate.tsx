@@ -952,11 +952,6 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                           status === 'error' ? 'ring-2 ring-inset ring-red-500 bg-red-50' : ''
                         }`}
                       >
-                        {isWorking && traineeWorkingDayTypes.get(dateKey) && (
-                          <p className={`text-[9px] font-medium text-center mb-0.5 ${
-                            traineeWorkingDayTypes.get(dateKey) === 'Shadowing Day' ? 'text-blue-500' : 'text-charcoal/25'
-                          }`}>{traineeWorkingDayTypes.get(dateKey)}</p>
-                        )}
                         <div className="flex items-center gap-1 mb-1">
                           <span className={`text-xs font-medium ${
                             isToday ? 'text-gold' : 'text-charcoal/40'
@@ -965,6 +960,11 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                           </span>
                           {(day.getDate() === 1 || (wi === 0 && di === 0)) && (
                             <span className="text-[10px] text-charcoal/30">{formatMonth(day)}</span>
+                          )}
+                          {isWorking && traineeWorkingDayTypes.get(dateKey) && (
+                            <span className={`text-[9px] font-medium ${
+                              traineeWorkingDayTypes.get(dateKey) === 'Shadowing Day' ? 'text-blue-500' : 'text-charcoal/25'
+                            }`}>{traineeWorkingDayTypes.get(dateKey)}</span>
                           )}
                           {dayTasks.length > 0 && (
                             <span className={`text-[9px] ml-auto ${
