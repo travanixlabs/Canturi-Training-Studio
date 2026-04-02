@@ -57,5 +57,17 @@ export async function POST(req: NextRequest) {
     `,
   })
 
+  // In-app notification for IT user
+  const { data: itUser } = await supabase.from('users').select('id').eq('email', 'it@canturi.com').single()
+  if (itUser) {
+    await supabase.from('user_notifications').insert({
+      user_id: itUser.id,
+      type: 'report_issue',
+      title: `⚠ ${managerName} reported an issue`,
+      message: `"${taskTitle}" — ${issue}`,
+      link: '/head-office/courses',
+    })
+  }
+
   return NextResponse.json({ success: true })
 }

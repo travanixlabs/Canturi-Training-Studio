@@ -64,5 +64,17 @@ export async function POST(req: NextRequest) {
     `,
   })
 
+  // In-app notification for IT user
+  const { data: itUser } = await supabase.from('users').select('id').eq('email', 'it@canturi.com').single()
+  if (itUser) {
+    await supabase.from('user_notifications').insert({
+      user_id: itUser.id,
+      type: 'recurring_request',
+      title: `${managerName} requested recurring task`,
+      message: `"${taskTitle}" — ${recurringCount} times.${comments ? ' ' + comments : ''}`,
+      link: '/head-office/courses',
+    })
+  }
+
   return NextResponse.json({ success: true })
 }
