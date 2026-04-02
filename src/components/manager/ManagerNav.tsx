@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 const tabs = [
   { href: '/manager/build-plate', label: 'Build Menu' },
   { href: '/manager/sign-off', label: 'Sign Off' },
+  { href: '/manager/coaching', label: 'Coaching' },
 ]
 
 export function ManagerNav() {
