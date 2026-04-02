@@ -973,6 +973,7 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                             return (
                               <div
                                 key={`${taskId}-${idx}`}
+                                onClick={(e) => e.stopPropagation()}
                                 draggable={!isPast}
                                 onDragStart={(e) => {
                                   if (isPast) { e.preventDefault(); return }
