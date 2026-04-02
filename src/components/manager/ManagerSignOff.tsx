@@ -75,12 +75,8 @@ export function ManagerSignOff({ manager, trainees, completions: initialCompleti
     return task && task.trainer_type !== 'Self Directed' && !c.signed_off_at
   })
 
-  // Completed: signed-off tasks + self-directed completed tasks
-  const completedItems = traineeCompletions.filter(c => {
-    const task = taskMap.get(c.training_task_id)
-    if (!task) return false
-    return c.signed_off_at || task.trainer_type === 'Self Directed'
-  })
+  // Completed: only signed-off tasks
+  const completedItems = traineeCompletions.filter(c => !!c.signed_off_at)
 
   const overlayCompletion = overlayCompletionId ? completions.find(c => c.id === overlayCompletionId) : null
   const overlayTask = overlayCompletion ? taskMap.get(overlayCompletion.training_task_id) : null
@@ -175,11 +171,11 @@ export function ManagerSignOff({ manager, trainees, completions: initialCompleti
         )}
       </div>
 
-      {/* Completed */}
+      {/* Completed Sign Off */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Check size={16} className="text-green-600" />
-          <h2 className="font-serif text-lg text-charcoal">Completed</h2>
+          <h2 className="font-serif text-lg text-charcoal">Completed Sign Off</h2>
           <span className="text-xs text-charcoal/30 ml-1">{completedItems.length}</span>
         </div>
         {completedItems.length === 0 ? (
@@ -191,8 +187,6 @@ export function ManagerSignOff({ manager, trainees, completions: initialCompleti
             {completedItems.map(c => {
               const task = taskMap.get(c.training_task_id)
               const colour = getCourseColour(c.training_task_id)
-              const isSelfDirected = task?.trainer_type === 'Self Directed'
-              const isSignedOff = !!c.signed_off_at
               return (
                 <button
                   key={c.id}
@@ -209,18 +203,13 @@ export function ManagerSignOff({ manager, trainees, completions: initialCompleti
                       <p className="text-[10px] text-charcoal/30 mt-0.5">{getBreadcrumb(c.training_task_id)}</p>
                       <p className="text-[10px] text-charcoal/30 mt-0.5">
                         Completed {formatDate(c.completed_at)}
-                        {isSignedOff && ` · Signed off ${formatDate(c.signed_off_at!)}`}
+                        {c.signed_off_at && ` · Signed off ${formatDate(c.signed_off_at)}`}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        {isSignedOff ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700">Signed Off</span>
-                        ) : isSelfDirected ? (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-charcoal/5 text-charcoal/40">Self Directed</span>
-                        ) : null}
-                        {task?.is_recurring && (
+                      {task?.is_recurring && (
+                        <div className="flex items-center gap-1.5 mt-1">
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Recurring</span>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 mt-0.5">
                         {c.confidence_rating && (
                           <span className="flex items-center gap-0.5 text-[10px] text-charcoal/30">
