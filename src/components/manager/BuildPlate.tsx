@@ -179,7 +179,7 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
     [completions, selectedTraineeId]
   )
 
-  const getCompletionCount = (taskId: string) => traineeCompletions.filter(c => c.training_task_id === taskId).length
+  const getCompletionCount = (taskId: string) => traineeCompletions.filter(c => c.training_task_id === taskId && !c.reset_at).length
 
   const getRequiredCount = (task: TrainingTask) =>
     task.is_recurring && task.recurring_count ? task.recurring_count : 1

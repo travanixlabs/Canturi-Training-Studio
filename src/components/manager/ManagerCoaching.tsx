@@ -3,8 +3,7 @@
 import { useState, useMemo } from 'react'
 import { X, Check } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { signOffCompletion } from '@/app/manager/sign-off/actions'
+import { coachingAddToPlate, coachingNotNow, coachingDismiss } from '@/app/manager/coaching/actions'
 import { COURSE_COLOURS } from '@/types'
 import type { User, Course, Category, Subcategory, TrainingTask, TrainingTaskCompletion } from '@/types'
 
@@ -52,19 +51,25 @@ export function ManagerCoaching({ manager, trainees, completions: initialComplet
     return course?.colour_hex || COURSE_COLOURS[course?.name ?? ''] || '#C9A96E'
   }
 
-  // Filter completions by trainee and rating ranges
-  const filteredCompletions = useMemo(() =>
+  // Filter completions by trainee and rating ranges, exclude dismissed and added_to_plate
+  const matchesRating = (c: TrainingTaskCompletion) => {
+    const matchesCompetence = c.confidence_rating !== null && c.confidence_rating >= competenceRange[0] && c.confidence_rating <= competenceRange[1]
+    const matchesManager = c.manager_rating !== null && c.manager_rating >= managerRange[0] && c.manager_rating <= managerRange[1]
+    if (filterMode === 'and') return matchesCompetence && matchesManager
+    return matchesCompetence || matchesManager
+  }
+
+  const traineeItems = useMemo(() =>
     completions
-      .filter(c => {
-        if (c.trainee_id !== selectedTraineeId) return false
-        const matchesCompetence = c.confidence_rating !== null && c.confidence_rating >= competenceRange[0] && c.confidence_rating <= competenceRange[1]
-        const matchesManager = c.manager_rating !== null && c.manager_rating >= managerRange[0] && c.manager_rating <= managerRange[1]
-        if (filterMode === 'and') return matchesCompetence && matchesManager
-        return matchesCompetence || matchesManager
-      })
+      .filter(c => c.trainee_id === selectedTraineeId && c.coaching_status !== 'dismissed' && c.coaching_status !== 'added_to_plate' && !c.reset_at)
+      .filter(matchesRating)
       .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()),
     [completions, selectedTraineeId, competenceRange, managerRange, filterMode]
   )
+
+  const pendingReview = traineeItems.filter(c => !c.coaching_status || c.coaching_status === 'pending')
+  const toBeReviewedLater = traineeItems.filter(c => c.coaching_status === 'not_now')
+  const totalItems = pendingReview.length + toBeReviewedLater.length
 
   const overlayCompletion = overlayCompletionId ? completions.find(c => c.id === overlayCompletionId) : null
   const overlayTask = overlayCompletion ? taskMap.get(overlayCompletion.training_task_id) : null
@@ -143,77 +148,110 @@ export function ManagerCoaching({ manager, trainees, completions: initialComplet
             <RangeSlider min={1} max={5} value={managerRange} onChange={setManagerRange} />
           </div>
         </div>
-        <p className="text-[10px] text-charcoal/30 text-center mt-3">{filteredCompletions.length} item{filteredCompletions.length !== 1 ? 's' : ''}</p>
+        <p className="text-[10px] text-charcoal/30 text-center mt-3">{totalItems} item{totalItems !== 1 ? 's' : ''}</p>
       </div>
 
-      {/* Completions list */}
-      {filteredCompletions.length === 0 ? (
-        <div className="card p-8 text-center">
-          <p className="text-sm text-charcoal/30">No completions match the selected rating range</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {filteredCompletions.map(c => {
-            const task = taskMap.get(c.training_task_id)
-            const colour = getCourseColour(c.training_task_id)
-            return (
-              <button
-                key={c.id}
-                onClick={() => setOverlayCompletionId(c.id)}
-                className="w-full card p-4 text-left hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: colour }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-charcoal">{task?.title || 'Unknown Task'}</p>
-                    <p className="text-[10px] text-charcoal/30 mt-0.5">{getBreadcrumb(c.training_task_id)}</p>
-                    <p className="text-[10px] text-charcoal/30 mt-0.5">Completed {formatDate(c.completed_at)}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="flex items-center gap-0.5 text-[10px] text-charcoal/30">
-                        {stars(c.confidence_rating!)}
-                      </span>
-                      {c.signed_off_at && (
-                        <>
-                          <span className="text-[10px] text-charcoal/15">|</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700">Signed Off</span>
-                        </>
-                      )}
-                      {task?.is_recurring && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Recurring</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+      {/* Pending Review */}
+      <div className="mb-8">
+        <h2 className="font-serif text-lg text-charcoal mb-3">Consider revisiting this topic with {sortedTrainees.find(t => t.id === selectedTraineeId)?.name.split(' ')[0] ?? 'trainee'}</h2>
+        {pendingReview.length === 0 ? (
+          <div className="card p-6 text-center">
+            <p className="text-sm text-charcoal/30">No items pending review</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pendingReview.map(c => <CoachingListItem key={c.id} completion={c} taskMap={taskMap} getBreadcrumb={getBreadcrumb} getCourseColour={getCourseColour} formatDate={formatDate} stars={stars} onClick={() => setOverlayCompletionId(c.id)} />)}
+          </div>
+        )}
+      </div>
+
+      {/* To Be Reviewed Later */}
+      {toBeReviewedLater.length > 0 && (
+        <div className="mb-8">
+          <h2 className="font-serif text-lg text-charcoal/40 mb-3">To Be Reviewed Later <span className="text-xs text-charcoal/30">{toBeReviewedLater.length}</span></h2>
+          <div className="space-y-2">
+            {toBeReviewedLater.map(c => <CoachingListItem key={c.id} completion={c} taskMap={taskMap} getBreadcrumb={getBreadcrumb} getCourseColour={getCourseColour} formatDate={formatDate} stars={stars} onClick={() => setOverlayCompletionId(c.id)} deferred />)}
+          </div>
         </div>
       )}
 
-      {/* Overlay — same as sign off */}
+      {/* Coaching overlay */}
       {overlayCompletion && overlayTask && (
         <CoachingOverlay
           completion={overlayCompletion}
           task={overlayTask}
           breadcrumb={getBreadcrumb(overlayCompletion.training_task_id)}
           onClose={() => setOverlayCompletionId(null)}
-          onSignOff={async (data) => {
-            const result = await signOffCompletion(overlayCompletion.id, data)
-            if (result.error) {
-              alert('Failed to sign off: ' + result.error)
-              return
-            }
+          onAddToPlate={async () => {
+            const result = await coachingAddToPlate(overlayCompletion.id, selectedTraineeId)
+            if (result.error) { alert(result.error); return }
             setCompletions(prev => prev.map(c =>
-              c.id === overlayCompletion.id
-                ? { ...c, ...data, signed_off_at: new Date().toISOString(), signed_off_by: manager.id }
-                : c
+              c.id === overlayCompletion.id ? { ...c, coaching_status: 'added_to_plate' as const, reset_at: new Date().toISOString() } : c
             ))
             setOverlayCompletionId(null)
             router.refresh()
           }}
+          onNotNow={async () => {
+            const result = await coachingNotNow(overlayCompletion.id, selectedTraineeId)
+            if (result.error) { alert(result.error); return }
+            setCompletions(prev => prev.map(c =>
+              c.id === overlayCompletion.id ? { ...c, coaching_status: 'not_now' as const, coaching_not_now_until: result.reviewDate ?? null } : c
+            ))
+            setOverlayCompletionId(null)
+          }}
+          onDismiss={async () => {
+            const result = await coachingDismiss(overlayCompletion.id)
+            if (result.error) { alert(result.error); return }
+            setCompletions(prev => prev.map(c =>
+              c.id === overlayCompletion.id ? { ...c, coaching_status: 'dismissed' as const } : c
+            ))
+            setOverlayCompletionId(null)
+          }}
         />
       )}
     </div>
+  )
+}
+
+function CoachingListItem({ completion: c, taskMap, getBreadcrumb, getCourseColour, formatDate, stars, onClick, deferred }: {
+  completion: TrainingTaskCompletion
+  taskMap: Map<string, TrainingTask>
+  getBreadcrumb: (id: string) => string
+  getCourseColour: (id: string) => string
+  formatDate: (s: string) => string
+  stars: (r: number) => React.ReactNode[]
+  onClick: () => void
+  deferred?: boolean
+}) {
+  const task = taskMap.get(c.training_task_id)
+  const colour = getCourseColour(c.training_task_id)
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full card p-4 text-left hover:shadow-md transition-shadow ${deferred ? 'opacity-60' : ''}`}
+    >
+      <div className="flex items-start gap-3">
+        <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ backgroundColor: colour }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-charcoal">{task?.title || 'Unknown Task'}</p>
+          <p className="text-[10px] text-charcoal/30 mt-0.5">{getBreadcrumb(c.training_task_id)}</p>
+          <p className="text-[10px] text-charcoal/30 mt-0.5">Completed {formatDate(c.completed_at)}</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            {c.confidence_rating && <span className="flex items-center gap-0.5 text-[10px] text-charcoal/30">{stars(c.confidence_rating)}</span>}
+            {c.manager_rating && (
+              <>
+                <span className="text-[10px] text-charcoal/15">|</span>
+                <span className="flex items-center gap-0.5 text-[10px] text-charcoal/30">Mgr: {stars(c.manager_rating)}</span>
+              </>
+            )}
+            {task?.is_recurring && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600">Recurring</span>}
+          </div>
+          {deferred && c.coaching_not_now_until && (
+            <p className="text-[10px] text-charcoal/25 mt-1">Review after {new Date(c.coaching_not_now_until + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}</p>
+          )}
+        </div>
+      </div>
+    </button>
   )
 }
 
@@ -222,44 +260,20 @@ function CoachingOverlay({
   task,
   breadcrumb,
   onClose,
-  onSignOff,
+  onAddToPlate,
+  onNotNow,
+  onDismiss,
 }: {
   completion: TrainingTaskCompletion
   task: TrainingTask
   breadcrumb: string
   onClose: () => void
-  onSignOff: (data: { manager_notes: string; manager_coaching: string; manager_rating: number | null }) => void
+  onAddToPlate: () => void
+  onNotNow: () => void
+  onDismiss: () => void
 }) {
-  const [notes, setNotes] = useState(completion.manager_notes ?? '')
-  const [coaching, setCoaching] = useState(completion.manager_coaching ?? '')
-  const [rating, setRating] = useState(completion.manager_rating ?? 0)
-  const [showErrors, setShowErrors] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const supabase = createClient()
-
-  const isAlreadySignedOff = !!completion.signed_off_at
+  const [acting, setActing] = useState(false)
   const isRecurring = task.is_recurring
-  const needsRating = task.confidence_rating_required
-
-  function wordCount(s: string) { return s.trim().split(/\s+/).filter(Boolean).length }
-
-  const errors = {
-    notes: wordCount(notes) < 20,
-    coaching: wordCount(coaching) < 20,
-    rating: needsRating && rating === 0,
-  }
-  const hasErrors = Object.values(errors).some(Boolean)
-
-  async function handleSubmit() {
-    if (hasErrors) { setShowErrors(true); return }
-    setSubmitting(true)
-    await onSignOff({
-      manager_notes: notes.trim(),
-      manager_coaching: coaching.trim(),
-      manager_rating: needsRating ? rating : null,
-    })
-    setSubmitting(false)
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
@@ -269,7 +283,6 @@ function CoachingOverlay({
           <div>
             <p className="text-xs text-charcoal/30 mb-1">{breadcrumb}</p>
             <h2 className="font-serif text-lg text-charcoal">{task.title}</h2>
-            {isAlreadySignedOff && <span className="inline-flex items-center gap-1 text-[10px] text-green-600 mt-1"><Check size={10} /> Signed off</span>}
           </div>
           <button onClick={onClose} className="p-1 text-charcoal/30 hover:text-charcoal/60 transition-colors"><X size={18} /></button>
         </div>
@@ -303,66 +316,45 @@ function CoachingOverlay({
                   </div>
                 </div>
               )}
+              {completion.manager_coaching && (
+                <div>
+                  <label className="block text-xs font-medium text-charcoal/50 mb-1">Manager Coaching</label>
+                  <div className="text-sm text-charcoal/70 leading-relaxed bg-gold/5 border border-gold/10 rounded-xl p-3 whitespace-pre-wrap">{completion.manager_coaching}</div>
+                </div>
+              )}
               <p className="text-[10px] text-charcoal/30">
                 Completed {new Date(completion.completed_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
           </div>
-
-          {/* Manager sign off — only for non-self-directed */}
-          {task.trainer_type !== 'Self Directed' && (
-            <div className="border-t border-black/5 pt-4">
-              <p className="text-[10px] text-charcoal/30 uppercase tracking-wider font-medium mb-3">Manager Sign Off</p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Manager Notes <span className="text-red-400">*</span></label>
-                  {isAlreadySignedOff ? (
-                    <div className="text-sm text-charcoal/70 leading-relaxed bg-charcoal/[0.02] rounded-xl p-3 whitespace-pre-wrap">{completion.manager_notes}</div>
-                  ) : (
-                    <>
-                      <textarea className={`textarea text-sm ${showErrors && errors.notes ? 'border-red-300 bg-red-50/30' : ''}`} rows={4} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Your notes on this completion... (minimum 20 words)" />
-                      <p className={`text-[10px] mt-1 ${showErrors && errors.notes ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(notes)} / 20 words min</p>
-                    </>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Manager Coaching Sentence <span className="text-red-400">*</span></label>
-                  {isAlreadySignedOff ? (
-                    <div className="text-sm text-charcoal/70 leading-relaxed bg-charcoal/[0.02] rounded-xl p-3 whitespace-pre-wrap">{completion.manager_coaching}</div>
-                  ) : (
-                    <>
-                      <textarea className={`textarea text-sm ${showErrors && errors.coaching ? 'border-red-300 bg-red-50/30' : ''}`} rows={4} value={coaching} onChange={e => setCoaching(e.target.value)} placeholder="Your coaching feedback... (minimum 20 words)" />
-                      <p className={`text-[10px] mt-1 ${showErrors && errors.coaching ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(coaching)} / 20 words min</p>
-                    </>
-                  )}
-                </div>
-                {needsRating && (
-                  <div>
-                    <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Manager Rating <span className="text-red-400">*</span></label>
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <button key={star} onClick={() => { if (!isAlreadySignedOff) setRating(star) }} className={`p-1 transition-transform ${isAlreadySignedOff ? '' : 'hover:scale-110'}`} disabled={isAlreadySignedOff}>
-                          <svg width="28" height="28" viewBox="0 0 24 24" fill={star <= rating ? '#C9A96E' : 'none'} stroke={star <= rating ? '#C9A96E' : '#D1D5DB'} strokeWidth="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                        </button>
-                      ))}
-                    </div>
-                    {showErrors && errors.rating && <p className="text-[10px] text-red-400 mt-1">Please select a rating</p>}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Actions — only for non-self-directed and not yet signed off */}
-        {task.trainer_type !== 'Self Directed' && !isAlreadySignedOff && (
-          <div className="flex gap-3 px-5 py-4 border-t border-black/5">
-            <button onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors">Cancel</button>
-            <button onClick={handleSubmit} disabled={submitting} className="flex-1 px-4 py-2.5 text-sm font-medium bg-gold text-white rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50">
-              {submitting ? 'Signing Off...' : 'Sign Off'}
+        {/* Actions */}
+        <div className="px-5 py-4 border-t border-black/5 space-y-2">
+          <button
+            onClick={async () => { setActing(true); await onAddToPlate(); setActing(false) }}
+            disabled={acting}
+            className="w-full px-4 py-2.5 text-sm font-medium bg-gold text-white rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50"
+          >
+            Add to Plate
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={async () => { setActing(true); await onNotNow(); setActing(false) }}
+              disabled={acting}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors disabled:opacity-50"
+            >
+              Not Now
+            </button>
+            <button
+              onClick={async () => { setActing(true); await onDismiss(); setActing(false) }}
+              disabled={acting}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/30 hover:text-charcoal/50 rounded-xl border border-charcoal/10 transition-colors disabled:opacity-50"
+            >
+              Dismiss
             </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

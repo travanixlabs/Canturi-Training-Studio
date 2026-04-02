@@ -32,7 +32,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
   const supabase = createClient()
   const router = useRouter()
 
-  const getCompletionCount = (taskId: string) => completions.filter(c => c.training_task_id === taskId).length
+  const getCompletionCount = (taskId: string) => completions.filter(c => c.training_task_id === taskId && !c.reset_at).length
 
   const getRequiredCount = (task: TrainingTask) =>
     task.is_recurring && task.recurring_count ? task.recurring_count : 1

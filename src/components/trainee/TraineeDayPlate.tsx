@@ -60,7 +60,7 @@ export function TraineeDayPlate({ currentUser, assignments, trainingTasks, taskC
   )
 
   // Helpers
-  const getCompletionCount = (taskId: string) => completions.filter(c => c.training_task_id === taskId).length
+  const getCompletionCount = (taskId: string) => completions.filter(c => c.training_task_id === taskId && !c.reset_at).length
   const getRequiredCount = (task: TrainingTask) => task.is_recurring && task.recurring_count ? task.recurring_count : 1
   const isTaskCompleted = (taskId: string) => {
     const task = trainingTasks.find(t => t.id === taskId)

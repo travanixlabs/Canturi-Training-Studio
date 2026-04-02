@@ -129,5 +129,46 @@ export async function POST() {
     }
   }
 
-  return NextResponse.json({ message: 'Rollover complete', moved: totalMoved, processedDates, date: todayKey })
+  // === Coaching "Not Now" retrigger ===
+  // Find completions where coaching_not_now_until <= today and status is 'not_now'
+  const { data: notNowItems } = await supabase
+    .from('training_task_completions')
+    .select('*, training_task:training_tasks(*)')
+    .eq('coaching_status', 'not_now')
+    .lte('coaching_not_now_until', todayKey)
+
+  let retriggered = 0
+  if (notNowItems && notNowItems.length > 0) {
+    // Set them back to pending
+    const ids = notNowItems.map(c => c.id)
+    await supabase.from('training_task_completions').update({
+      coaching_status: 'pending',
+      coaching_not_now_until: null,
+    }).in('id', ids)
+    retriggered = ids.length
+
+    // Group by trainee to find managers and send notifications
+    const traineeIds = [...new Set(notNowItems.map(c => c.trainee_id))]
+    for (const traineeId of traineeIds) {
+      const { data: trainee } = await supabase.from('users').select('*').eq('id', traineeId).single()
+      if (!trainee) continue
+      const { data: managers } = await supabase.from('users').select('*').eq('boutique_id', trainee.boutique_id).eq('role', 'manager')
+      if (!managers || managers.length === 0) continue
+
+      const traineeItems = notNowItems.filter(c => c.trainee_id === traineeId)
+      for (const manager of managers) {
+        for (const item of traineeItems) {
+          await supabase.from('user_notifications').insert({
+            user_id: manager.id,
+            type: 'coaching_review',
+            title: `Coaching review: ${trainee.name}`,
+            message: `"${item.training_task?.title ?? 'Task'}" is ready for your review again.`,
+            link: '/manager/coaching',
+          })
+        }
+      }
+    }
+  }
+
+  return NextResponse.json({ message: 'Rollover complete', moved: totalMoved, processedDates, retriggered, date: todayKey })
 }

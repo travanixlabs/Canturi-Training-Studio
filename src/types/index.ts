@@ -103,6 +103,10 @@ export interface TrainingTaskCompletion {
   manager_rating: number | null
   signed_off_at: string | null
   signed_off_by: string | null
+  coaching_status: 'pending' | 'not_now' | 'dismissed' | 'added_to_plate' | null
+  coaching_not_now_until: string | null
+  coaching_reviewed_at: string | null
+  reset_at: string | null
 }
 
 export interface Workshop {
