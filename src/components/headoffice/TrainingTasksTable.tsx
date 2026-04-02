@@ -26,6 +26,8 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
   const [search, setSearch] = useState('')
   const [sortCol, setSortCol] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [columnFilters, setColumnFilters] = useState<Record<string, Set<string>>>({})
+  const [filterMenu, setFilterMenu] = useState<{ col: string; x: number; y: number } | null>(null)
 
   // Build lookup maps
   const courseMap = useMemo(() => new Map(courses.map(c => [c.id, c])), [courses])
@@ -69,6 +71,39 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
     }
   }
 
+  const FILTERABLE_COLS = new Set(['Course', 'Category', 'Subcategory', 'Trainer Type', 'Modality', 'Role Level', 'Priority Level', 'Recurring', 'Certificate', 'Rewards', 'Competence Rating'])
+
+  // Get unique values for a column
+  function getUniqueValues(col: string): string[] {
+    const vals = new Set<string>()
+    for (const t of tasks) {
+      const v = getSortValue(t, col)
+      if (v) vals.add(v)
+    }
+    return [...vals].sort()
+  }
+
+  function toggleColumnFilter(col: string, value: string) {
+    setColumnFilters(prev => {
+      const next = { ...prev }
+      if (!next[col]) next[col] = new Set()
+      const s = new Set(next[col])
+      if (s.has(value)) s.delete(value)
+      else s.add(value)
+      if (s.size === 0) delete next[col]
+      else next[col] = s
+      return next
+    })
+  }
+
+  function clearColumnFilter(col: string) {
+    setColumnFilters(prev => {
+      const next = { ...prev }
+      delete next[col]
+      return next
+    })
+  }
+
   // Filter and sort
   const filteredTasks = useMemo(() => {
     let result = tasks
@@ -79,6 +114,12 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
         return [t.title, course?.name, category?.title, subcategory?.title, t.trainer_type, t.modality, ...(t.tags ?? [])].some(s => s && s.toLowerCase().includes(q))
       })
     }
+    // Apply column filters
+    for (const [col, values] of Object.entries(columnFilters)) {
+      if (values.size > 0) {
+        result = result.filter(t => values.has(getSortValue(t, col)))
+      }
+    }
     if (sortCol) {
       result = [...result].sort((a, b) => {
         const va = getSortValue(a, sortCol).toLowerCase()
@@ -88,7 +129,7 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
       })
     }
     return result
-  }, [tasks, search, sortCol, sortDir])
+  }, [tasks, search, sortCol, sortDir, columnFilters])
 
   async function updateTask(id: string, updates: Partial<TrainingTask>) {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
@@ -152,13 +193,22 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
                 <th
                   key={h}
                   onClick={() => toggleSort(h)}
-                  className="px-3 py-2.5 text-[10px] font-medium text-charcoal/40 uppercase tracking-wider whitespace-nowrap border-b border-black/5 cursor-pointer hover:text-charcoal/60 select-none"
+                  onContextMenu={(e) => {
+                    if (FILTERABLE_COLS.has(h)) {
+                      e.preventDefault()
+                      setFilterMenu({ col: h, x: e.clientX, y: e.clientY })
+                    }
+                  }}
+                  className={`px-3 py-2.5 text-[10px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-black/5 cursor-pointer hover:text-charcoal/60 select-none ${
+                    columnFilters[h] ? 'text-gold' : 'text-charcoal/40'
+                  }`}
                 >
                   <span className="flex items-center gap-1">
                     {h}
                     {sortCol === h && (
                       <span className="text-gold">{sortDir === 'asc' ? '▲' : '▼'}</span>
                     )}
+                    {columnFilters[h] && <span className="text-gold text-[8px]">●</span>}
                   </span>
                 </th>
               ))}
@@ -307,6 +357,45 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
           </tbody>
         </table>
       </div>
+
+      {/* Right-click filter menu */}
+      {filterMenu && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setFilterMenu(null)} onContextMenu={e => { e.preventDefault(); setFilterMenu(null) }} />
+          <div
+            className="fixed z-50 bg-white rounded-xl shadow-2xl border border-black/5 p-3 w-56 max-h-[300px] overflow-y-auto"
+            style={{ left: filterMenu.x, top: filterMenu.y }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-medium text-charcoal/40 uppercase tracking-wider">Filter: {filterMenu.col}</p>
+              {columnFilters[filterMenu.col] && (
+                <button onClick={() => { clearColumnFilter(filterMenu.col); setFilterMenu(null) }} className="text-[10px] text-red-400 hover:text-red-600">Clear</button>
+              )}
+            </div>
+            <div className="space-y-0.5">
+              {getUniqueValues(filterMenu.col).map(val => {
+                const isChecked = columnFilters[filterMenu.col]?.has(val) ?? false
+                return (
+                  <button
+                    key={val}
+                    onClick={() => toggleColumnFilter(filterMenu.col, val)}
+                    className={`w-full text-left px-2 py-1.5 rounded-lg flex items-center gap-2 text-xs transition-all ${
+                      isChecked ? 'bg-gold/10 text-gold' : 'text-charcoal/60 hover:bg-charcoal/3'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center text-[8px] flex-shrink-0 ${
+                      isChecked ? 'bg-gold border-gold text-white' : 'border-charcoal/20'
+                    }`}>
+                      {isChecked && '✓'}
+                    </span>
+                    {val || '(empty)'}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
