@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { sendSignOffNotification } from '@/lib/email'
+import { sendSignOffNotification, sendLowCompetenceAlert } from '@/lib/email'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
@@ -25,11 +25,6 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (!task) return NextResponse.json({ error: 'Task not found' }, { status: 404 })
-
-  // Skip self-directed tasks
-  if (task.trainer_type === 'Self Directed') {
-    return NextResponse.json({ skipped: true, reason: 'Self Directed' })
-  }
 
   // Get trainee
   const { data: trainee } = await supabase
@@ -57,38 +52,68 @@ export async function POST(req: NextRequest) {
   const courseName = cat?.course?.name ?? ''
   const breadcrumb = [courseName, cat?.title, sub?.title].filter(Boolean).join(' › ')
 
-  // Determine app URL
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!
-
   const signOffLink = `/manager/sign-off?completion=${completionId}`
+  const isSelfDirected = task.trainer_type === 'Self Directed'
+  const isLowCompetence = completion.confidence_rating && completion.confidence_rating <= 3
 
-  // Send email + in-app notification to each manager
   const sent: string[] = []
+
   for (const manager of managers) {
-    try {
-      await sendSignOffNotification({
-        managerEmail: manager.email,
-        managerName: manager.name,
-        traineeName: trainee.name,
-        taskTitle: task.title,
-        breadcrumb,
-        completionId,
-        appUrl,
+    // Sign-off notification (non-self-directed only)
+    if (!isSelfDirected) {
+      try {
+        await sendSignOffNotification({
+          managerEmail: manager.email,
+          managerName: manager.name,
+          traineeName: trainee.name,
+          taskTitle: task.title,
+          breadcrumb,
+          completionId,
+          appUrl,
+        })
+        sent.push(manager.email)
+      } catch (e) {
+        console.error(`Failed to email ${manager.email}:`, e)
+      }
+
+      // In-app notification for sign-off
+      await supabase.from('user_notifications').insert({
+        user_id: manager.id,
+        type: 'sign_off_pending',
+        title: `${trainee.name} completed a task`,
+        message: `"${task.title}" is ready for your feedback.`,
+        link: signOffLink,
       })
-      sent.push(manager.email)
-    } catch (e) {
-      console.error(`Failed to email ${manager.email}:`, e)
     }
 
-    // In-app notification
-    await supabase.from('user_notifications').insert({
-      user_id: manager.id,
-      type: 'sign_off_pending',
-      title: `${trainee.name} completed a task`,
-      message: `"${task.title}" is ready for your feedback.`,
-      link: signOffLink,
-    })
+    // Low competence alert (all task types)
+    if (isLowCompetence) {
+      try {
+        await sendLowCompetenceAlert({
+          managerEmail: manager.email,
+          managerName: manager.name,
+          traineeName: trainee.name,
+          taskTitle: task.title,
+          breadcrumb,
+          rating: completion.confidence_rating,
+          appUrl,
+          completionId,
+        })
+      } catch (e) {
+        console.error(`Failed to send low competence alert to ${manager.email}:`, e)
+      }
+
+      // In-app notification for low competence
+      await supabase.from('user_notifications').insert({
+        user_id: manager.id,
+        type: 'low_competence',
+        title: `⚠ ${trainee.name} rated ${completion.confidence_rating}/5`,
+        message: `Low competence on "${task.title}" — may need coaching.`,
+        link: signOffLink,
+      })
+    }
   }
 
-  return NextResponse.json({ sent })
+  return NextResponse.json({ sent, lowCompetenceAlert: isLowCompetence })
 }
