@@ -147,7 +147,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     // Create the training task within it
     const { data: taskData, error: taskError } = await supabase.from('training_tasks').insert({
       subcategory_id: subData.id,
-      title: 'Summarise my Shadow Sessions',
+      title: `Summarise my Shadow Sessions for ${categoryName}`,
       trainer_type: 'Manager',
       modality: 'Shadowing',
       role_level: 'Consultant',
