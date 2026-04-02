@@ -59,7 +59,7 @@ export function ManagerCoaching({ manager, trainees, completions: initialComplet
         if (c.trainee_id !== selectedTraineeId) return false
         const matchesCompetence = c.confidence_rating !== null && c.confidence_rating >= competenceRange[0] && c.confidence_rating <= competenceRange[1]
         const matchesManager = c.manager_rating !== null && c.manager_rating >= managerRange[0] && c.manager_rating <= managerRange[1]
-        if (filterMode === 'and') return matchesCompetence && (c.manager_rating === null || matchesManager)
+        if (filterMode === 'and') return matchesCompetence && matchesManager
         return matchesCompetence || matchesManager
       })
       .sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()),
