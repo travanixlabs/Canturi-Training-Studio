@@ -164,6 +164,21 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
 
     if (!taskError && taskData) {
       setTrainingTasks(prev => [...prev, taskData as TrainingTask])
+
+      // Add guidelines text content
+      const guidelinesText = `Shadowing is one of the most powerful learning tools available to you!\n\nObserving an industry specialist at work gives you direct access to years of expertise, professional judgement, and real-world know-how that no textbook can replicate.\n\nBy observing closely, listening carefully, supporting where you can, and asking questions through your Training Studio, you fast-track your progress!\n\nThe richer your notes and observations, the more your manager can tailor their coaching and mentoring directly to what you need.`
+
+      const { data: contentData } = await supabase.from('training_task_content').insert({
+        training_task_id: taskData.id,
+        type: 'text',
+        title: 'Guidelines',
+        url: guidelinesText,
+        sort_order: 0,
+      }).select().single()
+
+      if (contentData) {
+        setAttachments(prev => [...prev, contentData as TrainingTaskContent])
+      }
     }
 
     selectSubcategory(subData.id)
