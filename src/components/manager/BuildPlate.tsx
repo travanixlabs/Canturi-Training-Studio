@@ -952,7 +952,12 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                           status === 'error' ? 'ring-2 ring-inset ring-red-500 bg-red-50' : ''
                         }`}
                       >
-                        <div className="flex items-center gap-1 mb-0.5">
+                        {isWorking && traineeWorkingDayTypes.get(dateKey) && (
+                          <p className={`text-[9px] font-medium text-center mb-0.5 ${
+                            traineeWorkingDayTypes.get(dateKey) === 'Shadowing Day' ? 'text-blue-500' : 'text-charcoal/25'
+                          }`}>{traineeWorkingDayTypes.get(dateKey)}</p>
+                        )}
+                        <div className="flex items-center gap-1 mb-1">
                           <span className={`text-xs font-medium ${
                             isToday ? 'text-gold' : 'text-charcoal/40'
                           }`}>
@@ -967,11 +972,6 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                             }`}>{dayTasks.length}/10</span>
                           )}
                         </div>
-                        {isWorking && traineeWorkingDayTypes.get(dateKey) && (
-                          <p className={`text-[9px] font-medium mb-1 ${
-                            traineeWorkingDayTypes.get(dateKey) === 'Shadowing Day' ? 'text-blue-500' : 'text-charcoal/25'
-                          }`}>{traineeWorkingDayTypes.get(dateKey)}</p>
-                        )}
                         {/* Task chips */}
                         <div className="flex-1 flex flex-col gap-0.5 overflow-hidden">
                           {dayTasks.map((taskId, idx) => {
