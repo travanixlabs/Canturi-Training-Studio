@@ -121,13 +121,10 @@ export async function POST() {
       }
     }
 
-    // Remove moved tasks from their original past dates
-    const movedTaskIds = pastIncompleteTasks
-      .filter(a => !tasksToDistribute.includes(a))
-      .map(a => a.id)
-
-    if (movedTaskIds.length > 0) {
-      await supabase.from('training_task_assigned').delete().in('id', movedTaskIds)
+    // Remove all past incomplete tasks — moved ones go to new dates, unplaced ones are unassigned
+    const allPastIds = pastIncompleteTasks.map(a => a.id)
+    if (allPastIds.length > 0) {
+      await supabase.from('training_task_assigned').delete().in('id', allPastIds)
       processedDates.push(...new Set(pastIncompleteTasks.map(a => a.assigned_date)))
     }
   }
