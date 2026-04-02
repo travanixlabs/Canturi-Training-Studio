@@ -135,6 +135,18 @@ export interface TrainingTaskAssigned {
   created_at: string
 }
 
+export interface CompletionDraft {
+  id: string
+  training_task_id: string
+  trainee_id: string
+  takeaways: string
+  summary: string
+  confidence_rating: number | null
+  certificate_reference: string | null
+  certificate_url: string | null
+  updated_at: string
+}
+
 export type DayType = 'Client Day' | 'Shadowing Day'
 
 export interface UserWorkingDay {

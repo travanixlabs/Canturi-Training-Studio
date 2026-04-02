@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, BookOpen, Check, Search, X } from 'lucide-react
 import { COURSE_COLOURS } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned } from '@/types'
+import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned, CompletionDraft } from '@/types'
 
 interface Props {
   courses: Course[]
@@ -18,9 +18,10 @@ interface Props {
   taskContent?: TrainingTaskContent[]
   completions?: TrainingTaskCompletion[]
   assignments?: TrainingTaskAssigned[]
+  drafts?: CompletionDraft[]
 }
 
-export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCourses = [], subcategories = [], trainingTasks = [], taskContent = [], completions: initialCompletions = [], assignments = [] }: Props) {
+export function TraineeMenu({ courses, categories, currentUser, workshops = [], workshopCourses = [], subcategories = [], trainingTasks = [], taskContent = [], completions: initialCompletions = [], assignments = [], drafts = [] }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [selection, setSelection] = useState<{ type: 'workshop' | 'course' | 'category' | 'subcategory' | 'task'; id: string } | null>(null)
   const [completions, setCompletions] = useState<TrainingTaskCompletion[]>(initialCompletions)
@@ -940,6 +941,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
         const required = getRequiredCount(overlayTask)
         const taskCompletions = completions.filter(c => c.training_task_id === completionOverlay)
         const hasPreviousCertificate = taskCompletions.some(c => c.certificate_url !== null)
+        const draft = drafts.find(d => d.training_task_id === completionOverlay)
         return (
           <CompletionOverlay
             task={overlayTask}
@@ -947,6 +949,8 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
             completionNumber={count + 1}
             requiredCount={required}
             hasPreviousCertificate={hasPreviousCertificate}
+            draft={draft}
+            traineeId={currentUser.id}
             onSubmit={(data) => submitCompletion(completionOverlay, data)}
             onClose={() => setCompletionOverlay(null)}
           />
@@ -962,6 +966,8 @@ function CompletionOverlay({
   completionNumber,
   requiredCount,
   hasPreviousCertificate,
+  draft,
+  traineeId,
   onSubmit,
   onClose,
 }: {
@@ -970,14 +976,16 @@ function CompletionOverlay({
   completionNumber: number
   requiredCount: number
   hasPreviousCertificate: boolean
+  draft?: CompletionDraft
+  traineeId: string
   onSubmit: (data: { takeaways: string; summary: string; confidence_rating: number | null; certificate_reference: string | null; certificate_url: string | null }) => void
   onClose: () => void
 }) {
-  const [takeaways, setTakeaways] = useState('')
-  const [summary, setSummary] = useState('')
-  const [rating, setRating] = useState(0)
-  const [certRef, setCertRef] = useState('')
-  const [certFile, setCertFile] = useState<string | null>(null)
+  const [takeaways, setTakeaways] = useState(draft?.takeaways ?? '')
+  const [summary, setSummary] = useState(draft?.summary ?? '')
+  const [rating, setRating] = useState(draft?.confidence_rating ?? 0)
+  const [certRef, setCertRef] = useState(draft?.certificate_reference ?? '')
+  const [certFile, setCertFile] = useState<string | null>(draft?.certificate_url ?? null)
   const [uploading, setUploading] = useState(false)
   const [showErrors, setShowErrors] = useState(false)
   const supabase = createClient()
@@ -1012,11 +1020,31 @@ function CompletionOverlay({
     setUploading(false)
   }
 
+  const [saving, setSaving] = useState(false)
+
+  async function handleSaveAndClose() {
+    setSaving(true)
+    await supabase.from('training_task_completions_draft').upsert({
+      training_task_id: task.id,
+      trainee_id: traineeId,
+      takeaways,
+      summary,
+      confidence_rating: rating || null,
+      certificate_reference: certRef.trim() || null,
+      certificate_url: certFile,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'training_task_id,trainee_id' })
+    setSaving(false)
+    onClose()
+  }
+
   function handleSubmit() {
     if (hasErrors) {
       setShowErrors(true)
       return
     }
+    // Delete draft on submit
+    supabase.from('training_task_completions_draft').delete().eq('training_task_id', task.id).eq('trainee_id', traineeId)
     onSubmit({
       takeaways: takeaways.trim(),
       summary: summary.trim(),
@@ -1141,19 +1169,26 @@ function CompletionOverlay({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3 px-5 py-4 border-t border-black/5">
+        <div className="flex gap-2 px-5 py-4 border-t border-black/5">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors"
+            className="px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors"
           >
             Cancel
+          </button>
+          <button
+            onClick={handleSaveAndClose}
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/60 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save and Close'}
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitting}
             className="flex-1 px-4 py-2.5 text-sm font-medium bg-gold text-white rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50"
           >
-            {submitting ? 'Submitting...' : isLast ? 'Complete Task' : 'Mark as Shadowed'}
+            {submitting ? 'Submitting...' : 'Save and Submit'}
           </button>
         </div>
       </div>

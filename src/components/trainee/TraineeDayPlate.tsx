@@ -5,7 +5,7 @@ import { Check, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react'
 import { COURSE_COLOURS } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import type { Course, Category, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned, User } from '@/types'
+import type { Course, Category, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned, User, CompletionDraft } from '@/types'
 
 interface Props {
   currentUser: User
@@ -16,6 +16,7 @@ interface Props {
   subcategories: Subcategory[]
   categories: Category[]
   courses: Course[]
+  drafts?: CompletionDraft[]
 }
 
 function toDateKey(date: Date) {
@@ -30,7 +31,7 @@ function formatDateDisplay(dateKey: string) {
   return label
 }
 
-export function TraineeDayPlate({ currentUser, assignments, trainingTasks, taskContent, completions: initialCompletions, subcategories, categories, courses }: Props) {
+export function TraineeDayPlate({ currentUser, assignments, trainingTasks, taskContent, completions: initialCompletions, subcategories, categories, courses, drafts = [] }: Props) {
   const router = useRouter()
   const supabase = createClient()
   const [completions, setCompletions] = useState(initialCompletions)
@@ -472,6 +473,7 @@ export function TraineeDayPlate({ currentUser, assignments, trainingTasks, taskC
         const required = getRequiredCount(task)
         const taskCompletions = completions.filter(c => c.training_task_id === completionOverlay)
         const hasPreviousCertificate = taskCompletions.some(c => c.certificate_url !== null)
+        const draft = drafts.find(d => d.training_task_id === completionOverlay)
         return (
           <CompletionOverlay
             task={task}
@@ -479,6 +481,8 @@ export function TraineeDayPlate({ currentUser, assignments, trainingTasks, taskC
             completionNumber={count + 1}
             requiredCount={required}
             hasPreviousCertificate={hasPreviousCertificate}
+            draft={draft}
+            traineeId={currentUser.id}
             onSubmit={(data) => submitCompletion(completionOverlay, data)}
             onClose={() => setCompletionOverlay(null)}
           />
@@ -495,6 +499,8 @@ function CompletionOverlay({
   completionNumber,
   requiredCount,
   hasPreviousCertificate,
+  draft,
+  traineeId,
   onSubmit,
   onClose,
 }: {
@@ -503,14 +509,16 @@ function CompletionOverlay({
   completionNumber: number
   requiredCount: number
   hasPreviousCertificate: boolean
+  draft?: CompletionDraft
+  traineeId: string
   onSubmit: (data: { takeaways: string; summary: string; confidence_rating: number | null; certificate_reference: string | null; certificate_url: string | null }) => void
   onClose: () => void
 }) {
-  const [takeaways, setTakeaways] = useState('')
-  const [summary, setSummary] = useState('')
-  const [rating, setRating] = useState(0)
-  const [certRef, setCertRef] = useState('')
-  const [certFile, setCertFile] = useState<string | null>(null)
+  const [takeaways, setTakeaways] = useState(draft?.takeaways ?? '')
+  const [summary, setSummary] = useState(draft?.summary ?? '')
+  const [rating, setRating] = useState(draft?.confidence_rating ?? 0)
+  const [certRef, setCertRef] = useState(draft?.certificate_reference ?? '')
+  const [certFile, setCertFile] = useState<string | null>(draft?.certificate_url ?? null)
   const [uploading, setUploading] = useState(false)
   const [showErrors, setShowErrors] = useState(false)
   const supabase = createClient()
@@ -542,8 +550,27 @@ function CompletionOverlay({
     setUploading(false)
   }
 
+  const [saving, setSaving] = useState(false)
+
+  async function handleSaveAndClose() {
+    setSaving(true)
+    await supabase.from('training_task_completions_draft').upsert({
+      training_task_id: task.id,
+      trainee_id: traineeId,
+      takeaways,
+      summary,
+      confidence_rating: rating || null,
+      certificate_reference: certRef.trim() || null,
+      certificate_url: certFile,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'training_task_id,trainee_id' })
+    setSaving(false)
+    onClose()
+  }
+
   function handleSubmit() {
     if (hasErrors) { setShowErrors(true); return }
+    supabase.from('training_task_completions_draft').delete().eq('training_task_id', task.id).eq('trainee_id', traineeId)
     onSubmit({
       takeaways: takeaways.trim(),
       summary: summary.trim(),
@@ -619,10 +646,13 @@ function CompletionOverlay({
           )}
         </div>
 
-        <div className="flex gap-3 px-5 py-4 border-t border-black/5">
-          <button onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors">Cancel</button>
+        <div className="flex gap-2 px-5 py-4 border-t border-black/5">
+          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors">Cancel</button>
+          <button onClick={handleSaveAndClose} disabled={saving} className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/60 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors disabled:opacity-50">
+            {saving ? 'Saving...' : 'Save and Close'}
+          </button>
           <button onClick={handleSubmit} disabled={submitting} className="flex-1 px-4 py-2.5 text-sm font-medium bg-gold text-white rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50">
-            {submitting ? 'Submitting...' : isLast ? 'Complete Task' : 'Mark as Shadowed'}
+            {submitting ? 'Submitting...' : 'Save and Submit'}
           </button>
         </div>
       </div>

@@ -8,7 +8,7 @@ export default async function DayPlatePage() {
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
 
-  const [{ data: profile }, { data: assignments }, { data: trainingTasks }, { data: taskContent }, { data: completions }, { data: subcategories }, { data: categories }, { data: courses }] = await Promise.all([
+  const [{ data: profile }, { data: assignments }, { data: trainingTasks }, { data: taskContent }, { data: completions }, { data: subcategories }, { data: categories }, { data: courses }, { data: drafts }] = await Promise.all([
     supabase.from('users').select('*').eq('id', authUser.id).single(),
     supabase.from('training_task_assigned').select('*').eq('trainee_id', authUser.id),
     supabase.from('training_tasks').select('*').is('deleted_at', null),
@@ -17,6 +17,7 @@ export default async function DayPlatePage() {
     supabase.from('subcategories').select('*').is('deleted_at', null),
     supabase.from('categories').select('*, course:courses(*)').is('deleted_at', null),
     supabase.from('courses').select('*').is('deleted_at', null),
+    supabase.from('training_task_completions_draft').select('*').eq('trainee_id', authUser.id),
   ])
 
   return (
@@ -29,6 +30,7 @@ export default async function DayPlatePage() {
       subcategories={subcategories ?? []}
       categories={categories ?? []}
       courses={courses ?? []}
+      drafts={drafts ?? []}
     />
   )
 }
