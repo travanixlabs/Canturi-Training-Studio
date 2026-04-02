@@ -849,32 +849,26 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
             {(() => {
               const content = getContentForTask(selTask.id)
               const downloadable = content.filter(c => c.url && (c.type === 'pdf' || c.type === 'image' || c.type === 'video'))
-              if (downloadable.length === 0 && content.length === 0) return null
+              if (downloadable.length === 0) return null
               return (
                 <div className="mt-6 pt-4 border-t border-black/5">
-                  <button
-                    onClick={() => {
-                      // Build text content
-                      let textContent = `${selTask.title}\n\n`
-                      for (const c of content) {
-                        if (c.title) textContent += `--- ${c.title} ---\n`
-                        if (c.type === 'text' && c.url) textContent += c.url + '\n\n'
-                        if (c.type === 'webpage' && c.url) textContent += `Link: ${c.url}\n\n`
-                        if ((c.type === 'pdf' || c.type === 'image' || c.type === 'video') && c.url) textContent += `${c.type.toUpperCase()}: ${c.url}\n\n`
-                      }
-                      const blob = new Blob([textContent], { type: 'text/plain' })
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement('a')
-                      a.href = url
-                      a.download = `${selTask.title.replace(/[^a-zA-Z0-9 ]/g, '')}.txt`
-                      a.click()
-                      URL.revokeObjectURL(url)
-                    }}
-                    className="flex items-center gap-2 text-sm text-charcoal/40 hover:text-gold transition-colors"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-                    Download content
-                  </button>
+                  <p className="text-xs text-charcoal/30 uppercase tracking-wider font-medium mb-2">Downloads</p>
+                  <div className="space-y-1.5">
+                    {downloadable.map(c => (
+                      <a
+                        key={c.id}
+                        href={c.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="flex items-center gap-2 text-sm text-charcoal/50 hover:text-gold transition-colors"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+                        <span>{c.title || c.type.charAt(0).toUpperCase() + c.type.slice(1)}</span>
+                        <span className="text-[10px] text-charcoal/25 uppercase">{c.type}</span>
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )
             })()}
