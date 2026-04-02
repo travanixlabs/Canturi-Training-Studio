@@ -95,6 +95,7 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
   const [reportIssueTaskId, setReportIssueTaskId] = useState<string | null>(null)
   const [workingDays, setWorkingDays] = useState<UserWorkingDay[]>(initialWorkingDays)
   const [workingDayOverlayDate, setWorkingDayOverlayDate] = useState<string | null>(null)
+  const [trainerTypeOverlayDate, setTrainerTypeOverlayDate] = useState<string | null>(null)
 
   // Working days for selected trainee
   const traineeWorkingDays = useMemo(() => {
@@ -1019,6 +1020,29 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                             )
                           })}
                         </div>
+                        {/* Trainer type analysis */}
+                        {dayTasks.length > 0 && (() => {
+                          const counts = { sd: 0, sr: 0, mg: 0 }
+                          for (const tid of dayTasks) {
+                            const t = taskMap.get(tid)
+                            if (!t) continue
+                            if (t.trainer_type === 'Self Directed') counts.sd++
+                            else if (t.trainer_type === 'Senior') counts.sr++
+                            else if (t.trainer_type === 'Manager') counts.mg++
+                          }
+                          return (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setTrainerTypeOverlayDate(dateKey) }}
+                              className="mt-auto pt-1 flex items-center justify-center gap-0.5 text-[8px] text-charcoal/30 hover:text-charcoal/50 transition-colors"
+                            >
+                              <span className="px-1.5 py-0.5 rounded bg-charcoal/5">{counts.sd}</span>
+                              <span className="text-charcoal/15">|</span>
+                              <span className="px-1.5 py-0.5 rounded bg-charcoal/5">{counts.sr}</span>
+                              <span className="text-charcoal/15">|</span>
+                              <span className="px-1.5 py-0.5 rounded bg-charcoal/5">{counts.mg}</span>
+                            </button>
+                          )
+                        })()}
                       </div>
                     )
                   })}
@@ -1268,6 +1292,68 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
             taskId={task.id}
             onClose={() => setRecurringRequestTaskId(null)}
           />
+        )
+      })()}
+
+      {/* Trainer type analysis overlay */}
+      {trainerTypeOverlayDate && (() => {
+        const dateKey = trainerTypeOverlayDate
+        const dayTaskIds = localPlate[dateKey] ?? []
+        const dateDisplay = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+        const grouped: Record<string, TrainingTask[]> = { 'Self Directed': [], 'Senior': [], 'Manager': [] }
+        for (const tid of dayTaskIds) {
+          const t = taskMap.get(tid)
+          if (!t) continue
+          const key = t.trainer_type || 'Other'
+          if (!grouped[key]) grouped[key] = []
+          grouped[key].push(t)
+        }
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setTrainerTypeOverlayDate(null)}>
+            <div className="fixed inset-0 bg-black/30" />
+            <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-md mx-0 sm:mx-4 max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="px-5 pt-5 pb-3 border-b border-black/5 flex items-start justify-between">
+                <div>
+                  <h3 className="font-serif text-lg text-charcoal">Trainer Type Breakdown</h3>
+                  <p className="text-xs text-charcoal/40 mt-0.5">{dateDisplay} · {dayTaskIds.length} tasks</p>
+                </div>
+                <button onClick={() => setTrainerTypeOverlayDate(null)} className="p-1 text-charcoal/30 hover:text-charcoal/60"><X size={18} /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+                {['Self Directed', 'Senior', 'Manager'].map(type => {
+                  const items = grouped[type] ?? []
+                  if (items.length === 0) return null
+                  return (
+                    <div key={type}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-medium text-charcoal/50 uppercase tracking-wider">{type}</span>
+                        <span className="text-[10px] text-charcoal/30">{items.length}</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {items.map(task => {
+                          const sub = subcategories.find(s => s.id === task.subcategory_id)
+                          const cat = sub ? categories.find(c => c.id === sub.category_id) : null
+                          const course = cat ? courses.find(c => c.id === cat.course_id) : null
+                          const colour = course?.colour_hex || COURSE_COLOURS[course?.name ?? ''] || '#C9A96E'
+                          return (
+                            <div key={task.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-charcoal/[0.02]">
+                              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: colour }} />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-charcoal leading-snug">{task.title}</p>
+                                <p className="text-[9px] text-charcoal/30">{[course?.name, cat?.title, sub?.title].filter(Boolean).join(' › ')}</p>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
         )
       })()}
 
