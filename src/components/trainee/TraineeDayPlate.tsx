@@ -329,7 +329,7 @@ export function TraineeDayPlate({ currentUser, assignments, trainingTasks, taskC
       {selTask && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setSelectedTaskId(null)}>
           <div className="fixed inset-0 bg-black/30" />
-          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg mx-0 sm:mx-4 max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-[80vw] mx-0 sm:mx-4 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Header */}
             <div className="px-5 pt-5 pb-3 border-b border-black/5 flex items-start justify-between">
               <div>
