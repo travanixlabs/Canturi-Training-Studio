@@ -107,40 +107,19 @@ export function ManagerCoaching({ manager, trainees, completions: initialComplet
       {/* Rating filters */}
       <div className="card p-4 mb-6">
         <div className="flex items-start gap-4">
-          {/* Competence Rating slider */}
+          {/* Competence Rating */}
           <div className="flex-1">
-            <p className="text-xs text-charcoal/40 uppercase tracking-wider font-medium mb-2">Competence Rating</p>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-charcoal/30 w-3">{competenceRange[0]}</span>
-              <input
-                type="range"
-                min={1}
-                max={5}
-                value={competenceRange[0]}
-                onChange={e => {
-                  const v = parseInt(e.target.value)
-                  setCompetenceRange([Math.min(v, competenceRange[1]), competenceRange[1]])
-                }}
-                className="flex-1 accent-gold h-1.5"
-              />
-              <input
-                type="range"
-                min={1}
-                max={5}
-                value={competenceRange[1]}
-                onChange={e => {
-                  const v = parseInt(e.target.value)
-                  setCompetenceRange([competenceRange[0], Math.max(v, competenceRange[0])])
-                }}
-                className="flex-1 accent-gold h-1.5"
-              />
-              <span className="text-xs text-charcoal/30 w-3">{competenceRange[1]}</span>
+            <p className="text-xs text-charcoal/40 uppercase tracking-wider font-medium mb-3">Competence Rating</p>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="text-xs font-medium text-charcoal/50 w-4 text-center">{competenceRange[0]}</span>
+              <span className="text-xs text-charcoal/20">to</span>
+              <span className="text-xs font-medium text-charcoal/50 w-4 text-center">{competenceRange[1]}</span>
             </div>
-            <p className="text-[10px] text-charcoal/30 text-center mt-1">{competenceRange[0]} – {competenceRange[1]}</p>
+            <RangeSlider min={1} max={5} value={competenceRange} onChange={setCompetenceRange} />
           </div>
 
           {/* AND / OR toggle */}
-          <div className="flex flex-col items-center pt-5">
+          <div className="flex flex-col items-center pt-7">
             <button
               onClick={() => setFilterMode(prev => prev === 'and' ? 'or' : 'and')}
               className={`px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider transition-all ${
@@ -153,39 +132,18 @@ export function ManagerCoaching({ manager, trainees, completions: initialComplet
             </button>
           </div>
 
-          {/* Manager Rating slider */}
+          {/* Manager Rating */}
           <div className="flex-1">
-            <p className="text-xs text-charcoal/40 uppercase tracking-wider font-medium mb-2">Manager Rating</p>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-charcoal/30 w-3">{managerRange[0]}</span>
-              <input
-                type="range"
-                min={1}
-                max={5}
-                value={managerRange[0]}
-                onChange={e => {
-                  const v = parseInt(e.target.value)
-                  setManagerRange([Math.min(v, managerRange[1]), managerRange[1]])
-                }}
-                className="flex-1 accent-gold h-1.5"
-              />
-              <input
-                type="range"
-                min={1}
-                max={5}
-                value={managerRange[1]}
-                onChange={e => {
-                  const v = parseInt(e.target.value)
-                  setManagerRange([managerRange[0], Math.max(v, managerRange[0])])
-                }}
-                className="flex-1 accent-gold h-1.5"
-              />
-              <span className="text-xs text-charcoal/30 w-3">{managerRange[1]}</span>
+            <p className="text-xs text-charcoal/40 uppercase tracking-wider font-medium mb-3">Manager Rating</p>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="text-xs font-medium text-charcoal/50 w-4 text-center">{managerRange[0]}</span>
+              <span className="text-xs text-charcoal/20">to</span>
+              <span className="text-xs font-medium text-charcoal/50 w-4 text-center">{managerRange[1]}</span>
             </div>
-            <p className="text-[10px] text-charcoal/30 text-center mt-1">{managerRange[0]} – {managerRange[1]}</p>
+            <RangeSlider min={1} max={5} value={managerRange} onChange={setManagerRange} />
           </div>
         </div>
-        <p className="text-[10px] text-charcoal/30 text-center mt-2">{filteredCompletions.length} item{filteredCompletions.length !== 1 ? 's' : ''}</p>
+        <p className="text-[10px] text-charcoal/30 text-center mt-3">{filteredCompletions.length} item{filteredCompletions.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Completions list */}
@@ -405,6 +363,71 @@ function CoachingOverlay({
             </button>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function RangeSlider({ min, max, value, onChange }: {
+  min: number
+  max: number
+  value: [number, number]
+  onChange: (v: [number, number]) => void
+}) {
+  const steps = max - min
+  const leftPct = ((value[0] - min) / steps) * 100
+  const rightPct = ((value[1] - min) / steps) * 100
+
+  return (
+    <div className="relative h-8 flex items-center">
+      {/* Track background */}
+      <div className="absolute left-0 right-0 h-1.5 bg-charcoal/10 rounded-full" />
+      {/* Active track */}
+      <div
+        className="absolute h-1.5 bg-gold rounded-full"
+        style={{ left: `${leftPct}%`, right: `${100 - rightPct}%` }}
+      />
+      {/* Tick marks */}
+      {Array.from({ length: steps + 1 }, (_, i) => (
+        <div
+          key={i}
+          className="absolute w-0.5 h-3 bg-charcoal/10 rounded-full -translate-x-1/2"
+          style={{ left: `${(i / steps) * 100}%` }}
+        />
+      ))}
+      {/* Min thumb */}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={1}
+        value={value[0]}
+        onChange={e => {
+          const v = parseInt(e.target.value)
+          onChange([Math.min(v, value[1]), value[1]])
+        }}
+        className="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gold [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md"
+        style={{ zIndex: value[0] === value[1] ? 2 : 1 }}
+      />
+      {/* Max thumb */}
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={1}
+        value={value[1]}
+        onChange={e => {
+          const v = parseInt(e.target.value)
+          onChange([value[0], Math.max(v, value[0])])
+        }}
+        className="absolute w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gold [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md"
+        style={{ zIndex: 2 }}
+      />
+      {/* Labels */}
+      <div className="absolute -bottom-3 left-0 right-0 flex justify-between">
+        {Array.from({ length: steps + 1 }, (_, i) => (
+          <span key={i} className="text-[9px] text-charcoal/25 -translate-x-1/2" style={{ left: `${(i / steps) * 100}%`, position: 'absolute' }}>{min + i}</span>
+        ))}
       </div>
     </div>
   )
