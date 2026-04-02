@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Pencil } from 'lucide-react'
+import { Pencil, Download } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import * as XLSX from 'xlsx'
 import type { Course, Category, Subcategory, TrainingTask, TrainerType, Modality, RoleLevel, PriorityLevel } from '@/types'
 
 const TRAINER_TYPES: TrainerType[] = ['Self Directed', 'Senior', 'Manager']
@@ -101,13 +102,46 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
           <h1 className="font-serif text-2xl text-charcoal">Training Tasks</h1>
           <p className="text-sm text-charcoal/40 mt-1">{filteredTasks.length} of {tasks.length} tasks</p>
         </div>
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search tasks..."
-          className="input py-2 px-4 text-sm w-64"
-        />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              const rows = filteredTasks.map(task => {
+                const { course, category, subcategory } = getHierarchy(task)
+                return {
+                  'Course': course?.name ?? '',
+                  'Category': category?.title ?? '',
+                  'Subcategory': subcategory?.title ?? '',
+                  'Training Task': task.title,
+                  'Prerequisites': (task.prerequisites ?? []).map(pid => tasks.find(t => t.id === pid)?.title ?? pid).join(', '),
+                  'Tags': (task.tags ?? []).join(', '),
+                  'Trainer Type': task.trainer_type,
+                  'Modality': task.modality,
+                  'Role Level': task.role_level,
+                  'Priority Level': task.priority_level,
+                  'Recurring': task.is_recurring ? `Yes (${task.recurring_count})` : 'No',
+                  'Certificate Required': task.certificate_required ? 'Yes' : 'No',
+                  'Rewards Eligible': task.rewards_eligible ? 'Yes' : 'No',
+                  'Competence Rating Required': task.confidence_rating_required ? 'Yes' : 'No',
+                }
+              })
+              const ws = XLSX.utils.json_to_sheet(rows)
+              const wb = XLSX.utils.book_new()
+              XLSX.utils.book_append_sheet(wb, ws, 'Training Tasks')
+              XLSX.writeFile(wb, 'Training Tasks.xlsx')
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-charcoal/50 border border-charcoal/15 hover:border-gold hover:text-gold transition-all"
+          >
+            <Download size={14} />
+            Export
+          </button>
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search tasks..."
+            className="input py-2 px-4 text-sm w-64"
+          />
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-black/5">
