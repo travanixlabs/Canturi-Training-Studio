@@ -316,10 +316,31 @@ function CoachingOverlay({
                   </div>
                 </div>
               )}
-              {completion.manager_coaching && (
-                <div>
-                  <label className="block text-xs font-medium text-charcoal/50 mb-1">Manager Coaching</label>
-                  <div className="text-sm text-charcoal/70 leading-relaxed bg-gold/5 border border-gold/10 rounded-xl p-3 whitespace-pre-wrap">{completion.manager_coaching}</div>
+              {(completion.manager_notes || completion.manager_coaching || completion.manager_rating) && (
+                <div className="border-t border-black/5 pt-3 mt-3 space-y-3">
+                  <p className="text-[10px] text-charcoal/30 uppercase tracking-wider font-medium">Manager Sign Off</p>
+                  {completion.manager_notes && (
+                    <div>
+                      <label className="block text-xs font-medium text-charcoal/50 mb-1">Manager Notes</label>
+                      <div className="text-sm text-charcoal/70 leading-relaxed bg-charcoal/[0.02] rounded-xl p-3 whitespace-pre-wrap">{completion.manager_notes}</div>
+                    </div>
+                  )}
+                  {completion.manager_coaching && (
+                    <div>
+                      <label className="block text-xs font-medium text-charcoal/50 mb-1">Manager Coaching Sentence</label>
+                      <div className="text-sm text-charcoal/70 leading-relaxed bg-gold/5 border border-gold/10 rounded-xl p-3 whitespace-pre-wrap">{completion.manager_coaching}</div>
+                    </div>
+                  )}
+                  {completion.manager_rating && (
+                    <div>
+                      <label className="block text-xs font-medium text-charcoal/50 mb-1">Manager Rating</label>
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <svg key={star} width="20" height="20" viewBox="0 0 24 24" fill={star <= completion.manager_rating! ? '#C9A96E' : 'none'} stroke={star <= completion.manager_rating! ? '#C9A96E' : '#D1D5DB'} strokeWidth="1.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               <p className="text-[10px] text-charcoal/30">
