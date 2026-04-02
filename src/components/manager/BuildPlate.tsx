@@ -1347,6 +1347,11 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
           }
         }
         const courseGroups = [...grouped.values()].sort((a, b) => b.tasks.length - a.tasks.length)
+        const total = dayTaskIds.length
+        const totalCourses = courses.length
+        const courseThreshold = totalCourses > 0 ? (1 / totalCourses) * 3 : 1
+        const thresholdPct = Math.round(courseThreshold * 100)
+        const courseBreaches = courseGroups.filter(g => total > 0 && g.tasks.length / total > courseThreshold)
 
         return (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setCourseBreakdownDate(null)}>
@@ -1355,17 +1360,34 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
               <div className="px-5 pt-5 pb-3 border-b border-black/5 flex items-start justify-between">
                 <div>
                   <h3 className="font-serif text-lg text-charcoal">Course Breakdown</h3>
-                  <p className="text-xs text-charcoal/40 mt-0.5">{dateDisplay} · {dayTaskIds.length} tasks</p>
+                  <p className="text-xs text-charcoal/40 mt-0.5">{dateDisplay} · {total} tasks · {totalCourses} courses</p>
                 </div>
                 <button onClick={() => setCourseBreakdownDate(null)} className="p-1 text-charcoal/30 hover:text-charcoal/60"><X size={18} /></button>
               </div>
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-                {courseGroups.map(({ course: c, tasks: items }) => (
+                {/* Guidance */}
+                {courseBreaches.length > 0 ? (
+                  <div className="rounded-xl bg-red-50 border border-red-200 p-3">
+                    <p className="text-xs font-medium text-red-700 mb-1">Allocation threshold exceeded ({thresholdPct}%)</p>
+                    <p className="text-[11px] text-red-600 leading-relaxed">Based on {totalCourses} courses, no single course should exceed {thresholdPct}% of the day's tasks. <strong>{courseBreaches.map(b => b.course.name).join(', ')}</strong> {courseBreaches.length === 1 ? 'exceeds' : 'exceed'} this threshold. Consider reallocating to improve variety.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-green-50 border border-green-200 p-3">
+                    <p className="text-xs font-medium text-green-700 mb-1">Well balanced ({thresholdPct}% threshold)</p>
+                    <p className="text-[11px] text-green-600 leading-relaxed">No single course exceeds the {thresholdPct}% allocation threshold. Good variety across courses.</p>
+                  </div>
+                )}
+
+                {courseGroups.map(({ course: c, tasks: items }) => {
+                  const pct = total > 0 ? Math.round((items.length / total) * 100) : 0
+                  const isBreach = total > 0 && items.length / total > courseThreshold
+                  return (
                   <div key={c.name}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] flex-shrink-0" style={{ backgroundColor: c.colour + '20', color: c.colour }}>{c.icon}</span>
-                      <span className="text-xs font-medium text-charcoal/50 uppercase tracking-wider">{c.name}</span>
-                      <span className="text-[10px] text-charcoal/30">{items.length}</span>
+                      <span className={`text-xs font-medium uppercase tracking-wider ${isBreach ? 'text-red-500' : 'text-charcoal/50'}`}>{c.name}</span>
+                      <span className={`text-[10px] ${isBreach ? 'text-red-400' : 'text-charcoal/30'}`}>{items.length} ({pct}%)</span>
+                      {isBreach && <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-500">exceeds {thresholdPct}%</span>}
                     </div>
                     <div className="space-y-1.5">
                       {items.map(task => {
@@ -1382,7 +1404,8 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                       })}
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -1403,6 +1426,8 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
           if (!grouped[key]) grouped[key] = []
           grouped[key].push(t)
         }
+        const total = dayTaskIds.length
+        const breaches = ['Self Directed', 'Senior', 'Manager'].filter(type => total > 0 && (grouped[type]?.length ?? 0) / total > 0.5)
 
         return (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setTrainerTypeOverlayDate(null)}>
@@ -1411,19 +1436,35 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
               <div className="px-5 pt-5 pb-3 border-b border-black/5 flex items-start justify-between">
                 <div>
                   <h3 className="font-serif text-lg text-charcoal">Trainer Type Breakdown</h3>
-                  <p className="text-xs text-charcoal/40 mt-0.5">{dateDisplay} · {dayTaskIds.length} tasks</p>
+                  <p className="text-xs text-charcoal/40 mt-0.5">{dateDisplay} · {total} tasks</p>
                 </div>
                 <button onClick={() => setTrainerTypeOverlayDate(null)} className="p-1 text-charcoal/30 hover:text-charcoal/60"><X size={18} /></button>
               </div>
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+                {/* Guidance */}
+                {breaches.length > 0 ? (
+                  <div className="rounded-xl bg-red-50 border border-red-200 p-3">
+                    <p className="text-xs font-medium text-red-700 mb-1">Allocation threshold exceeded</p>
+                    <p className="text-[11px] text-red-600 leading-relaxed">No single trainer type should exceed 50% of the day's tasks. <strong>{breaches.join(', ')}</strong> {breaches.length === 1 ? 'exceeds' : 'exceed'} this threshold. Consider reallocating to improve balance.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-green-50 border border-green-200 p-3">
+                    <p className="text-xs font-medium text-green-700 mb-1">Well balanced</p>
+                    <p className="text-[11px] text-green-600 leading-relaxed">No trainer type exceeds the 50% allocation threshold. Good distribution across Self Directed, Senior, and Manager tasks.</p>
+                  </div>
+                )}
+
                 {['Self Directed', 'Senior', 'Manager'].map(type => {
                   const items = grouped[type] ?? []
                   if (items.length === 0) return null
+                  const pct = total > 0 ? Math.round((items.length / total) * 100) : 0
+                  const isBreach = total > 0 && items.length / total > 0.5
                   return (
                     <div key={type}>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-medium text-charcoal/50 uppercase tracking-wider">{type}</span>
-                        <span className="text-[10px] text-charcoal/30">{items.length}</span>
+                        <span className={`text-xs font-medium uppercase tracking-wider ${isBreach ? 'text-red-500' : 'text-charcoal/50'}`}>{type}</span>
+                        <span className={`text-[10px] ${isBreach ? 'text-red-400' : 'text-charcoal/30'}`}>{items.length} ({pct}%)</span>
+                        {isBreach && <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-500">exceeds 50%</span>}
                       </div>
                       <div className="space-y-1.5">
                         {items.map(task => {
