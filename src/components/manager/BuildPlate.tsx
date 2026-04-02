@@ -6,7 +6,7 @@ import { ChevronDown, ChevronUp, Search, X, Info, Check, RefreshCw, AlertTriangl
 import { COURSE_COLOURS } from '@/types'
 import { createClient } from '@/lib/supabase/client'
 import { savePlateAssignments } from '@/app/manager/build-plate/actions'
-import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned, UserWorkingDay } from '@/types'
+import type { Course, Category, User, Workshop, WorkshopCourse, Subcategory, TrainingTask, TrainingTaskContent, TrainingTaskCompletion, TrainingTaskAssigned, UserWorkingDay, DayType } from '@/types'
 
 interface Props {
   manager: User
@@ -1261,79 +1261,124 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
       })()}
 
       {/* Working day overlay */}
-      {workingDayOverlayDate && (() => {
-        const dateKey = workingDayOverlayDate
-        const isWorking = isWorkingDay(dateKey)
-        const dayTasks = localPlate[dateKey] ?? []
-        const hasTasks = dayTasks.length > 0
-        const dateDisplay = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-        const selectedTrainee = sortedTrainees.find(t => t.id === selectedTraineeId)
+      {workingDayOverlayDate && (
+        <WorkingDayOverlay
+          dateKey={workingDayOverlayDate}
+          isWorking={isWorkingDay(workingDayOverlayDate)}
+          currentDayType={workingDays.find(w => w.user_id === selectedTraineeId && w.working_date === workingDayOverlayDate)?.day_type}
+          dayTasks={localPlate[workingDayOverlayDate] ?? []}
+          traineeName={sortedTrainees.find(t => t.id === selectedTraineeId)?.name ?? ''}
+          onClose={() => setWorkingDayOverlayDate(null)}
+          onMarkWorking={async (dayType) => {
+            const { data } = await supabase.from('users_working_days').insert({
+              user_id: selectedTraineeId,
+              working_date: workingDayOverlayDate,
+              day_type: dayType,
+              created_by: manager.id,
+            }).select().single()
+            if (data) setWorkingDays(prev => [...prev, data as UserWorkingDay])
+            setWorkingDayOverlayDate(null)
+            router.refresh()
+          }}
+          onMarkNotWorking={async () => {
+            await supabase.from('users_working_days').delete().eq('user_id', selectedTraineeId).eq('working_date', workingDayOverlayDate)
+            setWorkingDays(prev => prev.filter(w => !(w.user_id === selectedTraineeId && w.working_date === workingDayOverlayDate)))
+            setWorkingDayOverlayDate(null)
+            router.refresh()
+          }}
+        />
+      )}
+    </div>
+  )
+}
 
-        return (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setWorkingDayOverlayDate(null)}>
-            <div className="fixed inset-0 bg-black/30" />
-            <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm mx-0 sm:mx-4 p-6" onClick={e => e.stopPropagation()}>
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="font-serif text-lg text-charcoal">{dateDisplay}</h3>
-                  <p className="text-xs text-charcoal/40 mt-0.5">{selectedTrainee?.name}</p>
-                </div>
-                <button onClick={() => setWorkingDayOverlayDate(null)} className="p-1 text-charcoal/30 hover:text-charcoal/60">
-                  <X size={18} />
+function WorkingDayOverlay({ dateKey, isWorking, currentDayType, dayTasks, traineeName, onClose, onMarkWorking, onMarkNotWorking }: {
+  dateKey: string
+  isWorking: boolean
+  currentDayType?: DayType
+  dayTasks: string[]
+  traineeName: string
+  onClose: () => void
+  onMarkWorking: (dayType: DayType) => void
+  onMarkNotWorking: () => void
+}) {
+  const [dayType, setDayType] = useState<DayType | ''>(currentDayType ?? '')
+  const hasTasks = dayTasks.length > 0
+  const dateDisplay = new Date(dateKey + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div className="fixed inset-0 bg-black/30" />
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-sm mx-0 sm:mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="font-serif text-lg text-charcoal">{dateDisplay}</h3>
+            <p className="text-xs text-charcoal/40 mt-0.5">{traineeName}</p>
+          </div>
+          <button onClick={onClose} className="p-1 text-charcoal/30 hover:text-charcoal/60">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 mb-4">
+          <span className={`w-2.5 h-2.5 rounded-full ${isWorking ? 'bg-green-500' : 'bg-charcoal/20'}`} />
+          <span className="text-sm text-charcoal/70">
+            {isWorking ? `Scheduled to work — ${currentDayType}` : 'Not scheduled to work'}
+          </span>
+        </div>
+
+        {isWorking && hasTasks && (
+          <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 mb-4">
+            <p className="text-xs text-amber-700">This date has {dayTasks.length} training task{dayTasks.length !== 1 ? 's' : ''} assigned. Remove them before marking as not working.</p>
+          </div>
+        )}
+
+        {!isWorking && (
+          <div className="mb-5">
+            <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">
+              Day Type <span className="text-red-400">*</span>
+            </label>
+            <div className="flex gap-2">
+              {(['Client Day', 'Shadowing Day'] as const).map(opt => (
+                <button
+                  key={opt}
+                  onClick={() => setDayType(opt)}
+                  className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all border ${
+                    dayType === opt
+                      ? 'border-gold bg-gold/10 text-gold'
+                      : 'border-charcoal/15 text-charcoal/40 hover:border-charcoal/30'
+                  }`}
+                >
+                  {opt}
                 </button>
-              </div>
-
-              <div className="flex items-center gap-2 mb-5">
-                <span className={`w-2.5 h-2.5 rounded-full ${isWorking ? 'bg-green-500' : 'bg-charcoal/20'}`} />
-                <span className="text-sm text-charcoal/70">{isWorking ? 'Scheduled to work' : 'Not scheduled to work'}</span>
-              </div>
-
-              {isWorking && hasTasks && (
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 mb-5">
-                  <p className="text-xs text-amber-700">This date has {dayTasks.length} training task{dayTasks.length !== 1 ? 's' : ''} assigned. Remove them before marking as not working.</p>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button onClick={() => setWorkingDayOverlayDate(null)} className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors">
-                  Cancel
-                </button>
-                {isWorking ? (
-                  <button
-                    onClick={async () => {
-                      if (hasTasks) return
-                      await supabase.from('users_working_days').delete().eq('user_id', selectedTraineeId).eq('working_date', dateKey)
-                      setWorkingDays(prev => prev.filter(w => !(w.user_id === selectedTraineeId && w.working_date === dateKey)))
-                      setWorkingDayOverlayDate(null)
-                      router.refresh()
-                    }}
-                    disabled={hasTasks}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Mark Not Working
-                  </button>
-                ) : (
-                  <button
-                    onClick={async () => {
-                      const { data } = await supabase.from('users_working_days').insert({
-                        user_id: selectedTraineeId,
-                        working_date: dateKey,
-                        created_by: manager.id,
-                      }).select().single()
-                      if (data) setWorkingDays(prev => [...prev, data as UserWorkingDay])
-                      setWorkingDayOverlayDate(null)
-                      router.refresh()
-                    }}
-                    className="flex-1 px-4 py-2.5 text-sm font-medium bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
-                  >
-                    Mark Working
-                  </button>
-                )}
-              </div>
+              ))}
             </div>
           </div>
-        )
-      })()}
+        )}
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-medium text-charcoal/50 hover:text-charcoal rounded-xl border border-charcoal/15 transition-colors">
+            Cancel
+          </button>
+          {isWorking ? (
+            <button
+              onClick={() => { if (!hasTasks) onMarkNotWorking() }}
+              disabled={hasTasks}
+              className="flex-1 px-4 py-2.5 text-sm font-medium bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Mark Not Working
+            </button>
+          ) : (
+            <button
+              onClick={() => { if (dayType) onMarkWorking(dayType) }}
+              disabled={!dayType}
+              className="flex-1 px-4 py-2.5 text-sm font-medium bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50"
+            >
+              Mark Working
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

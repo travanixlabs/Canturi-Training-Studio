@@ -135,10 +135,13 @@ export interface TrainingTaskAssigned {
   created_at: string
 }
 
+export type DayType = 'Client Day' | 'Shadowing Day'
+
 export interface UserWorkingDay {
   id: string
   user_id: string
   working_date: string
+  day_type: DayType
   created_at: string
   created_by: string
 }
