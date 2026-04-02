@@ -9,7 +9,7 @@ import type { Course, Category, Subcategory, TrainingTask, TrainerType, Modality
 
 const TRAINER_TYPES: TrainerType[] = ['Self Directed', 'Senior', 'Manager']
 const MODALITIES: Modality[] = ['Website Reference', 'Online Tool', 'Role Play', 'Shadowing', 'SOP', 'Video', 'Coaching Session', 'Self Directed Task', 'External Education', 'Zoom Session', 'Upskill Friday', 'Workshop']
-const ROLE_LEVELS: RoleLevel[] = ['Consultant', 'Specialist', 'Senior Specialist']
+const ROLE_LEVELS: RoleLevel[] = ['Host', 'Consultant', 'Specialist', 'Senior Specialist']
 const PRIORITY_LEVELS: PriorityLevel[] = ['Essential', 'Core', 'Advanced']
 
 interface Props {

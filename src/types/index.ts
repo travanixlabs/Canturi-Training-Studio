@@ -52,7 +52,7 @@ export interface Subcategory {
 
 export type TrainerType = 'Self Directed' | 'Senior' | 'Manager'
 export type Modality = 'Website Reference' | 'Online Tool' | 'Role Play' | 'Shadowing' | 'SOP' | 'Video' | 'Coaching Session' | 'Self Directed Task' | 'External Education' | 'Zoom Session' | 'Upskill Friday' | 'Workshop'
-export type RoleLevel = 'Consultant' | 'Specialist' | 'Senior Specialist'
+export type RoleLevel = 'Host' | 'Consultant' | 'Specialist' | 'Senior Specialist'
 export type PriorityLevel = 'Essential' | 'Core' | 'Advanced'
 
 export interface TrainingTask {
