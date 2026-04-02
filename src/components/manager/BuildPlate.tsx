@@ -1041,11 +1041,17 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
                             }
                           }
                           const courseList = [...courseCounts.values()].sort((a, b) => b.count - a.count)
+                          const total = dayTasks.length
+                          const trainerExceeds50 = total > 0 && (trainerCounts.sd / total > 0.5 || trainerCounts.sr / total > 0.5 || trainerCounts.mg / total > 0.5)
                           return (
                             <div className="mt-auto pt-1 flex items-center justify-between">
                               <button
                                 onClick={(e) => { e.stopPropagation(); setTrainerTypeOverlayDate(dateKey) }}
-                                className="px-1.5 py-0.5 rounded bg-charcoal/5 text-[8px] text-charcoal/30 hover:text-charcoal/50 hover:bg-charcoal/10 transition-colors"
+                                className={`px-1.5 py-0.5 rounded text-[8px] transition-colors ${
+                                  trainerExceeds50
+                                    ? 'bg-red-100 text-red-500 hover:bg-red-200'
+                                    : 'bg-green-100 text-green-600 hover:bg-green-200'
+                                }`}
                               >
                                 {trainerCounts.sd} | {trainerCounts.sr} | {trainerCounts.mg}
                               </button>
