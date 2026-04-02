@@ -58,28 +58,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ skipped: true, reason: 'Self Directed, no low rating' })
   }
 
-  const sent: string[] = []
+  // Single email to all managers
+  const managerEmails = managers.map(m => m.email)
+  const managerNames = managers.map(m => m.name.split(' ')[0])
 
+  try {
+    await sendCompletionNotification({
+      managerEmails,
+      managerNames,
+      traineeName: trainee.name,
+      taskTitle: task.title,
+      breadcrumb,
+      completionId,
+      appUrl,
+      needsSignOff,
+      lowCompetenceRating: isLowCompetence ? completion.confidence_rating : null,
+    })
+  } catch (e) {
+    console.error('Failed to send completion email:', e)
+  }
+
+  // In-app notifications for each manager
   for (const manager of managers) {
-    // Single email combining sign-off + low competence if both apply
-    try {
-      await sendCompletionNotification({
-        managerEmail: manager.email,
-        managerName: manager.name,
-        traineeName: trainee.name,
-        taskTitle: task.title,
-        breadcrumb,
-        completionId,
-        appUrl,
-        needsSignOff,
-        lowCompetenceRating: isLowCompetence ? completion.confidence_rating : null,
-      })
-      sent.push(manager.email)
-    } catch (e) {
-      console.error(`Failed to email ${manager.email}:`, e)
-    }
-
-    // In-app notifications (still separate for different notification types)
     if (needsSignOff) {
       await supabase.from('user_notifications').insert({
         user_id: manager.id,
@@ -101,5 +101,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ sent, needsSignOff, lowCompetenceAlert: isLowCompetence })
+  return NextResponse.json({ sent: managerEmails, needsSignOff, lowCompetenceAlert: isLowCompetence })
 }

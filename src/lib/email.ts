@@ -6,8 +6,8 @@ const FROM_EMAIL = 'Canturi Training Studio <trainingstudio@canturi.com>'
 export const BCC_LIST = ['patricia@canturi.com', 'tre.travan@canturi.com']
 
 export async function sendCompletionNotification({
-  managerEmail,
-  managerName,
+  managerEmails,
+  managerNames,
   traineeName,
   taskTitle,
   breadcrumb,
@@ -16,8 +16,8 @@ export async function sendCompletionNotification({
   needsSignOff,
   lowCompetenceRating,
 }: {
-  managerEmail: string
-  managerName: string
+  managerEmails: string[]
+  managerNames: string[]
   traineeName: string
   taskTitle: string
   breadcrumb: string
@@ -27,6 +27,7 @@ export async function sendCompletionNotification({
   lowCompetenceRating: number | null
 }) {
   const signOffUrl = `${appUrl}/manager/sign-off?completion=${completionId}`
+  const greeting = managerNames.length === 1 ? `Hi ${managerNames[0]}` : `Hi ${managerNames.join(' & ')}`
   const hasLowRating = lowCompetenceRating !== null
   const stars = hasLowRating ? '★'.repeat(lowCompetenceRating) + '☆'.repeat(5 - lowCompetenceRating) : ''
 
@@ -59,7 +60,7 @@ export async function sendCompletionNotification({
 
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: managerEmail,
+    to: managerEmails,
     bcc: BCC_LIST,
     subject,
     html: `
@@ -69,7 +70,7 @@ export async function sendCompletionNotification({
           <h1 style="font-family: Georgia, serif; font-size: 22px; color: #2D2926; margin: 0 0 20px;">Task Completed</h1>
 
           <p style="font-size: 14px; color: #555; line-height: 1.6; margin: 0 0 20px;">
-            Hi ${managerName.split(' ')[0]},<br><br>
+            ${greeting},<br><br>
             <strong>${traineeName}</strong> has completed a training task${needsSignOff ? ' and it\'s ready for your feedback' : ''}.
           </p>
 
