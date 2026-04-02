@@ -27,6 +27,7 @@ export async function sendCompletionNotification({
   lowCompetenceRating: number | null
 }) {
   const signOffUrl = `${appUrl}/manager/sign-off?completion=${completionId}`
+  const coachingUrl = `${appUrl}/manager/coaching`
   const greeting = managerNames.length === 1 ? `Hi ${managerNames[0]}` : `Hi ${managerNames.join(' & ')}`
   const hasLowRating = lowCompetenceRating !== null
   const stars = hasLowRating ? '★'.repeat(lowCompetenceRating) + '☆'.repeat(5 - lowCompetenceRating) : ''
@@ -82,9 +83,16 @@ export async function sendCompletionNotification({
             ${ratingDisplay}
           </div>
 
-          <a href="${signOffUrl}" style="display: block; text-align: center; background: #C9A96E; color: white; padding: 14px 24px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 600;">
-            ${needsSignOff ? 'Review & Sign Off' : 'View Submission'}
+          ${needsSignOff ? `
+          <a href="${signOffUrl}" style="display: block; text-align: center; background: #C9A96E; color: white; padding: 14px 24px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: ${hasLowRating ? '8px' : '0'};">
+            Review & Sign Off
           </a>
+          ` : ''}
+          ${hasLowRating ? `
+          <a href="${coachingUrl}" style="display: block; text-align: center; background: ${needsSignOff ? '#555' : '#C9A96E'}; color: white; padding: 14px 24px; border-radius: 12px; text-decoration: none; font-size: 14px; font-weight: 600;">
+            Review in Coaching
+          </a>
+          ` : ''}
 
           <p style="font-size: 11px; color: #bbb; margin: 20px 0 0; text-align: center;">
             You're receiving this because you manage trainees at your boutique.
