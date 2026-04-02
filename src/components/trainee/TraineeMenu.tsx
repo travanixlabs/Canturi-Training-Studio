@@ -801,7 +801,7 @@ export function TraineeMenu({ courses, categories, currentUser, workshops = [], 
 
         {/* Training Task view */}
         {selTask && (
-          <div className="px-5 py-6 max-w-2xl">
+          <div className="px-5 py-6">
             <p className="text-xs text-charcoal/30 mb-4">
               {selTaskCat?.course && <span>{(selTaskCat.course as Course).name} &rsaquo; </span>}
               {selTaskCat && <span>{selTaskCat.title} &rsaquo; </span>}
