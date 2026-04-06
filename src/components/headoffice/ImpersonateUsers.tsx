@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import type { User } from '@/types'
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function ImpersonateUsers({ users }: Props) {
-  const router = useRouter()
+  const supabase = createClient()
   const [loading, setLoading] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
@@ -41,8 +41,17 @@ export function ImpersonateUsers({ users }: Props) {
         body: JSON.stringify({ userId }),
       })
       const data = await res.json()
-      if (data.success) {
-        window.location.href = data.redirectTo
+      if (data.success && data.token_hash) {
+        // Verify the OTP client-side to set the session
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: data.token_hash,
+          type: 'magiclink',
+        })
+        if (error) {
+          alert('Failed to sign in: ' + error.message)
+        } else {
+          window.location.href = data.redirectTo
+        }
       } else {
         alert('Failed to sign in: ' + (data.error || 'Unknown error'))
       }
