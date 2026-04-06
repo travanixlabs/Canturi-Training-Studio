@@ -9,6 +9,7 @@ const tabs = [
   { href: '/head-office/courses', label: 'Course Menu' },
   { href: '/head-office/training-tasks', label: 'Training Tasks' },
   { href: '/head-office/deleted', label: 'Deleted' },
+  { href: '/head-office/impersonate', label: 'View As' },
 ]
 
 export function HeadOfficeNav() {
