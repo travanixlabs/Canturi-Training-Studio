@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 function toDateKeyAEST() {
@@ -14,7 +14,7 @@ function toDateKeyAEST() {
 }
 
 export async function POST() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const todayKey = toDateKeyAEST()
 

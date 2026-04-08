@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { Resend } from 'resend'
 import { BCC_LIST } from '@/lib/email'
 import { NextResponse } from 'next/server'
@@ -22,7 +22,7 @@ function formatDateDisplay(dateKey: string) {
 }
 
 export async function POST() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const todayKey = toDateKeyAEDT()
 
   // Get all assignments for today
