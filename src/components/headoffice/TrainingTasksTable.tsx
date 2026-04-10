@@ -58,6 +58,7 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
       case 'Certificate': return task.certificate_required ? 'Yes' : 'No'
       case 'Rewards': return task.rewards_eligible ? 'Yes' : 'No'
       case 'Competence Rating': return task.confidence_rating_required ? 'Yes' : 'No'
+      case 'Trainee Feedback': return task.trainee_feedback_required ? 'Yes' : 'No'
       default: return ''
     }
   }
@@ -71,7 +72,7 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
     }
   }
 
-  const FILTERABLE_COLS = new Set(['Course', 'Category', 'Subcategory', 'Trainer Type', 'Modality', 'Role Level', 'Priority Level', 'Recurring', 'Certificate', 'Rewards', 'Competence Rating'])
+  const FILTERABLE_COLS = new Set(['Course', 'Category', 'Subcategory', 'Trainer Type', 'Modality', 'Role Level', 'Priority Level', 'Recurring', 'Certificate', 'Rewards', 'Competence Rating', 'Trainee Feedback'])
 
   // Get unique values for a column
   function getUniqueValues(col: string): string[] {
@@ -163,6 +164,7 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
                   'Certificate Required': task.certificate_required ? 'Yes' : 'No',
                   'Rewards Eligible': task.rewards_eligible ? 'Yes' : 'No',
                   'Competence Rating Required': task.confidence_rating_required ? 'Yes' : 'No',
+                  'Trainee Feedback Required': task.trainee_feedback_required ? 'Yes' : 'No',
                 }
               })
               const ws = XLSX.utils.json_to_sheet(rows)
@@ -189,7 +191,7 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
         <table className="w-full text-left">
           <thead>
             <tr className="bg-charcoal/[0.02]">
-              {['Course', 'Category', 'Subcategory', 'Training Task', 'Prerequisites', 'Tags', 'Trainer Type', 'Modality', 'Role Level', 'Priority Level', 'Recurring', 'Certificate', 'Rewards', 'Competence Rating'].map(h => (
+              {['Course', 'Category', 'Subcategory', 'Training Task', 'Prerequisites', 'Tags', 'Trainer Type', 'Modality', 'Role Level', 'Priority Level', 'Recurring', 'Certificate', 'Rewards', 'Competence Rating', 'Trainee Feedback'].map(h => (
                 <th
                   key={h}
                   onClick={() => toggleSort(h)}
@@ -335,6 +337,14 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
                     <select className="text-xs bg-transparent focus:outline-none cursor-pointer" value={task.confidence_rating_required ? 'Yes' : 'No'} onChange={e => updateTask(task.id, { confidence_rating_required: e.target.value === 'Yes' })}>
                       <option value="No">No</option>
                       <option value="Yes">Yes</option>
+                    </select>
+                  </td>
+
+                  {/* Trainee Feedback Required */}
+                  <td className="px-3 py-2 text-center">
+                    <select className="text-xs bg-transparent focus:outline-none cursor-pointer" value={task.trainee_feedback_required ? 'Yes' : 'No'} onChange={e => updateTask(task.id, { trainee_feedback_required: e.target.value === 'Yes' })}>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
                     </select>
                   </td>
 

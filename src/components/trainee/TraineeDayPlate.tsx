@@ -524,6 +524,7 @@ function CompletionOverlay({
   const supabase = createClient()
 
   const isRecurring = task.is_recurring
+  const needsFeedback = task.trainee_feedback_required
   const needsRating = task.confidence_rating_required
   const needsCert = task.certificate_required
   const showCertUpload = needsCert && !hasPreviousCertificate
@@ -532,8 +533,8 @@ function CompletionOverlay({
   function wordCount(s: string) { return s.trim().split(/\s+/).filter(Boolean).length }
 
   const errors = {
-    takeaways: wordCount(takeaways) < 10,
-    summary: wordCount(summary) < 20,
+    takeaways: needsFeedback && wordCount(takeaways) < 10,
+    summary: needsFeedback && wordCount(summary) < 20,
     rating: needsRating && rating === 0,
   }
   const hasErrors = Object.values(errors).some(Boolean)
@@ -590,6 +591,7 @@ function CompletionOverlay({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          {needsFeedback && (
           <div>
             <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
               {isRecurring ? 'What did you observe?' : 'What were your three key takeaways?'} <span className="text-red-400">*</span>
@@ -597,6 +599,8 @@ function CompletionOverlay({
             <textarea className={`textarea text-sm ${showErrors && errors.takeaways ? 'border-red-300 bg-red-50/30' : ''}`} rows={5} value={takeaways} onChange={e => setTakeaways(e.target.value)} placeholder={isRecurring ? 'Describe what you observed... (minimum 10 words)' : 'Share your three key takeaways... (minimum 10 words)'} />
             <p className={`text-[10px] mt-1 ${showErrors && errors.takeaways ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaways)} / 10 words min</p>
           </div>
+          )}
+          {needsFeedback && (
           <div>
             <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
               {isRecurring ? 'What questions do you have, or what would you like to know more about?' : 'Brief Summary'} <span className="text-red-400">*</span>
@@ -604,6 +608,7 @@ function CompletionOverlay({
             <textarea className={`textarea text-sm ${showErrors && errors.summary ? 'border-red-300 bg-red-50/30' : ''}`} rows={4} value={summary} onChange={e => setSummary(e.target.value)} placeholder={isRecurring ? 'Share your questions or areas of interest... (minimum 20 words)' : 'Write a brief summary of what you covered (minimum 20 words)'} />
             <p className={`text-[10px] mt-1 ${showErrors && errors.summary ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(summary)} / 20 words min</p>
           </div>
+          )}
           {needsRating && (
             <div>
               <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-2">Competence Rating <span className="text-red-400">*</span></label>

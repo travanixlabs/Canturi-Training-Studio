@@ -157,6 +157,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       certificate_required: false,
       rewards_eligible: false,
       confidence_rating_required: true,
+      trainee_feedback_required: true,
       tags: ['shadow', categoryName.toLowerCase()],
       prerequisites: [],
       sort_order: 0,
@@ -275,6 +276,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
       certificate_required: false,
       rewards_eligible: false,
       confidence_rating_required: true,
+      trainee_feedback_required: true,
       tags: [],
       sort_order: existing.length,
       created_at: new Date().toISOString(),
@@ -1062,6 +1064,15 @@ function TrainingTaskEditor({
         <select className="input" value={task.confidence_rating_required ? 'Yes' : 'No'} onChange={e => onUpdate({ confidence_rating_required: e.target.value === 'Yes' })}>
           <option value="No">No</option>
           <option value="Yes">Yes</option>
+        </select>
+      </div>
+
+      {/* 11. Trainee Feedback Required */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Trainee Feedback Required</label>
+        <select className="input" value={task.trainee_feedback_required ? 'Yes' : 'No'} onChange={e => onUpdate({ trainee_feedback_required: e.target.value === 'Yes' })}>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
         </select>
       </div>
 

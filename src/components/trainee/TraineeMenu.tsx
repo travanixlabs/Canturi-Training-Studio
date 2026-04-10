@@ -991,6 +991,7 @@ function CompletionOverlay({
   const supabase = createClient()
 
   const isRecurring = task.is_recurring
+  const needsFeedback = task.trainee_feedback_required
   const needsRating = task.confidence_rating_required
   const needsCert = task.certificate_required
   const showCertUpload = needsCert && !hasPreviousCertificate
@@ -1001,8 +1002,8 @@ function CompletionOverlay({
   }
 
   const errors = {
-    takeaways: wordCount(takeaways) < 10,
-    summary: wordCount(summary) < 20,
+    takeaways: needsFeedback && wordCount(takeaways) < 10,
+    summary: needsFeedback && wordCount(summary) < 20,
     rating: needsRating && rating === 0,
   }
 
@@ -1067,6 +1068,7 @@ function CompletionOverlay({
         {/* Form */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           {/* Question 1 */}
+          {needsFeedback && (
           <div>
             <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
               {isRecurring ? 'What did you observe?' : 'What were your three key takeaways?'} <span className="text-red-400">*</span>
@@ -1080,8 +1082,10 @@ function CompletionOverlay({
             />
             <p className={`text-[10px] mt-1 ${showErrors && errors.takeaways ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(takeaways)} / 10 words min</p>
           </div>
+          )}
 
           {/* Question 2 */}
+          {needsFeedback && (
           <div>
             <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">
               {isRecurring ? 'What questions do you have, or what would you like to know more about?' : 'Brief Summary'} <span className="text-red-400">*</span>
@@ -1095,6 +1099,7 @@ function CompletionOverlay({
             />
             <p className={`text-[10px] mt-1 ${showErrors && errors.summary ? 'text-red-400' : 'text-charcoal/30'}`}>{wordCount(summary)} / 20 words min</p>
           </div>
+          )}
 
           {/* Competence Rating */}
           {needsRating && (

@@ -69,6 +69,7 @@ export interface TrainingTask {
   certificate_required: boolean
   rewards_eligible: boolean
   confidence_rating_required: boolean
+  trainee_feedback_required: boolean
   tags: string[]
   sort_order: number
   created_at: string
