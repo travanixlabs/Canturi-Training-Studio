@@ -228,8 +228,21 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
                   {/* Category - non-editable */}
                   <td className="px-3 py-2 text-xs text-charcoal/50 whitespace-nowrap">{category?.title ?? '—'}</td>
 
-                  {/* Subcategory - non-editable */}
-                  <td className="px-3 py-2 text-xs text-charcoal/50 whitespace-nowrap">{subcategory?.title ?? '—'}</td>
+                  {/* Subcategory - editable (within same category) */}
+                  <td className="px-3 py-2">
+                    <select
+                      className="text-xs bg-transparent focus:outline-none cursor-pointer text-charcoal/60 max-w-[160px]"
+                      value={task.subcategory_id}
+                      onChange={e => updateTask(task.id, { subcategory_id: e.target.value })}
+                    >
+                      {subcategories
+                        .filter(s => category ? s.category_id === category.id : true)
+                        .sort((a, b) => a.sort_order - b.sort_order)
+                        .map(s => (
+                          <option key={s.id} value={s.id}>{s.title}</option>
+                        ))}
+                    </select>
+                  </td>
 
                   {/* Training Task */}
                   <td className="px-3 py-2">
