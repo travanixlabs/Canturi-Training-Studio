@@ -770,6 +770,7 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                 return trainingTasks.filter(t => catSubIds.has(t.subcategory_id) && t.id !== activeTrainingTask.id)
               })()}
               attachments={getAttachmentsForTask(activeTrainingTask.id)}
+              categorySubcategories={subcategories.filter(s => s.category_id === initialItem.id).sort((a, b) => a.sort_order - b.sort_order)}
               uploading={uploading}
               onUpdate={(updates) => updateTrainingTask(activeTrainingTask.id, updates)}
               onAddAttachment={(type, url, insertAt) => addAttachment(activeTrainingTask.id, type, url, insertAt)}
@@ -836,6 +837,7 @@ function TrainingTaskEditor({
   task,
   siblingTasks,
   attachments,
+  categorySubcategories,
   uploading,
   onUpdate,
   onAddAttachment,
@@ -847,6 +849,7 @@ function TrainingTaskEditor({
   task: TrainingTask
   siblingTasks: TrainingTask[]
   attachments: TrainingTaskContent[]
+  categorySubcategories: Subcategory[]
   uploading: boolean
   onUpdate: (updates: Partial<TrainingTask>) => void
   onAddAttachment: (type: AttachmentType, url: string, insertAtIndex?: number) => void
@@ -957,6 +960,20 @@ function TrainingTaskEditor({
 
       {showDetails && (
       <div className="space-y-5 pl-1">
+
+      {/* 0. Subcategory */}
+      <div>
+        <label className="block text-xs font-medium text-charcoal/50 uppercase tracking-wider mb-1.5">Subcategory</label>
+        <select
+          className="input"
+          value={task.subcategory_id}
+          onChange={e => { setTouched(true); onUpdate({ subcategory_id: e.target.value }) }}
+        >
+          {categorySubcategories.map(s => (
+            <option key={s.id} value={s.id}>{s.title}</option>
+          ))}
+        </select>
+      </div>
 
       {/* 1. Prerequisites */}
       <div>
