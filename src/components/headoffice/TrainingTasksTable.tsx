@@ -225,8 +225,32 @@ export function TrainingTasksTable({ courses, categories, subcategories, trainin
                   {/* Course - non-editable */}
                   <td className="px-3 py-2 text-xs text-charcoal/50 whitespace-nowrap">{course?.name ?? '—'}</td>
 
-                  {/* Category - non-editable */}
-                  <td className="px-3 py-2 text-xs text-charcoal/50 whitespace-nowrap">{category?.title ?? '—'}</td>
+                  {/* Category - editable (within same course) */}
+                  <td className="px-3 py-2">
+                    <select
+                      className="text-xs bg-transparent focus:outline-none cursor-pointer text-charcoal/60 max-w-[160px]"
+                      value={category?.id ?? ''}
+                      onChange={e => {
+                        const newCatId = e.target.value
+                        // Find first subcategory in the new category
+                        const firstSub = subcategories
+                          .filter(s => s.category_id === newCatId)
+                          .sort((a, b) => a.sort_order - b.sort_order)[0]
+                        if (firstSub) {
+                          updateTask(task.id, { subcategory_id: firstSub.id })
+                        } else {
+                          alert('The selected category has no subcategories. Create one first.')
+                        }
+                      }}
+                    >
+                      {categories
+                        .filter(c => course ? c.course_id === course.id : true)
+                        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                        .map(c => (
+                          <option key={c.id} value={c.id}>{c.title}</option>
+                        ))}
+                    </select>
+                  </td>
 
                   {/* Subcategory - editable (within same category) */}
                   <td className="px-3 py-2">
