@@ -472,6 +472,62 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
     selectTrainingTask(data.id)
   }
 
+  async function copySubcategory(id: string) {
+    const source = subcategories.find(s => s.id === id)
+    if (!source) return
+
+    const newSortOrder = source.sort_order + 1
+
+    // Bump sort_order for subcategories after the source
+    const toShift = subcategories.filter(s => s.sort_order >= newSortOrder)
+    for (const s of toShift) {
+      await supabase.from('subcategories').update({ sort_order: s.sort_order + 1 }).eq('id', s.id)
+    }
+    setSubcategories(prev => prev.map(s =>
+      s.sort_order >= newSortOrder ? { ...s, sort_order: s.sort_order + 1 } : s
+    ))
+
+    // Insert the copy
+    const { id: _id, created_at: _ca, deleted_at: _da, ...payload } = source
+    const { data: newSub, error: subError } = await supabase.from('subcategories').insert({
+      ...payload,
+      title: source.title + ' (copy)',
+      sort_order: newSortOrder,
+    }).select().single()
+
+    if (subError || !newSub) {
+      alert('Failed to copy subcategory' + (subError ? ': ' + subError.message : ''))
+      return
+    }
+    setSubcategories(prev => [...prev, newSub as Subcategory])
+
+    // Copy training tasks (skip drafts)
+    const sourceTasks = trainingTasks.filter(t => t.subcategory_id === id && !draftTaskIds.has(t.id))
+    for (const task of sourceTasks) {
+      const { id: _tid, created_at: _tca, deleted_at: _tda, ...taskPayload } = task
+      const { data: newTask, error: taskError } = await supabase.from('training_tasks').insert({
+        ...taskPayload,
+        subcategory_id: newSub.id,
+      }).select().single()
+
+      if (taskError || !newTask) continue
+      setTrainingTasks(prev => [...prev, newTask as TrainingTask])
+
+      // Copy attachments for this task
+      const sourceAttachments = attachments.filter(a => a.training_task_id === task.id)
+      for (const att of sourceAttachments) {
+        const { id: _aid, created_at: _aca, deleted_at: _ada, training_task_id: _atid, ...attPayload } = att
+        const { data: newAtt } = await supabase.from('training_task_content').insert({
+          ...attPayload,
+          training_task_id: newTask.id,
+        }).select().single()
+        if (newAtt) setAttachments(prev => [...prev, newAtt as TrainingTaskContent])
+      }
+    }
+
+    selectSubcategory(newSub.id)
+  }
+
   function handleBack() {
     guardNavigation(() => {
       router.push('/head-office/courses')
@@ -583,6 +639,9 @@ export function CourseContentEditor({ categoryItem: initialItem, courses, subcat
                         </button>
                         <button onClick={() => moveSubcategory(sub.id, 'down')} className="p-1 text-charcoal/20 hover:text-charcoal/50">
                           <ChevronDown size={12} />
+                        </button>
+                        <button onClick={() => copySubcategory(sub.id)} className="p-1 text-charcoal/20 hover:text-blue-500" title="Duplicate">
+                          <Copy size={12} />
                         </button>
                         <button onClick={() => deleteSubcategory(sub.id)} className="p-1 text-charcoal/20 hover:text-red-500">
                           <Trash2 size={12} />
