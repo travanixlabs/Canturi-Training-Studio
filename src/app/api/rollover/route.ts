@@ -13,7 +13,7 @@ function toDateKeyAEST() {
   return `${year}-${month}-${day}`
 }
 
-export async function POST() {
+export async function GET() {
   const supabase = createAdminClient()
 
   const todayKey = toDateKeyAEST()

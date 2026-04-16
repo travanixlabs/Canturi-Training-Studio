@@ -21,7 +21,7 @@ function formatDateDisplay(dateKey: string) {
   return d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export async function POST() {
+export async function GET() {
   const supabase = createAdminClient()
   const todayKey = toDateKeyAEDT()
 

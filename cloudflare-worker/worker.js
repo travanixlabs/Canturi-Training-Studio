@@ -7,7 +7,7 @@ export default {
     if (trigger === '0 13 * * *') {
       // Midnight AEST (UTC+11) = 13:00 UTC
       ctx.waitUntil(
-        fetch(`${APP_URL}/api/rollover`, { method: 'POST' })
+        fetch(`${APP_URL}/api/rollover`, { method: 'GET' })
           .then(r => r.json())
           .then(data => console.log('Rollover:', JSON.stringify(data)))
           .catch(err => console.error('Rollover failed:', err))
@@ -17,7 +17,7 @@ export default {
     if (trigger === '0 21 * * *') {
       // 8am AEST (UTC+11) = 21:00 UTC previous day
       ctx.waitUntil(
-        fetch(`${APP_URL}/api/daily-digest`, { method: 'POST' })
+        fetch(`${APP_URL}/api/daily-digest`, { method: 'GET' })
           .then(r => r.json())
           .then(data => console.log('Daily digest:', JSON.stringify(data)))
           .catch(err => console.error('Daily digest failed:', err))
