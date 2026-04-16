@@ -378,37 +378,53 @@ export function BuildPlate({ manager, trainees, courses, categories, workshops, 
     const matchFields = (fields: (string | undefined | null)[]) =>
       fields.some(f => f && f.toLowerCase().includes(q))
 
+    const filtersActive = filter !== 'all' || typeFilter !== 'all'
+
+    const subsWithMatchingTasks = new Set<string>()
+    for (const task of trainingTasks) {
+      if (task.subcategory_id && taskMatchesFilter(task.id)) subsWithMatchingTasks.add(task.subcategory_id)
+    }
+    const catsWithMatchingTasks = new Set<string>()
+    for (const sub of subcategories) {
+      if (subsWithMatchingTasks.has(sub.id)) catsWithMatchingTasks.add(sub.category_id)
+    }
+    const coursesWithMatchingTasks = new Set<string>()
+    for (const cat of categories) {
+      if (catsWithMatchingTasks.has(cat.id)) coursesWithMatchingTasks.add(cat.course_id)
+    }
+
     type SearchResult = { type: 'course' | 'category' | 'subcategory' | 'task'; id: string; title: string; breadcrumb: string }
     const results: SearchResult[] = []
 
     for (const course of courses) {
-      if (matchFields([course.name, course.icon])) {
-        results.push({ type: 'course', id: course.id, title: course.name, breadcrumb: 'Course' })
-      }
+      if (!matchFields([course.name, course.icon])) continue
+      if (filtersActive && !coursesWithMatchingTasks.has(course.id)) continue
+      results.push({ type: 'course', id: course.id, title: course.name, breadcrumb: 'Course' })
     }
     for (const cat of categories) {
+      if (!matchFields([cat.title, cat.description])) continue
+      if (filtersActive && !catsWithMatchingTasks.has(cat.id)) continue
       const course = courses.find(c => c.id === cat.course_id)
-      if (matchFields([cat.title, cat.description])) {
-        results.push({ type: 'category', id: cat.id, title: cat.title, breadcrumb: course?.name || 'Category' })
-      }
+      results.push({ type: 'category', id: cat.id, title: cat.title, breadcrumb: course?.name || 'Category' })
     }
     for (const sub of subcategories) {
+      if (!matchFields([sub.title, sub.content])) continue
+      if (filtersActive && !subsWithMatchingTasks.has(sub.id)) continue
       const cat = categories.find(c => c.id === sub.category_id)
       const course = cat ? courses.find(c => c.id === cat.course_id) : null
-      if (matchFields([sub.title, sub.content])) {
-        results.push({ type: 'subcategory', id: sub.id, title: sub.title, breadcrumb: [course?.name, cat?.title].filter(Boolean).join(' › ') })
-      }
+      results.push({ type: 'subcategory', id: sub.id, title: sub.title, breadcrumb: [course?.name, cat?.title].filter(Boolean).join(' › ') })
     }
     for (const task of trainingTasks) {
+      if (!matchFields([task.title, task.trainer_type, task.modality, task.role_level, task.priority_level, ...(task.tags ?? [])])) continue
+      if (!taskMatchesFilter(task.id)) continue
       const sub = subcategories.find(s => s.id === task.subcategory_id)
       const cat = sub ? categories.find(c => c.id === sub.category_id) : null
       const course = cat ? courses.find(c => c.id === cat.course_id) : null
-      if (matchFields([task.title, task.trainer_type, task.modality, task.role_level, task.priority_level, ...(task.tags ?? [])])) {
-        results.push({ type: 'task', id: task.id, title: task.title, breadcrumb: [course?.name, cat?.title, sub?.title].filter(Boolean).join(' › ') })
-      }
+      results.push({ type: 'task', id: task.id, title: task.title, breadcrumb: [course?.name, cat?.title, sub?.title].filter(Boolean).join(' › ') })
     }
     return results
-  }, [searchQuery, courses, categories, subcategories, trainingTasks])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, courses, categories, subcategories, trainingTasks, filter, typeFilter, traineeCompletions, traineeAssignments])
 
   // Expand/collapse
   function toggle(key: string) {
